@@ -11,6 +11,7 @@ interface Props {
   lang: Lang;
 }
 
+
 export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) => {
   const [title, setTitle] = useState(config.songFileName?.replace(/\.[^.]+$/, '') || '');
   const [artist, setArtist] = useState('');
