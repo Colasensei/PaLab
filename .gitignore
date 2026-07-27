@@ -45,7 +45,6 @@ release-temp/
 
 # AI 助手
 .kagent/
-AGENT.md
 
 # 版本信息（含 CDN 私链）
 public/version.json
