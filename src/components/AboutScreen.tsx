@@ -9,7 +9,7 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
-    ver: 'Alpha 3.8（正式版）', date: '2026-07-27',
+    ver: 'Alpha 3.9（正式版）', date: '2026-07-27',
     items: [
       '修复旧谱 n 押音效丢失问题',
       'n 押分组检测更健壮',
@@ -68,7 +68,7 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 3.8</div>
+      <div className="about-ver">Alpha 3.9</div>
       <div className="about-ver about-ver-sub">v0.3.8</div>
 
       <div className="about-section">

@@ -161,7 +161,7 @@ export const HelpScreen: React.FC<Props> = ({ lang, onBack }) => {
               </div>
 
               <p style={{ textAlign: 'center', color: '#555', padding: '20px 0', fontSize: 12 }}>
-                Palab Alpha 3.8 — 感谢您的游玩
+                Palab Alpha 3.9 — 感谢您的游玩
               </p>
             </>
           ) : (
@@ -213,7 +213,7 @@ export const HelpScreen: React.FC<Props> = ({ lang, onBack }) => {
                 </ul>
               </div>
               <p style={{ textAlign: 'center', color: '#555', padding: '20px 0', fontSize: 12 }}>
-                Palab Alpha 3.8 — Thanks for playing
+                Palab Alpha 3.9 — Thanks for playing
               </p>
             </>
           )}
