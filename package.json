@@ -1,0 +1,71 @@
+{
+  "name": "palab",
+  "private": true,
+  "version": "0.3.9",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "electron:dev": "vite build && electron .",
+    "electron:build": "vite build && electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.palab.app",
+    "productName": "Palab",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/icon.ico",
+      "artifactName": "Palab-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Palab",
+      "uninstallDisplayName": "Palab 下落式节奏游戏"
+    }
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/cli": "^8.3.1",
+    "@capacitor/core": "^8.3.1",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/share": "^8.0.1",
+    "file-saver": "^2.0.5",
+    "jszip": "^3.10.1",
+    "meyda": "^5.6.3",
+    "qiniu": "^7.15.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "realtime-bpm-analyzer": "^5.0.15",
+    "wavesurfer.js": "^7.12.11",
+    "web-audio-beat-detector": "^8.2.37"
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^41.5.0",
+    "electron-builder": "^26.8.1",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.0"
+  }
+}

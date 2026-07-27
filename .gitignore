@@ -1,0 +1,57 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+dist-electron/
+
+# TypeScript
+*.tsbuildinfo
+
+# Vite
+.vite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# Android（根目录保 gradlew，子目录有各自的 .gitignore）
+android/app/build/
+android/build/
+android/.gradle/
+android/capacitor-cordova-android-plugins/
+android/local.properties
+
+# Electron 构建临时
+release/
+release-temp/
+
+# 临时文件
+*.log
+*.tmp
+
+# AI 助手
+.kagent/
+AGENT.md
+
+# 版本信息（含 CDN 私链）
+public/version.json
+
+# 大文件归档（>50KB 不进仓库，见 AGENT.md）
+*.apk
+*.exe
+*.zip
+*.7z
