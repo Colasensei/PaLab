@@ -34,6 +34,9 @@ android/build/
 android/.gradle/
 android/capacitor-cordova-android-plugins/
 android/local.properties
+android/keystore.properties
+android/*.keystore
+android/*.jks
 
 # Electron 构建临时
 release/
