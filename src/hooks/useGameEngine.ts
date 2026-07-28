@@ -27,6 +27,8 @@ export interface GameEngineState {
   hasGood: boolean;
   /** 是否断连过 (Bad/Miss) */
   hasBreak: boolean;
+  /** 最近一次打击的偏移 (ms)，正=晚，负=早，用于准度条 */
+  lastOffset: number;
 }
 
 interface UseGameEngineOptions {
@@ -108,6 +110,7 @@ export function useGameEngine({
     resumeKey: 0,
     hasGood: false,
     hasBreak: false,
+    lastOffset: 0,
   });
 
   // 判定窗口，dev 覆盖优先（
@@ -137,7 +140,7 @@ export function useGameEngine({
       ...s,
       currentTime: 0, results: new Map(), combo: 0, maxCombo: 0, score: 0,
       activeNotes: [], activeHolds: new Set(), isPlaying: true, isFinished: false, paused: false,
-      resumeKey: 0, hasGood: false, hasBreak: false,
+      resumeKey: 0, hasGood: false, hasBreak: false, lastOffset: 0,
     }));
   }, []);
 
@@ -260,11 +263,13 @@ export function useGameEngine({
     }
     const holds = new Set<number>();
     holdActiveRef.current.forEach((_, id) => holds.add(id));
+    const lastR = noteResults.length > 0 ? noteResults[noteResults.length - 1] : null;
     setState(s => ({
       ...s,
       results: new Map(noteResults.map(r => [r.note.id, r])),
       combo, maxCombo, score, activeHolds: holds,
       hasGood, hasBreak,
+      lastOffset: lastR ? lastR.judgment.offset : s.lastOffset,
     }));
   }
 

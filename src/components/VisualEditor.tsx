@@ -28,6 +28,8 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
   const [showExit, setShowExit] = useState(false);
   const [invertScroll, setInvertScroll] = useState(true);
   const [selected, setSelected] = useState<{ track: number; beat: number } | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [boxRect, setBoxRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null!);
   const gameAreaRef = useRef<HTMLDivElement>(null);
@@ -36,6 +38,10 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tickRafRef = useRef(0);
   const progressByUserRef = useRef(false);
+  // 拖动状态：{ noteId, startY, origBeats Map<id→{sb,eb}>, shiftKey }
+  const dragRef = useRef<{ ids: number[]; startY: number; orig: Map<number, { sb: number; eb: number }>; shift: boolean } | null>(null);
+  // 框选起点
+  const boxRef = useRef<{ sx: number; sy: number } | null>(null);
 
   const trackCount = initialConfig.trackCount;
   const trackMinW = useMemo(() => getDevOverride('n_trackMinW'), []);
@@ -101,23 +107,78 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
     return Math.round(beat / step) * step;
   }, [align]);
 
+  // 全局 pointermove/pointerup — 拖动音符 & 框选
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!gameAreaRef.current) return;
+      const rect = gameAreaRef.current.getBoundingClientRect();
+      const cy = e.clientY - rect.top;
+      const cx = e.clientX - rect.left;
+
+      if (dragRef.current) {
+        const d = dragRef.current;
+        const rawBeat = yToBeat(cy);
+        const targetBeat = d.shift ? rawBeat : snap(rawBeat);
+        const dy = (d.startY - cy) / PX_PER_SEC; // 上拖 cy↓ → dy>0 → 时间更早 → 音符↑
+        setNotes(prev => prev.map(n => {
+          if (!d.orig.has(n.id)) return n;
+          const o = d.orig.get(n.id)!;
+          const ns = o.sb + dy * bpm / 60;
+          const ne = o.eb + dy * bpm / 60;
+          const sb = d.shift ? ns : snap(Math.max(0, ns));
+          const eb = d.shift ? ne : snap(Math.max(0, ne));
+          return { ...n, startBeat: sb, endBeat: eb, startTime: beatToTime(sb), endTime: beatToTime(eb) };
+        }));
+      } else if (boxRef.current) {
+        setBoxRect({
+          x: Math.min(boxRef.current.sx, cx), y: Math.min(boxRef.current.sy, cy),
+          w: Math.abs(cx - boxRef.current.sx), h: Math.abs(cy - boxRef.current.sy),
+        });
+      }
+    };
+    const onUp = () => {
+      if (dragRef.current) dragRef.current = null;
+      if (boxRef.current && boxRect && gameAreaRef.current) {
+        const ids = new Set<number>();
+        notes.forEach(n => {
+          const ny = timeToY(n.startTime);
+          const nx = n.track * trackWidth + trackWidth / 2;
+          if (nx >= boxRect!.x && nx <= boxRect!.x + boxRect!.w &&
+              ny >= boxRect!.y && ny <= boxRect!.y + boxRect!.h) {
+            ids.add(n.id);
+          }
+        });
+        setSelectedIds(ids);
+      }
+      boxRef.current = null;
+      setBoxRect(null);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+  }, [notes, bpm, snap, beatToTime, timeToY, yToBeat, PX_PER_SEC, trackWidth, boxRect]);
+
   const hasOverlap = useCallback((track: number, bStart: number, bEnd: number) => {
     const s = Math.min(bStart, bEnd), e = Math.max(bStart, bEnd);
     return notes.some(n => n.track === track && n.startBeat <= e && n.endBeat >= s);
   }, [notes]);
 
   const beatLines = useMemo(() => {
-    const lines: { beat: number; y: number; strong: boolean; label?: string }[] = [];
+    const lines: { beat: number; y: number; strong: boolean; label?: string; timeSec: number; measure: number }[] = [];
     const step = align === 'quarter' ? 0.25 : align === 'half' ? 0.5 : 1;
     const songDur = duration || 180;
     const endBeat = songDur * bpm / 60;
+    const beatsPerMeasure = 4; // 默认 4/4
     const vs = Math.max(0, scrollOffset - 6);
     const ve = Math.min(songDur, scrollOffset + 6);
     for (let b = Math.floor(vs * bpm / 60 / step) * step; b <= endBeat + step / 2; b += step) {
       const t = b * 60 / bpm;
       if (t < vs || t > ve + step) continue;
       if (b < 0) continue;
-      lines.push({ beat: b, y: timeToY(t), strong: Math.abs(b % 1) < 0.001, label: b === 0 ? 'START' : Math.abs(t - songDur) < 0.15 ? 'END' : undefined });
+      const strong = Math.abs(b % 1) < 0.001;
+      const measure = Math.floor(b / beatsPerMeasure) + 1;
+      lines.push({ beat: b, y: timeToY(t), strong, timeSec: t, measure,
+        label: b === 0 ? 'START' : Math.abs(t - songDur) < 0.15 ? 'END' : undefined });
     }
     return lines;
   }, [bpm, speed, scrollOffset, align, timeToY, duration]);
@@ -170,7 +231,63 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
     placeAt(track, beat);
   }, [trackCount, trackWidth, placeAt]);
 
-  const onNoteCtx = useCallback((e: React.MouseEvent, id: number) => { e.preventDefault(); delNote(id); }, [delNote]);
+  const onNoteCtx = useCallback((e: React.MouseEvent, id: number) => {
+    e.preventDefault();
+    if (selectedIds.has(id) && selectedIds.size > 1) {
+      // 右键已选中音符 → 批量删除全部选中
+      setNotes(prev => prev.filter(n => !selectedIds.has(n.id)));
+      setSelectedIds(new Set());
+    } else {
+      delNote(id);
+      setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+    }
+  }, [delNote, selectedIds]);
+
+  // 音符按下 → 开始拖动
+  const onNoteDown = useCallback((e: React.PointerEvent, id: number) => {
+    e.preventDefault(); e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const shift = e.shiftKey;
+    // 更新选中集
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (shift) {
+        if (next.has(id)) next.delete(id); else next.add(id);
+      } else {
+        if (!next.has(id)) { next.clear(); next.add(id); }
+      }
+      return next;
+    });
+    // 记录拖动起点
+    const ids = shift
+      ? (selectedIds.has(id) ? [...selectedIds].filter(x => x !== id) : [...selectedIds, id])
+      : (selectedIds.has(id) ? [...selectedIds] : [id]);
+    const orig = new Map<number, { sb: number; eb: number }>();
+    notes.forEach(n => { if (ids.includes(n.id)) orig.set(n.id, { sb: n.startBeat, eb: n.endBeat }); });
+    const rect = gameAreaRef.current!.getBoundingClientRect();
+    dragRef.current = { ids, startY: e.clientY - rect.top, orig, shift };
+  }, [selectedIds, notes]);
+
+  // 游戏区空白处按下 → 框选 或 点击放置
+  const onGameAreaDown = useCallback((e: React.PointerEvent) => {
+    if (!gameAreaRef.current) return;
+    const rect = gameAreaRef.current.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    // 点中了音符 → 不管（音符自己处理）
+    if ((e.target as HTMLElement).closest('[data-note]')) return;
+    // 点中节拍线 → 放置音符（原有逻辑）
+    const beatLine = (e.target as HTMLElement).closest('[data-beat]');
+    if (beatLine) {
+      const beat = parseFloat(beatLine.getAttribute('data-beat')!);
+      const track = Math.min(trackCount - 1, Math.max(0, Math.floor(cx / trackWidth)));
+      placeAt(track, beat);
+      return;
+    }
+    // 空白处 → 框选
+    setSelectedIds(new Set());
+    boxRef.current = { sx: cx, sy: cy };
+  }, [trackCount, trackWidth, placeAt]);
 
   const seekTo = useCallback((t: number) => {
     const ct = Math.max(0, Math.min(duration || 180, t));
@@ -225,15 +342,17 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
     <div className="screen ve-screen">
       <div className="ve-main">
         <div className="ve-game-wrap" onWheel={onWheel} onTouchStart={onTouchStart} onTouchMove={onTouchMove}>
-          <div ref={gameAreaRef} className="ve-game-area" style={{ width: totalWidth }}>
+          <div ref={gameAreaRef} className="ve-game-area" style={{ width: totalWidth }} onPointerDown={onGameAreaDown}>
             {Array.from({ length: trackCount }, (_, i) => (
               <div key={i} style={{ position: 'absolute', left: i * trackWidth, top: 0, bottom: 0, width: trackWidth, borderRight: i < trackCount - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }} />
             ))}
-            {/* 可点击节拍线 */}
+            {/* 可点击节拍线 + 标签 */}
             {beatLines.map((bl, i) => (
-              <div key={i} onPointerDown={e => handleBeatClick(e, bl.beat)} style={{ position: 'absolute', left: 0, width: totalWidth, top: bl.y - 8, height: 16, cursor: 'pointer', zIndex: 1 }}>
+              <div key={i} data-beat={bl.beat} style={{ position: 'absolute', left: 0, width: totalWidth, top: bl.y - 8, height: 16, cursor: 'pointer', zIndex: 1 }}>
                 <div style={{ position: 'absolute', left: 0, top: 8, width: '100%', height: bl.strong ? 2 : 1, background: bl.strong ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
-                {bl.label && <span style={{ position: 'absolute', left: 4, top: 0, fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: 1, pointerEvents: 'none' }}>{bl.label}</span>}
+                {bl.label && <span style={{ position: 'absolute', right: 4, top: 0, fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: 1, pointerEvents: 'none' }}>{bl.label}</span>}
+                {/* 小节号 + 秒数 */}
+                {bl.strong && <span style={{ position: 'absolute', left: 4, top: -2, fontSize: 8, color: 'rgba(255,255,255,0.22)', pointerEvents: 'none', lineHeight: 1 }}>{bl.measure} · {bl.timeSec.toFixed(1)}s</span>}
               </div>
             ))}
             <div style={{ position: 'absolute', left: 0, width: totalWidth, top: JUDGE_Y, height: 2, background: 'rgba(255,255,255,0.3)', pointerEvents: 'none', zIndex: 5 }} />
@@ -246,11 +365,20 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
               const y2 = timeToY(n.endTime);
               const top = Math.min(y1, y2);
               const h = isHold ? Math.max(tapHeight, Math.abs(y2 - y1)) : tapHeight;
+              const sel = selectedIds.has(n.id);
               return (
-                <div key={n.id} onPointerEnter={() => setHoveredNote(n.id)} onPointerLeave={() => setHoveredNote(null)} onContextMenu={e => onNoteCtx(e, n.id)} onTouchStart={() => onNoteTS(n.id)} onTouchEnd={onNoteTE}
-                  style={{ position: 'absolute', left: n.track * trackWidth + trackWidth / 2, top, width: trackWidth - notePadX, height: h, backgroundColor: isHold ? '#FF8844' : '#35BFFF', borderRadius: isHold ? '4px 4px 12px 12px' : 6, opacity: n.id === hoveredNote ? 1 : 0.85, cursor: 'pointer', zIndex: 2, boxShadow: n.id === hoveredNote ? '0 0 12px rgba(53,191,255,0.6)' : 'none', transform: 'translateX(-50%)', transition: 'box-shadow 0.1s, opacity 0.1s' }} />
+                <div key={n.id} data-note={n.id}
+                  onPointerDown={e => onNoteDown(e, n.id)}
+                  onPointerEnter={() => setHoveredNote(n.id)} onPointerLeave={() => setHoveredNote(null)}
+                  onContextMenu={e => onNoteCtx(e, n.id)}
+                  onTouchStart={() => onNoteTS(n.id)} onTouchEnd={onNoteTE}
+                  style={{ position: 'absolute', left: n.track * trackWidth + trackWidth / 2, top, width: trackWidth - notePadX, height: h, backgroundColor: isHold ? '#FF8844' : '#35BFFF', borderRadius: isHold ? '4px 4px 12px 12px' : 6, opacity: n.id === hoveredNote || sel ? 1 : 0.85, cursor: 'grab', zIndex: 2, boxShadow: sel ? '0 0 0 2px #fff, 0 0 14px rgba(53,191,255,0.7)' : n.id === hoveredNote ? '0 0 12px rgba(53,191,255,0.6)' : 'none', transform: 'translateX(-50%)', transition: 'box-shadow 0.1s, opacity 0.1s', touchAction: 'none' }} />
               );
             })}
+            {/* 框选矩形 */}
+            {boxRect && (
+              <div style={{ position: 'absolute', left: boxRect.x, top: boxRect.y, width: boxRect.w, height: boxRect.h, border: '1px solid rgba(53,191,255,0.6)', background: 'rgba(53,191,255,0.08)', pointerEvents: 'none', zIndex: 10 }} />
+            )}
           </div>
         </div>
         <div className="ve-panel">

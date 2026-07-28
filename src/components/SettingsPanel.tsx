@@ -23,6 +23,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [noPageLoading, setNoPageLoading] = useState(settings.noPageLoading ?? false);
   const [noteScale, setNoteScale] = useState(settings.noteScale ?? 1.0);
   const [judgeLineThickness, setJudgeLineThickness] = useState(settings.judgeLineThickness ?? 3);
+  const [showAccuracyBar, setShowAccuracyBar] = useState(settings.showAccuracyBar ?? false);
   const [musicVol, setMusicVol] = useState(settings.musicVolume ?? 50);
   const [hitVol, setHitVol] = useState(Math.round(getHitVolume() * 100));
   const [sub, setSub] = useState<Sub>('main');
@@ -33,7 +34,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     noteColor: '#35BFFF', holdNoteColor: '#35BFFF',
     bgColor: '#0a0a14', judgeLineColor: '#999999',
     language: currentLang, showACC, devMode, showWaveform, uiBlur, noPageLoading,
-    noteScale, musicVolume: musicVol, judgeLineThickness,
+    noteScale, musicVolume: musicVol, judgeLineThickness, showAccuracyBar,
     ...o,
   });
 
@@ -84,6 +85,9 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
               <span className="st-speed-val">{judgeLineThickness}px
                 <span style={{ display: 'inline-block', width: Math.max(12, judgeLineThickness * 4), height: Math.max(1, judgeLineThickness), background: '#999', borderRadius: judgeLineThickness / 2, marginLeft: 6, verticalAlign: 'middle' }} />
               </span></div>
+          </div>
+          <div className="st-row"><span className="st-label">{lang === 'zh' ? '准度条' : 'Accuracy Bar'}</span>
+            <label className="toggle-switch"><input type="checkbox" checked={showAccuracyBar} onChange={e => setShowAccuracyBar(e.target.checked)} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '开发者模式' : 'Developer Mode'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={devMode} onChange={e => {

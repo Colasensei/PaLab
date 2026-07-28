@@ -31,6 +31,7 @@ interface GamePlayProps {
   uiBlur?: boolean;
   judgeLineThickness?: number;
   correctHitSound?: boolean;
+  showAccuracyBar?: boolean;
 }
 
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
@@ -242,8 +243,105 @@ const AudioViz: React.FC<{ active: boolean }> = ({ active }) => {
   return <canvas ref={canvasRef} className="audio-viz-canvas" />;
 };
 
+// ═══════════════════════════════════════════════
+// 准度条 — 显示最近打击偏移
+// ═══════════════════════════════════════════════
+
+const AccuracyBar: React.FC<{ lastOffset: number }> = ({ lastOffset }) => {
+  const caretRef = useRef<HTMLDivElement>(null);
+
+  const timeB = useMemo(() => getDevOverride('j_timeB'), []); // perfect ±80ms
+  const timeA = useMemo(() => getDevOverride('j_timeA'), []); // good ±160ms
+
+  // 对称比例尺：maxRange 收窄，红区截断，绿黄等比放大
+  // 落点超出 ±maxRange 时箭头停在最外围
+  const maxRange = 250; // ms
+
+  // offset → bar 百分比，0ms = 50%
+  const getPercent = useCallback((offset: number) => {
+    const clamped = Math.max(-maxRange, Math.min(maxRange, offset));
+    return ((clamped + maxRange) / (2 * maxRange)) * 100;
+  }, [maxRange]);
+
+  const pct = getPercent(lastOffset);
+
+  useEffect(() => {
+    if (caretRef.current) {
+      caretRef.current.style.left = `${pct}%`;
+      caretRef.current.style.transition = 'left 0.08s linear';
+    }
+  }, [lastOffset, pct]);
+
+  // 对称颜色分区：±timeB 绿，±timeA 黄，外侧红
+  const greenL = ((maxRange - timeB) / (2 * maxRange)) * 100; // 左绿→黄
+  const greenR = ((maxRange + timeB) / (2 * maxRange)) * 100; // 右绿→黄
+  const yellowL = ((maxRange - timeA) / (2 * maxRange)) * 100; // 左黄→红
+  const yellowR = ((maxRange + timeA) / (2 * maxRange)) * 100; // 右黄→红
+
+  const gradient = [
+    `#FF4444 0%`,
+    `#FF4444 ${yellowL.toFixed(1)}%`,
+    `#FFD700 ${yellowL.toFixed(1)}%`,
+    `#FFD700 ${greenL.toFixed(1)}%`,
+    `#44BB44 ${greenL.toFixed(1)}%`,
+    `#44BB44 ${greenR.toFixed(1)}%`,
+    `#FFD700 ${greenR.toFixed(1)}%`,
+    `#FFD700 ${yellowR.toFixed(1)}%`,
+    `#FF4444 ${yellowR.toFixed(1)}%`,
+    `#FF4444 100%`,
+  ].join(', ');
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: 'clamp(28px, 3.5vh, 42px)',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: 'clamp(140px, 20vw, 280px)',
+      zIndex: 20,
+    }}>
+      {/* 条 */}
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        height: 'clamp(5px, 0.7vh, 8px)',
+        borderRadius: 'clamp(3px, 0.4vh, 5px)',
+        outline: '2px solid rgba(255,255,255,0.6)',
+        outlineOffset: 2,
+        background: `linear-gradient(to right, ${gradient})`,
+        opacity: 0.85,
+      }}>
+        {/* 中分线 */}
+        <div style={{
+          position: 'absolute',
+          left: '50%',
+          top: -3,
+          bottom: -3,
+          width: 2,
+          background: '#fff',
+          transform: 'translateX(-50%)',
+          zIndex: 2,
+        }} />
+      </div>
+      {/* 箭头 ▲ 向上指 */}
+      <div ref={caretRef} style={{
+        position: 'absolute',
+        top: '100%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 0, height: 0,
+        borderLeft: '5px solid transparent',
+        borderRight: '5px solid transparent',
+        borderBottom: '6px solid #fff',
+        marginTop: 2,
+        willChange: 'left',
+      }} />
+    </div>
+  );
+};
+
 export const GamePlay: React.FC<GamePlayProps> = ({
-  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false,
+  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameStartRef = useRef<number>(0);
@@ -783,6 +881,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           </span>
         </span>
       </div>
+
+      {/* 准度条 */}
+      {showAccuracyBar && state.isPlaying && <AccuracyBar lastOffset={state.lastOffset} />}
 
       {/* 顶部进度条，DOM 直驱不走 React */}
       <div className="progress-bar-container">

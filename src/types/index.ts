@@ -192,6 +192,8 @@ export interface AppSettings {
   noteScale: number;
   musicVolume: number;
   judgeLineThickness: number;
+  /** 准度条：显示最近打击偏移 */
+  showAccuracyBar: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -208,6 +210,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   uiBlur: true,  noPageLoading: false,  noteScale: 1.0,
   musicVolume: 50,
   judgeLineThickness: 3,
+  showAccuracyBar: false,
 };
 
 // ============ 账号信息 ============
