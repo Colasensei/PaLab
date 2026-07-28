@@ -78,6 +78,16 @@ async function preloadAudio() {
     hitGain = audioCtx.createGain();
     hitGain.connect(audioCtx.destination);
     audioPreloaded = true;
+
+    // 预热音频管线——无声爆一个脉冲，让 AudioContext 调度器"热起来"
+    // Android WebView 首次 play 调度延迟可差 10-15ms，预热后稳定在 2-5ms
+    const warmSrc = audioCtx.createBufferSource();
+    warmSrc.buffer = hitBuffer;
+    const warmGain = audioCtx.createGain();
+    warmGain.gain.value = 0;
+    warmSrc.connect(warmGain).connect(audioCtx.destination);
+    warmSrc.start(0);
+    warmSrc.onended = () => { try { warmSrc.disconnect(); warmGain.disconnect(); } catch {} };
   } catch { /* fallback to HTMLAudioElement */ }
 }
 
@@ -86,12 +96,14 @@ export function getHitVolume() { return hitVolume; }
 
 function playHitSound() {
   if (audioCtx && hitBuffer && hitGain) {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    // AudioContext 已在 preload 时 resume，这里不再每 hit 检查 state（省一次同步读取）
     const src = audioCtx.createBufferSource();
     src.buffer = hitBuffer;
     hitGain.gain.value = Math.min(getDevOverride('a_hitGainMax'), hitVolume * getDevOverride('a_hitGainMul'));
     src.connect(hitGain);
     src.start(0);
+    // 短音自动清理
+    src.onended = () => { try { src.disconnect(); } catch {} };
   } else {
     const src = getAssetUrl('tab.ogg', '/tab.ogg');
     const a = new Audio(src);
@@ -460,10 +472,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     });
   }, [state.results, perfHitEffect, perfMaxParticles, effectiveConfig.autoPlay]);
 
-  // 霸王 / auto 下让轨道跟着音符亮一下，假装有人在按（
+  // 霸王下让轨道跟着音符亮一下，autoplay 不亮（
   const prevResultCountRef = useRef(0);
   useEffect(() => {
-    if (!isOverlord() && !effectiveConfig.autoPlay) return;
+    if (!isOverlord()) return;
     const resultsArr = Array.from(state.results.values());
     if (resultsArr.length > prevResultCountRef.current) {
       const newTracks = new Set<number>();
@@ -684,12 +696,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         {showACC && (
           <div className="hud-acc">
             {(() => {
-              const arr = Array.from(state.results.values());
-              const p = arr.filter(r => r.judgment.type === 'perfect').length;
-              const g = arr.filter(r => r.judgment.type === 'good').length;
-              const t = arr.length;
-              const acc = t > 0 ? ((p + g * 0.65) / t * 100).toFixed(2) : '0.00';
-              return `${acc}%`;
+              let p = 0, g = 0, total = 0;
+              for (const r of state.results.values()) {
+                total++;
+                if (r.judgment.type === 'perfect') p++;
+                else if (r.judgment.type === 'good') g++;
+              }
+              return `${total > 0 ? ((p + g * 0.65) / total * 100).toFixed(2) : '0.00'}%`;
             })()}
           </div>
         )}
@@ -793,12 +806,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             outline: skin ? 'none' : undefined,
             boxShadow: skin ? 'none'
               : note.isDouble && showDoubleGlow && !isRed
-              ? `0 0 ${doubleGlowSize}px ${doubleGlowSize/4.5}px ${doubleGlowColor}${Math.round(doubleGlowAlpha*255).toString(16).padStart(2,'0')}, 0 0 ${doubleGlowSize*2}px ${doubleGlowSize/2.25}px ${doubleGlowColor}${Math.round(doubleGlowAlpha*0.43*255).toString(16).padStart(2,'0')}`
+              ? `0 0 ${doubleGlowSize / 2}px ${doubleGlowColor}`  // 单层 shadow，移动端扛得住
               : isMarkedFailed ? '0 0 16px 6px rgba(255,30,30,0.8)'
               : isRed ? '0 0 10px 3px rgba(255,50,50,0.6)'
-              : isHolding ? `0 0 14px 4px ${config.holdNoteColor}88, inset 0 0 8px ${config.holdNoteColor}44`
+              : isHolding ? `0 0 14px 4px ${config.holdNoteColor}88`
               : `0 0 8px 2px ${config.noteColor}44`,
-            opacity: isMarkedFailed ? 1 : isRed ? 0.6 : 1,
+            opacity: isMarkedFailed ? 1 : isRed ? 0.7 : 1,
           };
 
           return (
