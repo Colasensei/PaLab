@@ -1,4 +1,9 @@
 # Palab 更新日志
+## Alpha 4.2（正式版）— 2026-07-28
+- 打击音效延迟大幅优化（keep-alive 防休眠、去除热路径 localStorage 读取）
+- 自定义打击音效修复（设置→素材修复 导入后真正生效）
+- 打击音效 gain 参数预缓存，去除每 hit 两次 localStorage.getIem
+
 ## Alpha 4.1（正式版）— 2026-07-28
 - 打击音效预热优化，减少延迟
 - 音符渲染性能优化（CSS box-shadow 精简、GPU 合成层）

@@ -9,6 +9,31 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 4.2（正式版）', date: '2026-07-28',
+    items: [
+      '打击音效延迟大幅优化（管线防休眠、去除热路径阻塞调用）',
+      '自定义打击音效修复（设置→素材修复 导入后真正生效）',
+      'Android 端打击音质大幅提升',
+    ],
+  },
+  {
+    ver: 'Alpha 4.1（正式版）', date: '2026-07-28',
+    items: [
+      '打击音效预热优化，减少延迟',
+      '音符渲染性能优化（CSS box-shadow 精简、GPU 合成层）',
+      'ACC 计算性能优化（单次遍历）',
+      '自动播放轨道高亮仅在 overlord 模式显示',
+    ],
+  },
+  {
+    ver: 'Alpha 4.0（正式版）', date: '2026-07-28',
+    items: [
+      '修复 n 押音效丢失问题（doubleGroupId:0 / null 统一处理）',
+      '修复 hold 音符计分精度',
+      'PC / Android 正式双端构建',
+    ],
+  },
+  {
     ver: 'Alpha 3.9（正式版）', date: '2026-07-27',
     items: [
       '修复旧谱 n 押音效丢失问题',
@@ -68,8 +93,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 4.1</div>
-      <div className="about-ver about-ver-sub">v0.4.1</div>
+      <div className="about-ver">Alpha 4.2</div>
+      <div className="about-ver about-ver-sub">v0.4.2</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>

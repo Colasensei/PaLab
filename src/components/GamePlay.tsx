@@ -48,35 +48,53 @@ interface JEffect {
   time: number;
 }
 
-// 低延迟打击音效，节点池预建好（
+// ═══════════════════════════════════════════════
+// 低延迟打击音效 — 模块级缓存 + keep-alive
+// ═══════════════════════════════════════════════
+
 let audioCtx: AudioContext | null = null;
 let hitBuffer: AudioBuffer | null = null;
 let hitGain: GainNode | null = null;
 let hitVolume = 1.0;
 let audioPreloaded = false;
 
+// 预缓存 gain 参数，避免每 hit 读 localStorage（同步 I/O）
+let _cachedGainMax = 6.0;
+let _cachedGainMul = 8.0;
+
+// keep-alive：持续运行的静音 OscillatorNode，防止 Android 音频管线休眠
+let _keepAliveOsc: OscillatorNode | null = null;
+let _keepAliveGain: GainNode | null = null;
+let _keepAliveRunning = false;
+
 async function preloadAudio() {
   if (audioPreloaded) return;
   try {
     audioCtx = new AudioContext({ latencyHint: 'interactive' });
     if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    // 缓存 gain 参数（只在 preload 时读一次 localStorage）
+    _cachedGainMax = getDevOverride('a_hitGainMax');
+    _cachedGainMul = getDevOverride('a_hitGainMul');
+
     let arrayBuf: ArrayBuffer;
-    try {
-      const resp = await fetch('/tab.ogg');
-      arrayBuf = await resp.arrayBuffer();
-    } catch {
-      // 文件丢了 → 回退 localStorage 缓存
-      const cached = getAssetUrl('tab.ogg', '');
-      if (!cached) throw new Error('no tab.ogg');
-      const base64 = cached.split(',')[1];
+    // 优先用用户自定义音效（localStorage），没有再 fetch 默认文件
+    const customHit = loadAsset(ASSET_KEYS.hitSound);
+    if (customHit) {
+      const base64 = customHit.split(',')[1];
       const binary = atob(base64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       arrayBuf = bytes.buffer;
+    } else {
+      const resp = await fetch('/tab.ogg');
+      arrayBuf = await resp.arrayBuffer();
     }
     hitBuffer = await audioCtx.decodeAudioData(arrayBuf);
     hitGain = audioCtx.createGain();
     hitGain.connect(audioCtx.destination);
+    // 设初始 gain（之后只在 setHitVolume 里更新）
+    hitGain.gain.value = Math.min(_cachedGainMax, hitVolume * _cachedGainMul);
     audioPreloaded = true;
 
     // 预热音频管线——无声爆一个脉冲，让 AudioContext 调度器"热起来"
@@ -91,18 +109,57 @@ async function preloadAudio() {
   } catch { /* fallback to HTMLAudioElement */ }
 }
 
-export function setHitVolume(v: number) { hitVolume = v; }
+/**
+ * 启动 keep-alive：持续运行的静音 OscillatorNode。
+ * Android 音频管线在 ~2 秒无活动后会休眠，
+ * 下次 start(0) 多出 10-30ms 调度延迟。
+ * 这个 1Hz 无声振荡器让管线永不睡眠。
+ */
+export function startHitKeepAlive() {
+  if (!audioCtx || _keepAliveRunning) return;
+  // 如果 suspend 了先拉起来
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  try {
+    _keepAliveOsc = audioCtx.createOscillator();
+    _keepAliveGain = audioCtx.createGain();
+    _keepAliveGain.gain.value = 0;
+    _keepAliveOsc.frequency.value = 1; // 1Hz, 完全听不到
+    _keepAliveOsc.connect(_keepAliveGain).connect(audioCtx.destination);
+    _keepAliveOsc.start();
+    _keepAliveRunning = true;
+  } catch { /* 不理 */ }
+}
+
+export function stopHitKeepAlive() {
+  if (!_keepAliveRunning) return;
+  try {
+    _keepAliveOsc?.stop();
+    _keepAliveOsc?.disconnect();
+    _keepAliveGain?.disconnect();
+  } catch { /* 不理 */ }
+  _keepAliveOsc = null;
+  _keepAliveGain = null;
+  _keepAliveRunning = false;
+}
+
+export function setHitVolume(v: number) {
+  hitVolume = v;
+  // 只在音量变化时更新 GainNode，不在每 hit 热路径上做
+  if (hitGain && audioCtx) {
+    hitGain.gain.value = Math.min(_cachedGainMax, v * _cachedGainMul);
+  }
+}
+
 export function getHitVolume() { return hitVolume; }
 
 function playHitSound() {
   if (audioCtx && hitBuffer && hitGain) {
-    // AudioContext 已在 preload 时 resume，这里不再每 hit 检查 state（省一次同步读取）
+    // 快速 resume（移动端切后台回来可能 suspend）
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     const src = audioCtx.createBufferSource();
     src.buffer = hitBuffer;
-    hitGain.gain.value = Math.min(getDevOverride('a_hitGainMax'), hitVolume * getDevOverride('a_hitGainMul'));
     src.connect(hitGain);
     src.start(0);
-    // 短音自动清理
     src.onended = () => { try { src.disconnect(); } catch {} };
   } else {
     const src = getAssetUrl('tab.ogg', '/tab.ogg');
@@ -303,7 +360,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const effectiveConfig = useMemo(() => (invincibleMode || isOverlord()) ? { ...config, autoPlay: true } : config, [config, invincibleMode]);
 
   const { state, start, setPaused: engineSetPaused, handlePress, handleRelease } = useGameEngine({
-    config: effectiveConfig, notes, duration, onFinish, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset,
+    config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset,
   });
 
   // combo 颜色：全P金 / 有G蓝 / 断白
@@ -357,11 +414,17 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       resetProgressTimer();
       gameStartRef.current = performance.now();
       totalPauseRef.current = 0;
+      startHitKeepAlive();
       if (hasSong) { audioManager.setVolume(musicVolume / 100); audioManager.play(1); }
       start();
     }, gameStartDelay);
     return () => clearTimeout(timer);
   }, [start, hasSong]);
+
+  // 离开页面 / 结算 → 停 keep-alive
+  useEffect(() => {
+    return () => { stopHitKeepAlive(); };
+  }, []);
 
   // FC/AP 炸了：停歌 → 动画 → 重开
   const lastResultCountRef = useRef(0);
