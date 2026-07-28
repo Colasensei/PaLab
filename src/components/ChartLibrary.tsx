@@ -22,7 +22,7 @@ export interface ChartPackage {
 }
 
 interface Props {
-  onPlay: (pkg: ChartPackage, speed: number, autoPlay: boolean, target: 'none' | 'fc' | 'ap', mirror: boolean) => void;
+  onPlay: (pkg: ChartPackage, speed: number, autoPlay: boolean, target: 'none' | 'fc' | 'ap', mirror: boolean, correctHitSound: boolean) => void;
   onSettings: () => void;
   lang: Lang;
   highScores: Record<string, { score: number; rating: string; rks: number; acc: number }>;
@@ -63,6 +63,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, lang, highSc
   const [autoPlay, setAutoPlay] = useState(false);
   const [target, setTarget] = useState<'none' | 'fc' | 'ap'>('none');
   const [mirror, setMirror] = useState(false);
+  const [correctHitSound, setCorrectHitSound] = useState(false);
   const [landscape, setLandscape] = useState(window.innerWidth > window.innerHeight);
   const [sortBy, setSortBy] = useState<'name' | 'difficulty' | 'rks' | 'score'>('name');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -279,7 +280,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, lang, highSc
               <div
                 className={`cl2-item ${realIdx === selected ? 'active' : ''}`}
                 onClick={(e) => { e.stopPropagation(); }}
-                onDoubleClick={() => { if (c.songUrl) { lastSelectedIdx = realIdx; setSelected(realIdx); onPlay(c, c.speed ?? speed, autoPlay, target, mirror); } }}
+                onDoubleClick={() => { if (c.songUrl) { lastSelectedIdx = realIdx; setSelected(realIdx); onPlay(c, c.speed ?? speed, autoPlay, target, mirror, correctHitSound); } }}
                 onMouseDown={(e) => onDragStart(e, realIdx)}
                 onMouseMove={(e) => { if (dragStartX.current) onDragMove(e, realIdx); }}
                 onMouseUp={() => { if (dragStartX.current) onDragEnd(realIdx); }}
@@ -610,6 +611,10 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, lang, highSc
               <span style={{ fontSize: 'clamp(9px,0.9vw,11px)', color: '#999' }}>{lang === 'zh' ? '镜像' : 'Mirror'}</span>
               <label className="toggle-switch"><input type="checkbox" checked={mirror} onChange={e => setMirror(e.target.checked)} /><span className="toggle-slider" /></label>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+              <span style={{ fontSize: 'clamp(9px,0.9vw,11px)', color: correctHitSound ? '#FFD700' : '#999' }}>{lang === 'zh' ? '正解音' : 'Correct SFX'}</span>
+              <label className="toggle-switch"><input type="checkbox" checked={correctHitSound} onChange={e => setCorrectHitSound(e.target.checked)} /><span className="toggle-slider" /></label>
+            </div>
           </div>
         </div>
 
@@ -622,7 +627,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, lang, highSc
             fontFamily: 'var(--font-main)', letterSpacing: 'clamp(2px,0.3vw,4px)',
             padding: 'clamp(10px,1vh,16px) 0',
           }}>{lang === 'zh' ? '设置' : 'Settings'}</button>
-          <button onClick={() => { lastSelectedIdx = selected; onPlay(sel, speed, autoPlay, target, mirror); }} disabled={!sel.songUrl} style={{
+          <button onClick={() => { lastSelectedIdx = selected; onPlay(sel, speed, autoPlay, target, mirror, correctHitSound); }} disabled={!sel.songUrl} style={{
             flex: 2, border: 'none',
             borderRadius: 'clamp(10px,1vw,14px)',
             fontSize: 'clamp(14px,1.5vw,20px)', fontWeight: 800, cursor: sel.songUrl ? 'pointer' : 'default',

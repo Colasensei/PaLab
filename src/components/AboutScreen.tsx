@@ -9,6 +9,14 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 4.3（正式版）', date: '2026-07-28',
+    items: [
+      '新增「正解音」模式（谱面库 Auto play / Mirror 旁开关）',
+      '正解音模式：打击音效始终与谱面对齐，无视玩家操作',
+      '自定义打击音效修复、打击音效延迟大幅优化',
+    ],
+  },
+  {
     ver: 'Alpha 4.2（正式版）', date: '2026-07-28',
     items: [
       '打击音效延迟大幅优化（管线防休眠、去除热路径阻塞调用）',
@@ -93,8 +101,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 4.2</div>
-      <div className="about-ver about-ver-sub">v0.4.2</div>
+      <div className="about-ver">Alpha 4.3</div>
+      <div className="about-ver about-ver-sub">v0.4.3</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>

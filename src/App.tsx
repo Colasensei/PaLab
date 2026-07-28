@@ -163,6 +163,7 @@ const App: React.FC = () => {
   const [chartSource, setChartSource] = useState<{ fileName: string; title: string; artist: string; author: string; difficulty: string; chartConstant: number; trackCount: number; coverUrl: string | null; illustrationUrl: string | null } | null>(null);
   const [gameTarget, setGameTarget] = useState<'none' | 'fc' | 'ap'>('none');
   const [gameMirror, setGameMirror] = useState(false);
+  const [gameCorrectHitSound, setGameCorrectHitSound] = useState(false);
   const [chartScores, setChartScores] = useState<Record<string, ChartScoreEntry>>(loadChartScores);
   const [chartListKey, setChartListKey] = useState(0); // +1 强制刷新谱面库（
 
@@ -681,7 +682,7 @@ const App: React.FC = () => {
   const lang = settings.language;
 
   // 谱面库开始挑战
-  const handleChartPlay = useCallback(async (pkg: ChartPackage, speed: number, autoPlay: boolean, target: 'none' | 'fc' | 'ap', mirror: boolean) => {
+  const handleChartPlay = useCallback(async (pkg: ChartPackage, speed: number, autoPlay: boolean, target: 'none' | 'fc' | 'ap', mirror: boolean, correctHitSound: boolean) => {
     if (!pkg.songUrl) return;
     try {
       const parsedNotes: Note[] = JSON.parse(pkg.chartData);
@@ -705,6 +706,7 @@ const App: React.FC = () => {
       setIsTrial(false);
       setGameTarget(target);
       setGameMirror(mirror);
+      setGameCorrectHitSound(correctHitSound);
       // 镜像 flip（
       if (mirror) {
         const tk = infoConfig.trackCount || 4;
@@ -811,7 +813,7 @@ const App: React.FC = () => {
       case 'loading':
         return <LoadingScreen onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={settings.uiBlur} task={loadingTaskRef.current} />;
       case 'gameplay':
-        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={settings.uiBlur} judgeLineThickness={settings.judgeLineThickness} />;
+        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={settings.uiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} />;
       case 'results':
         return results ? <ResultsScreen results={results} onRestart={handleRestart} onBackToPanel={handleBackToPanel} rks={rks} rksChange={rksChange} lang={lang} isTrial={isTrial} onAdjustParams={handleTrialDiscard} onContinueToEditor={handleTrialContinue} chartInfo={chartSource} /> : null;
       case 'editor':

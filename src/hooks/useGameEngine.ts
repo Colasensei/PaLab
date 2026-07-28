@@ -37,6 +37,8 @@ interface UseGameEngineOptions {
   getCurrentTime: () => number;
   onPlayHitSound?: () => void;
   latencyOffset?: number;
+  /** 正确音效：到点自动播放正确打击音，但不影响判定和计分 */
+  correctHitSound?: boolean;
 }
 
 export function useGameEngine({
@@ -47,6 +49,7 @@ export function useGameEngine({
   getCurrentTime,
   onPlayHitSound,
   latencyOffset = 0,
+  correctHitSound = false,
 }: UseGameEngineOptions) {
   const rafRef = useRef<number>(0);
   const frameCountRef = useRef(0);
@@ -68,6 +71,11 @@ export function useGameEngine({
   const completedHoldsRef = useRef<Map<number, number>>(new Map());
   const hasSongRef = useRef(!!config.songUrl);
   hasSongRef.current = !!config.songUrl;
+  // 正确音效：独立于 autoplay，只播声音不改判定
+  const correctHitSoundRef = useRef(correctHitSound);
+  correctHitSoundRef.current = correctHitSound;
+  const correctSoundIdxRef = useRef(0);
+  const correctSoundDoublesRef = useRef<Set<number>>(new Set());
   const devRef = useRef({
     timeB: getDevOverride('j_timeB'),
     timeA: getDevOverride('j_timeA'),
@@ -116,6 +124,8 @@ export function useGameEngine({
     holdActiveRef.current = new Map();
     doubleSoundRef.current = new Set();
     completedHoldsRef.current = new Map();
+    correctSoundIdxRef.current = 0;
+    correctSoundDoublesRef.current = new Set();
     noteIndexRef.current = 0;
     finishedRef.current = false;
     isPlayingRef.current = true;
@@ -292,6 +302,25 @@ export function useGameEngine({
           } else break;
         }
         updateScoreState(Array.from(results.values()));
+      }
+
+      // 正确音效：到点自动播放，不碰 results，不影响计分（autoplay 已自带正确音效，互斥）
+      if (correctHitSoundRef.current && !autoPlayRef.current) {
+        const csDoubles = correctSoundDoublesRef.current;
+        let csIdx = correctSoundIdxRef.current;
+        while (csIdx < notes.length && now >= notes[csIdx].startTime) {
+          const note = notes[csIdx];
+          if (note.isDouble && note.doubleGroupId !== null) {
+            if (!csDoubles.has(note.doubleGroupId)) {
+              csDoubles.add(note.doubleGroupId);
+              onPlayHitSound?.();
+            }
+          } else {
+            onPlayHitSound?.();
+          }
+          csIdx++;
+        }
+        correctSoundIdxRef.current = csIdx;
       }
 
       // Miss 检测：到点了还没人管 → 不好意思（

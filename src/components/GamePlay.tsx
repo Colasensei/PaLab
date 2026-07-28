@@ -30,6 +30,7 @@ interface GamePlayProps {
   musicVolume?: number;
   uiBlur?: boolean;
   judgeLineThickness?: number;
+  correctHitSound?: boolean;
 }
 
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
@@ -242,7 +243,7 @@ const AudioViz: React.FC<{ active: boolean }> = ({ active }) => {
 };
 
 export const GamePlay: React.FC<GamePlayProps> = ({
-  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3,
+  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameStartRef = useRef<number>(0);
@@ -360,7 +361,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const effectiveConfig = useMemo(() => (invincibleMode || isOverlord()) ? { ...config, autoPlay: true } : config, [config, invincibleMode]);
 
   const { state, start, setPaused: engineSetPaused, handlePress, handleRelease } = useGameEngine({
-    config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset,
+    config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound,
   });
 
   // combo 颜色：全P金 / 有G蓝 / 断白
@@ -380,7 +381,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     if (result.hit) {
       // bad/miss 别响了也别闪了（
       if (result.judgmentType !== 'bad' && result.judgmentType !== 'miss') {
-        if (result.playSound) playHitSound();
+        // 正解音模式下引擎已到点播放正确音效，不响玩家自己的
+        if (result.playSound && !correctHitSound) playHitSound();
         if (getDevOverride('perf_hitEffectRender')) {
           const id = String(effectIdRef.current++);
           const max = getDevOverride('perf_maxParticles');
@@ -393,7 +395,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       }
     }
     setKeysDown(prev => new Set(prev).add(track));
-  }, [paused, effectiveConfig.autoPlay, handlePress]);
+  }, [paused, effectiveConfig.autoPlay, handlePress, correctHitSound]);
 
   const onReleaseWithFX = useCallback((track: number) => {
     if (effectiveConfig.autoPlay) return;
