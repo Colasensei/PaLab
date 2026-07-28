@@ -39,6 +39,10 @@ android/local.properties
 release/
 release-temp/
 
+# Unity / Godot（还没成型，先整个排除）
+Palab.Unity/
+Palab.Godot/
+
 # 临时文件
 *.log
 *.tmp
