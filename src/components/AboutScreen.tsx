@@ -9,6 +9,13 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 4.5（正式版）', date: '2026-07-29',
+    items: [
+      '修复高密度谱面渲染停止恶性 bug',
+      '完善帮助页面（编辑器、准度条、正解音）',
+    ],
+  },
+  {
     ver: 'Alpha 4.4（正式版）', date: '2026-07-28',
     items: [
       '新增准度条（设置→开启，底部显示打击偏移）',
@@ -109,8 +116,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 4.4</div>
-      <div className="about-ver about-ver-sub">v0.4.4</div>
+      <div className="about-ver">Alpha 4.5</div>
+      <div className="about-ver about-ver-sub">v0.4.5</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>

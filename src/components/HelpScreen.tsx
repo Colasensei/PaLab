@@ -146,6 +146,59 @@ export const HelpScreen: React.FC<Props> = ({ lang, onBack }) => {
                 </ul>
               </div>
 
+              {/* 可视化编辑器 */}
+              <div className="help-card">
+                <h2>可视化编辑器</h2>
+                <p>编辑器提供直观的谱面制作方式，所有音符在时间轴上可视化排列。节拍线左侧标注<b>小节号</b>和<b>对应秒数</b>。</p>
+                <ul>
+                  <li><b>放置音符</b> — 点击节拍线放置音符（第一次点击选择轨道，第二次确认位置和时长）</li>
+                  <li><b>框选</b> — 左键在空白处拖拽可框选多个音符</li>
+                  <li><b>拖动移动</b> — 左键拖拽音符上下移动（吸附节拍线）</li>
+                  <li><b>批量移动</b> — 选中多个音符后，拖动任意一个即可整体移动</li>
+                  <li><b>不吸附移动</b> — 按住 <b>Shift</b> 拖动，跳过节拍吸附</li>
+                  <li><b>批量删除</b> — 右键已选中的音符可一键删除全部选中</li>
+                  <li><b>单选/多选</b> — 左键点击单选，<b>Shift+点击</b>切换多选</li>
+                  <li><b>对齐模式</b> — 支持无吸附 / 1/4拍 / 半拍 / 整拍四种模式</li>
+                  <li><b>Hold 音符</b> — 在节拍线上点击不同位置可放置长按音符</li>
+                  <li><b>反转滚轮</b> — 勾选后鼠标滚轮方向反转</li>
+                </ul>
+              </div>
+
+              {/* 准度条 */}
+              <div className="help-card">
+                <h2>准度条</h2>
+                <p>在设置中开启后，游戏底部显示准度条，实时反馈每次打击的偏差。</p>
+                <ul>
+                  <li>中间白色分隔线 = <b>0ms（完美时机）</b></li>
+                  <li>绿色区 = Perfect（±80ms），黄色区 = Good（±160ms），红色区 = Bad/Miss</li>
+                  <li>箭头 <b>线性移动</b>，指向当前打击的实际偏差位置</li>
+                  <li>左边 = 提前按，右边 = 延后按</li>
+                </ul>
+              </div>
+
+              {/* 正解音 */}
+              <div className="help-card">
+                <h2>正解音模式</h2>
+                <p>谱面库中开启「正解音」后，打击音效将始终与谱面对齐——无论你按得准不准，听到的都是<b>正确的节奏</b>。计分、判定、Combo 仍为真人操作。</p>
+              </div>
+
+              {/* 素材修复 */}
+              <div className="help-card">
+                <h2>素材修复与个性化</h2>
+                <p>设置 → 素材修复 可替换游戏内置资源：</p>
+                <ul>
+                  <li><b>打击音效</b> — 替换默认的打击反馈音</li>
+                  <li><b>看板娘立绘</b> — 替换主菜单角色图</li>
+                  <li><b>延迟校准曲</b> — 自定义校准用音频</li>
+                </ul>
+                <p>设置 → 个性化 可自定义音符贴图：</p>
+                <ul>
+                  <li><b>Tap 贴图</b> — 替换点击音符的外观（保持比例居中）</li>
+                  <li><b>Hold 贴图</b> — 替换长按音符的外观（拉伸填充）</li>
+                </ul>
+                <p>所有素材存储在浏览器本地，更换后<b>下一局自动生效</b>。</p>
+              </div>
+
               {/* 快捷键 */}
               <div className="help-card">
                 <h2>快捷键</h2>
@@ -161,7 +214,7 @@ export const HelpScreen: React.FC<Props> = ({ lang, onBack }) => {
               </div>
 
               <p style={{ textAlign: 'center', color: '#555', padding: '20px 0', fontSize: 12 }}>
-                Palab Alpha 4.1 — 感谢您的游玩
+                Palab Alpha 4.4 — 感谢您的游玩
               </p>
             </>
           ) : (
@@ -212,8 +265,42 @@ export const HelpScreen: React.FC<Props> = ({ lang, onBack }) => {
                   <li><b>Developer Mode</b> — Advanced options</li>
                 </ul>
               </div>
+              <div className="help-card">
+                <h2>Visual Editor</h2>
+                <p>Place notes visually on the timeline. Beat lines show <b>measure numbers</b> and <b>time in seconds</b> on the left.</p>
+                <ul>
+                  <li><b>Place notes</b> — Click a beat line (first click picks track, second confirms position)</li>
+                  <li><b>Box select</b> — Drag on empty area to select multiple notes</li>
+                  <li><b>Drag to move</b> — Drag a note to move it (snaps to beat lines)</li>
+                  <li><b>Batch move</b> — Select multiple notes, then drag any of them to move all</li>
+                  <li><b>No-snap move</b> — Hold <b>Shift</b> while dragging to bypass beat snapping</li>
+                  <li><b>Batch delete</b> — Right-click a selected note to delete all selected</li>
+                  <li><b>Multi-select</b> — Click to select one, <b>Shift+Click</b> to toggle</li>
+                  <li><b>Snap modes</b> — Off / 1/4 beat / half beat / full beat</li>
+                  <li><b>Hold notes</b> — Click at different positions on beat lines for holds</li>
+                </ul>
+              </div>
+              <div className="help-card">
+                <h2>Accuracy Bar</h2>
+                <p>Enable in Settings to see a real-time accuracy bar at the bottom of the screen.</p>
+                <ul>
+                  <li>Center divider = <b>0ms (perfect timing)</b></li>
+                  <li>Green = Perfect (±80ms), Yellow = Good (±160ms), Red = Bad/Miss</li>
+                  <li>The caret moves linearly to show your last hit offset</li>
+                  <li>Left = early, Right = late</li>
+                </ul>
+              </div>
+              <div className="help-card">
+                <h2>Correct SFX Mode</h2>
+                <p>Enable "Correct SFX" in the Chart Library — hit sounds always play at the correct rhythm regardless of your actual timing. Scoring and judgment remain manual.</p>
+              </div>
+              <div className="help-card">
+                <h2>Asset Repair &amp; Personalization</h2>
+                <p>Settings → Repair: replace built-in hit sounds, mascot image, and calibration audio.</p>
+                <p>Settings → Personalize: customize note skins (Tap = contained, Hold = stretched). All assets stored locally and applied next game.</p>
+              </div>
               <p style={{ textAlign: 'center', color: '#555', padding: '20px 0', fontSize: 12 }}>
-                Palab Alpha 4.1 — Thanks for playing
+                Palab Alpha 4.4 — Thanks for playing
               </p>
             </>
           )}

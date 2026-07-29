@@ -78,6 +78,8 @@ export function useGameEngine({
   correctHitSoundRef.current = correctHitSound;
   const correctSoundIdxRef = useRef(0);
   const correctSoundDoublesRef = useRef<Set<number>>(new Set());
+  // 渲染窗口起始索引：避免 notes.filter 全量遍历，高密度谱面 O(n)→O(窗口)
+  const renderStartIdxRef = useRef(0);
   const devRef = useRef({
     timeB: getDevOverride('j_timeB'),
     timeA: getDevOverride('j_timeA'),
@@ -129,6 +131,7 @@ export function useGameEngine({
     completedHoldsRef.current = new Map();
     correctSoundIdxRef.current = 0;
     correctSoundDoublesRef.current = new Set();
+    renderStartIdxRef.current = 0;
     noteIndexRef.current = 0;
     finishedRef.current = false;
     isPlayingRef.current = true;
@@ -396,24 +399,30 @@ export function useGameEngine({
           if (nowPerf - t > holdBuf) completedHoldsRef.current.delete(id);
         });
 
-        let visibleNotes = notes.filter(n => {
-          // 还按着的 hold
-          if (holdActiveRef.current.has(n.id)) return true;
-          // 松手后的缓冲动画
-          if (completedHoldsRef.current.has(n.id)) return true;
-          // 完事的 tap → 删
-          if (n.type === 'tap' && results.has(n.id)) return false;
-          // 完事的 hold → 删
+        // 窗口化渲染：只遍历 noteIndex 附近，避免 notes.filter 全量 O(n)
+        let rsIdx = renderStartIdxRef.current;
+        // 收缩窗口起点：跳过早已判定完且超出 lookbehind 的音符
+        while (rsIdx < notes.length && notes[rsIdx].endTime - now < -devRef.current.lookbehind
+          && results.has(notes[rsIdx].id)) {
+          rsIdx++;
+        }
+        renderStartIdxRef.current = Math.max(0, rsIdx - 10); // 留 10 个余量防抖动
+
+        const visibleNotes: Note[] = [];
+        const maxN = devRef.current.maxVisibleNotes;
+        for (let i = rsIdx; i < notes.length && visibleNotes.length < maxN; i++) {
+          const n = notes[i];
+          if (n.startTime - now > devRef.current.lookahead) break;
+          if (holdActiveRef.current.has(n.id)) { visibleNotes.push(n); continue; }
+          if (completedHoldsRef.current.has(n.id)) { visibleNotes.push(n); continue; }
+          if (n.type === 'tap' && results.has(n.id)) continue;
           if (n.type === 'hold' && results.has(n.id)) {
             const r = results.get(n.id)!;
-            if (r.judgment.type === 'good' || r.judgment.type === 'perfect') return false;
-            return n.endTime - now > -devRef.current.lookbehind;
+            if (r.judgment.type === 'good' || r.judgment.type === 'perfect') continue;
+            if (n.endTime - now > -devRef.current.lookbehind) visibleNotes.push(n);
+            continue;
           }
-          return n.endTime - now > -devRef.current.lookbehind && n.startTime - now < devRef.current.lookahead;
-        });
-        // 太多了裁一裁，别爆内存（
-        if (visibleNotes.length > devRef.current.maxVisibleNotes) {
-          visibleNotes = visibleNotes.slice(-devRef.current.maxVisibleNotes);
+          if (n.endTime - now > -devRef.current.lookbehind) visibleNotes.push(n);
         }
         setState(s => ({ ...s, currentTime: now, activeNotes: visibleNotes }));
       }
