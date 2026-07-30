@@ -463,13 +463,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 霸王模式就是套一层 auto，但藏标、亮轨、记成绩（
   const effectiveConfig = useMemo(() => (invincibleMode || isOverlord()) ? { ...config, autoPlay: true } : config, [config, invincibleMode]);
 
-  // 引擎倒计时结束时恢复音频
-  const handleEngineResume = useCallback(() => {
-    audioManager.setVolume(musicVolume / 100);
-  }, [musicVolume]);
-
   const { state, start, setPaused: engineSetPaused, handlePress, handleRelease } = useGameEngine({
-    config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound, onResume: handleEngineResume,
+    config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound,
   });
 
   // combo 颜色：全P金 / 有G蓝 / 断白
@@ -484,7 +479,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   };
 
   const onPressWithFX = useCallback((track: number) => {
-    if (paused || pauseRewindRef2.current > 0 || effectiveConfig.autoPlay) return;
+    if (paused || effectiveConfig.autoPlay) return;
     const result = handlePress(track);
     if (result.hit) {
       // bad/miss 别响了也别闪了（
@@ -562,6 +557,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         gameStartRef.current = performance.now();
         totalPauseRef.current = 0;
         lastResultCountRef.current = 0;
+        resetProgressTimer();
         setEffects([]);
         seenRef.current = new Set();
         setTimeout(() => {
@@ -575,8 +571,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 进度条纯 performance.now()，扣掉暂停时长，直接写 DOM 不进 React
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
-  const pauseRewindRef2 = useRef(state.pauseRewind);
-  pauseRewindRef2.current = state.pauseRewind;
   const progressStartRef = useRef(0);
   const pauseStartRef = useRef(0);
   const totalPausedMsRef = useRef(0);
@@ -587,7 +581,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     const tick = () => {
       if (!running) return;
       raf = requestAnimationFrame(tick);
-      if (pausedRef.current || pauseRewindRef2.current > 0) {
+      if (pausedRef.current) {
         if (!pauseStartRef.current) pauseStartRef.current = performance.now();
         return;
       }
@@ -721,22 +715,23 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [effects.length]);
 
   const doPause = useCallback(() => {
-    audioManager.setVolume(0);
+    audioManager.pause();
     engineSetPaused(true);
     setPaused(true);
     pauseTimeRef.current = performance.now();
   }, [engineSetPaused]);
 
   const doResume = useCallback(() => {
-    totalPauseRef.current = performance.now() - pauseTimeRef.current;
+    totalPauseRef.current += performance.now() - pauseTimeRef.current;
+    if (hasSong) { audioManager.setVolume(musicVolume / 100); audioManager.play(1); }
     engineSetPaused(false);
     setPaused(false);
-  }, [engineSetPaused]);
+  }, [hasSong, musicVolume, engineSetPaused]);
 
   // 暂停双击 400ms 防误触（
   const lastPauseClickRef = useRef<number>(0);
   const handlePause = useCallback(() => {
-    if (pausedRef.current || state.isFinished || pauseRewindRef2.current > 0) return;
+    if (pausedRef.current || state.isFinished) return;
     const now = Date.now();
     if (now - lastPauseClickRef.current < 400) {
       lastPauseClickRef.current = 0;
@@ -767,7 +762,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     const h = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       e.preventDefault();
-      if (pausedRef.current || pauseRewindRef2.current > 0) return; // 已暂停或倒计时中
+      if (pausedRef.current) return; // 已暂停：不恢复
       const now = Date.now();
       if (now - lastEscRef.current < 400) {
         lastEscRef.current = 0;
@@ -1089,7 +1084,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       )}
 
       {/* 暂停遮罩 */}
-      {paused && state.pauseRewind <= 0 && (
+      {paused && (
         <div className="pause-overlay" onPointerDown={e => e.stopPropagation()}>
           <div className="glass-panel pause-panel" style={{ minWidth: pausePanelMaxW, minHeight: pausePanelMinH }}>
             <h2 style={{ fontSize: pauseTitleFontSize }}>{lang === 'zh' ? '暂停' : 'PAUSED'}</h2>
@@ -1099,13 +1094,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
               <button className="pause-sym-btn pause-sym-quit" onClick={handleQuit} title={t('quit', lang)}>✕</button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* 恢复倒计时 */}
-      {state.pauseRewind > 0 && (
-        <div className="rewind-overlay">
-          <span className="rewind-count">{state.pauseRewind}</span>
         </div>
       )}
 

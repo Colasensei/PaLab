@@ -61,7 +61,7 @@ export class AudioManager {
     this.audio.playbackRate = this.playbackRate;
     this.audio.play().then(
       () => { this._isPlaying = true; },
-      () => { this.reloadAudio(this.audio?.currentTime ?? 0); },
+      () => { /* 静默失败 */ },
     );
   }
 

@@ -43,8 +43,6 @@ interface UseGameEngineOptions {
   latencyOffset?: number;
   /** 正确音效：到点自动播放正确打击音，但不影响判定和计分 */
   correctHitSound?: boolean;
-  /** 倒计时结束回调：引擎解冻时调用，用于恢复音频等 */
-  onResume?: () => void;
 }
 
 export function useGameEngine({
@@ -56,7 +54,6 @@ export function useGameEngine({
   onPlayHitSound,
   latencyOffset = 0,
   correctHitSound = false,
-  onResume,
 }: UseGameEngineOptions) {
   const rafRef = useRef<number>(0);
   const frameCountRef = useRef(0);
@@ -85,9 +82,7 @@ export function useGameEngine({
   const correctSoundDoublesRef = useRef<Set<number>>(new Set());
   // 渲染窗口起始索引：避免 notes.filter 全量遍历，高密度谱面 O(n)→O(窗口)
   const renderStartIdxRef = useRef(0);
-  // 暂停计时：外部 getCurrentTime 已处理补偿（有歌=音频自然不动，无歌=扣 totalPauseRef）
-  const pauseStartRef = useRef(0);
-  // 恢复后的倒计时：-1=无，3/2/1=倒计时中
+  // 暂停倒计时：-1=无，3/2/1=倒计时中
   const pauseRewindRef = useRef(-1);
   const devRef = useRef({
     timeB: getDevOverride('j_timeB'),
@@ -148,7 +143,7 @@ export function useGameEngine({
     pausedRef.current = false;
 
     audioManager.onEnded(() => { finishedRef.current = true; });
-    pauseStartRef.current = 0; pauseRewindRef.current = -1;
+    pauseRewindRef.current = -1;
 
     setState(s => ({
       ...s,
@@ -159,38 +154,15 @@ export function useGameEngine({
   }, []);
 
   const setPaused = useCallback((p: boolean) => {
-    if (p) {
-      // 暂停：记时刻 + 冻结一切
-      pauseStartRef.current = performance.now();
-      pausedRef.current = true;
-      // 如果正在倒计时中又暂停，取消倒计时
-      pauseRewindRef.current = -1;
-      setState(s => ({ ...s, paused: true, pauseRewind: -1 }));
-    } else {
-      // 恢复：累计暂停时长，但先不解冻——等 3→2→1 数完
-      // 冻结状态不变，只登记倒计时
-      pauseRewindRef.current = 3;
-      setState(s => ({ ...s, pauseRewind: 3, resumeKey: s.resumeKey + 1 }));
-      const tick = () => {
-        pauseRewindRef.current--;
-        if (pauseRewindRef.current > 0) {
-          setState(s => ({ ...s, pauseRewind: pauseRewindRef.current }));
-          setTimeout(tick, 1000);
-        } else {
-          // 倒计时结束 → 真正解冻
-          pausedRef.current = false;
-          onResume?.();
-          setState(s => ({ ...s, paused: false, pauseRewind: -1 }));
-        }
-      };
-      setTimeout(tick, 1000);
-    }
-  }, [onResume]);
+    pausedRef.current = p;
+    pauseRewindRef.current = -1;
+    setState(s => ({ ...s, paused: p, pauseRewind: -1, resumeKey: p ? s.resumeKey : s.resumeKey + 1 }));
+  }, []);
 
   // ——— 按下去 ———
   const handlePress = useCallback(
     (track: number): { hit: boolean; playSound: boolean; judgmentType: string } => {
-      if (!isPlayingRef.current || pausedRef.current || pauseRewindRef.current > 0) return { hit: false, playSound: false, judgmentType: '' };
+      if (!isPlayingRef.current || pausedRef.current) return { hit: false, playSound: false, judgmentType: '' };
       pressedTracksRef.current.add(track);
       const now = getTimeRef.current();
       const results = resultsRef.current;
@@ -261,7 +233,7 @@ export function useGameEngine({
   // ——— 松手 ———
   const handleRelease = useCallback(
     (track: number) => {
-      if (!isPlayingRef.current || pausedRef.current || pauseRewindRef.current > 0) return;
+      if (!isPlayingRef.current || pausedRef.current) return;
       pressedTracksRef.current.delete(track);
 
       holdActiveRef.current.forEach((_info, noteId) => {
@@ -320,7 +292,7 @@ export function useGameEngine({
     const loop = () => {
       const now = getCurrentTime() + latencyRef.current;
       const results = resultsRef.current;
-      const inPause = pausedRef.current || pauseRewindRef.current > 0;
+      const inPause = pausedRef.current;
 
       if (autoPlayRef.current && !inPause) {
         for (let i = noteIndexRef.current; i < notes.length; i++) {
