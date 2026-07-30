@@ -582,7 +582,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     const tick = () => {
       if (!running) return;
       raf = requestAnimationFrame(tick);
-      if (pausedRef.current) {
+      if (pausedRef.current || pauseRewindRef2.current > 0) {
         if (!pauseStartRef.current) pauseStartRef.current = performance.now();
         return;
       }
@@ -837,9 +837,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       }
     };
     const onCancel = (e: PointerEvent) => {
-      // 4指以上同时触摸时，系统可能取消多余触点。
-      // 不释放轨道，避免长条被误切断。
+      const track = activeTouchesRef.current.get(e.pointerId);
       activeTouchesRef.current.delete(e.pointerId);
+      if (track !== undefined && track >= 0 && track < config.trackCount) {
+        onReleaseWithFX(track);
+      }
     };
     el.addEventListener('pointerdown', onDown, { passive: false });
     el.addEventListener('pointerup', onUp, { passive: false });

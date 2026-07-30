@@ -2757,15 +2757,8 @@ body::after {
   to { opacity: 1; }
 }
 
-/* 按住中的 hold 音符发光 */
-.note-held {
-  animation: noteHeldPulse 0.4s ease-in-out infinite alternate;
-}
-
-@keyframes noteHeldPulse {
-  from { transform: translateX(-50%) scale(1); }
-  to { transform: translateX(-50%) scale(1.05); }
-}
+/* 按住中的 hold 音符 */
+.note-held {}
 
 /* hold 完成收尾动画 */
 .note-completed {
