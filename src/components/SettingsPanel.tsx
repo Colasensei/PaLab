@@ -123,48 +123,69 @@ const SubHdr: React.FC<{ title: string; onBack: () => void; lang: Lang }> = ({ t
 );
 
 // ==================== 素材修复 ====================
+const REPAIR_PATH_DEV = '/api/unauth/52047071297934341';
+const REPAIR_PATH_PROD = 'https://yarp.lingyanspace.com/UpgradeServer/UnauthorFolder/UpgradeProxy/52047071297934341';
+const REPAIR_FILES: { key: string; id: string; labelZh: string; labelEn: string }[] = [
+  { key: ASSET_KEYS.mascot, id: '52047137196741637/14.png', labelZh: '看板娘立绘', labelEn: 'Mascot' },
+  { key: ASSET_KEYS.hitSound, id: '52047169670091781/tab.ogg', labelZh: '打击音效', labelEn: 'Hit Sound' },
+];
+
+function getRepairUrl(id: string): string {
+  const base = import.meta.env.DEV ? REPAIR_PATH_DEV : REPAIR_PATH_PROD;
+  return `${base}/${id}`;
+}
+
 const RepairPanel: React.FC<{ lang: Lang; onBack: () => void }> = ({ lang, onBack }) => {
-  const [pngOk, setPngOk] = useState(hasAsset(ASSET_KEYS.mascot));
-  const [oggOk, setOggOk] = useState(hasAsset(ASSET_KEYS.hitSound));
-  const [calOk, setCalOk] = useState(hasAsset(ASSET_KEYS.calibSong));
-  const imp = async (k: string, e: React.ChangeEvent<HTMLInputElement>, s: (v: boolean) => void) => {
-    const f = e.target.files?.[0]; if (!f) return;
-    saveAsset(k, await fileToDataURL(f)); s(true);
+  const [status, setStatus] = useState<Record<string, 'idle' | 'loading' | 'ok' | 'error'>>(() => {
+    const s: Record<string, 'idle' | 'loading' | 'ok' | 'error'> = {};
+    for (const f of REPAIR_FILES) s[f.key] = hasAsset(f.key) ? 'ok' : 'idle';
+    return s;
+  });
+
+  const download = async (f: typeof REPAIR_FILES[number]) => {
+    setStatus(prev => ({ ...prev, [f.key]: 'loading' }));
+    try {
+      const resp = await fetch(getRepairUrl(f.id), { cache: 'no-store' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+      saveAsset(f.key, dataUrl);
+      setStatus(prev => ({ ...prev, [f.key]: 'ok' }));
+    } catch {
+      setStatus(prev => ({ ...prev, [f.key]: 'error' }));
+    }
   };
-  const clr = (k: string, s: (v: boolean) => void) => { clearAsset(k); s(false); };
+
+  const clr = (key: string) => { clearAsset(key); setStatus(prev => ({ ...prev, [key]: 'idle' })); };
 
   return (
     <div className="screen settings-screen">
       <div className="settings-container">
         <SubHdr title={lang === 'zh' ? '素材修复' : 'Repair'} onBack={onBack} lang={lang} />
-        <div className="st-card">
-          <span className="st-label" style={{ display: 'block', marginBottom: 8 }}>{lang === 'zh' ? '看板娘立绘' : 'Mascot'}</span>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, color: pngOk ? '#44BB44' : 'var(--text-secondary)', minWidth: 30 }}>{pngOk ? 'OK' : '-'}</span>
-            <input type="file" accept="image/*" onChange={e => imp(ASSET_KEYS.mascot, e, setPngOk)} id="rep-m" className="file-input" />
-            <label htmlFor="rep-m" className="st-file-btn">{pngOk ? (lang === 'zh' ? '更换' : 'Change') : (lang === 'zh' ? '选取' : 'Pick')}</label>
-            {pngOk && <button className="st-clear-btn" onClick={() => clr(ASSET_KEYS.mascot, setPngOk)}>{lang === 'zh' ? '清除' : 'Clear'}</button>}
-          </div>
-        </div>
-        <div className="st-card">
-          <span className="st-label" style={{ display: 'block', marginBottom: 8 }}>{lang === 'zh' ? '打击音效' : 'Hit Sound'}</span>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, color: oggOk ? '#44BB44' : 'var(--text-secondary)', minWidth: 30 }}>{oggOk ? 'OK' : '-'}</span>
-            <input type="file" accept="audio/*,.ogg,.mp3,.wav" onChange={e => imp(ASSET_KEYS.hitSound, e, setOggOk)} id="rep-s" className="file-input" />
-            <label htmlFor="rep-s" className="st-file-btn">{oggOk ? (lang === 'zh' ? '更换' : 'Change') : (lang === 'zh' ? '选取' : 'Pick')}</label>
-            {oggOk && <button className="st-clear-btn" onClick={() => clr(ASSET_KEYS.hitSound, setOggOk)}>{lang === 'zh' ? '清除' : 'Clear'}</button>}
-          </div>
-        </div>
-        <div className="st-card">
-          <span className="st-label" style={{ display: 'block', marginBottom: 8 }}>{lang === 'zh' ? '延迟校准曲' : 'Calib. Song'}</span>
-          <p style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 8 }}>{lang === 'zh' ? '用于音乐延迟校准，默认 BPM 164。' : 'For music latency calib., default BPM 164.'}</p>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, color: calOk ? '#44BB44' : 'var(--text-secondary)', minWidth: 30 }}>{calOk ? 'OK' : '-'}</span>
-            <input type="file" accept="audio/*,.mp3,.ogg,.wav" onChange={e => imp(ASSET_KEYS.calibSong, e, setCalOk)} id="rep-c" className="file-input" />
-            <label htmlFor="rep-c" className="st-file-btn">{calOk ? (lang === 'zh' ? '更换' : 'Change') : (lang === 'zh' ? '选取' : 'Pick')}</label>
-            {calOk && <button className="st-clear-btn" onClick={() => clr(ASSET_KEYS.calibSong, setCalOk)}>{lang === 'zh' ? '清除' : 'Clear'}</button>}
-          </div>
-        </div>
+        {REPAIR_FILES.map(f => {
+          const st = status[f.key];
+          return (
+            <div className="st-card" key={f.key}>
+              <span className="st-label" style={{ display: 'block', marginBottom: 8 }}>{lang === 'zh' ? f.labelZh : f.labelEn}</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, color: st === 'ok' ? '#44BB44' : st === 'error' ? '#FF4444' : 'var(--text-secondary)', minWidth: 40 }}>
+                  {st === 'loading' ? '...' : st === 'ok' ? 'OK' : st === 'error' ? (lang === 'zh' ? '失败' : 'Fail') : '-'}
+                </span>
+                <button className="st-file-btn" onClick={() => download(f)} disabled={st === 'loading'}>
+                  {st === 'loading' ? (lang === 'zh' ? '下载中...' : 'Downloading...') : st === 'ok' ? (lang === 'zh' ? '重新下载' : 'Redownload') : (lang === 'zh' ? '下载修复' : 'Download Fix')}
+                </button>
+                {st === 'ok' && <button className="st-clear-btn" onClick={() => clr(f.key)}>{lang === 'zh' ? '清除' : 'Clear'}</button>}
+              </div>
+            </div>
+          );
+        })}
+        <p style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', margin: 8 }}>
+          {lang === 'zh' ? '点击「下载修复」从云端拉取默认素材。素材存储在浏览器本地。' : 'Click "Download Fix" to fetch default assets from cloud. Stored locally.'}
+        </p>
       </div>
     </div>
   );

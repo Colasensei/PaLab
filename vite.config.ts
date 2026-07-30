@@ -16,6 +16,20 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/api/upgrade': {
+        target: 'https://yarp.lingyanspace.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/api\/upgrade/, '/api/UpgradeServer/Upgrade'),
+      },
+      '/api/unauth': {
+        target: 'https://yarp.lingyanspace.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/api\/unauth/, '/UpgradeServer/UnauthorFolder/UpgradeProxy'),
+      },
+    },
+  },
   build: {
     target: 'es2020',
     cssMinify: 'lightningcss',

@@ -6,6 +6,7 @@ export { ProfileEditor } from './ProfileEditor';
 export { AboutScreen } from './AboutScreen';
 export { RecordsScreen } from './RecordsScreen';
 export { HelpScreen } from './HelpScreen';
+export { UpdateScreen } from './UpdateScreen';
 export { EULAModal } from './EULAModal';
 export { DevPanel } from './DevPanel';
 export { SettingsPanel } from './SettingsPanel';

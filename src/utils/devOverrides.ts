@@ -613,7 +613,7 @@ export const DEFAULT_OVERRIDES: DevOverrides = {
 
   // Performance
   perf_targetFPS: 0,
-  perf_maxVisibleNotes: 200,
+  perf_maxVisibleNotes: 1000,
   perf_noteRenderWindow: 5000,
   perf_maxParticles: 30,
   perf_effectPoolSize: 20,

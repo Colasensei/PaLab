@@ -1,6 +1,6 @@
 # Palab 项目 AI 开发指南
 
-> 当前版本：**0.4.5 (Alpha 4.5)** | 2026-07-29
+> 当前版本：**0.5.2 (Alpha 5.2)** | 2026-07-29
 > **每次改动前必须阅读本文件。**
 
 ---
@@ -47,7 +47,17 @@ APK/EXE >50KB → `C:\Users\colas\Documents\palab\<版本>\`
 ### 0.7 版本号同步
 `package.json` / `public/version.json` / `AboutScreen.tsx` / `HelpScreen.tsx`(中+英)
 
-### 0.8 构建后问「APK 图标弄好没有？」
+### 0.8 构建后问「APK 图标弄好没有？」并提供 changelog
+
+每次构建完成后，AI 必须：
+1. 询问「APK 图标弄好没有？」
+2. 同步提供本次版本的 changelog 摘要文本，供用户填入 lingyanspace 升级托管服务的 versionDes 字段
+
+升级托管服务：
+- TS Android: softwareId = `52045257433420805`
+- TS Windows: softwareId = `52045545676477445`
+- 文件名用点号分隔，不用横杠（`palab.0.5.0.apk` 而非 `palab-0.5.0.apk`）
+- 版本号逐位比较（0.12.0 > 0.9.0）
 
 ### 0.9 每次对话结束时提交
 每次聊天任务完成后，AI 必须将本次所有改动提交到 main 分支并推送到 GitHub：

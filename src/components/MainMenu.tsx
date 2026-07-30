@@ -13,6 +13,7 @@ interface MainMenuProps {
   onAbout: () => void;
   onRecords: () => void;
   onHelp: () => void;
+  onUpdate: () => void;
   onDev: () => void;
   rks: number;
   lang: Lang;
@@ -23,7 +24,7 @@ interface MainMenuProps {
 }
 
 export const MainMenu: React.FC<MainMenuProps> = ({
-  onChartLibrary, onCreateChart, onSettings, onProfile, onAbout, onRecords, onHelp, onDev, rks, lang, devMode, onToggleDev,
+  onChartLibrary, onCreateChart, onSettings, onProfile, onAbout, onRecords, onHelp, onUpdate, onDev, rks, lang, devMode, onToggleDev,
   account, onSaveAccount,
 }) => {
   const [devClicks, setDevClicks] = useState(0);
@@ -76,6 +77,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           </div>
           <button className="btn btn-outline menu-btn" onClick={onCreateChart}>{lang === 'zh' ? '制作谱面' : 'Create Chart'}</button>
           <button className="btn btn-outline menu-btn" onClick={onSettings}>{t('settings', lang)}</button>
+          <button className="btn btn-outline menu-btn menu-btn-update" onClick={onUpdate}>{lang === 'zh' ? '检查更新' : 'Check Updates'}</button>
           <button className="btn btn-outline menu-btn menu-btn-help" onClick={onHelp}>{t('help', lang)}</button>
           {devMode && <div className="menu-dev-badge" onClick={onDev}>DEV MODE</div>}
           <div className="author-credit" onClick={handleAuthorClick}>by ColaSensei</div>

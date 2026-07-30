@@ -50,6 +50,9 @@ Palab.Godot/
 *.log
 *.tmp
 
+# 云服务密钥
+qiniu-credentials.json
+
 # AI 助手
 .kagent/
 

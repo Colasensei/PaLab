@@ -16,8 +16,9 @@ import {
   ConfigPanel, SettingsPanel, ProfileEditor, AboutScreen, RecordsScreen, HelpScreen, EULAModal, DevPanel,
   SongPanel, LoadingScreen, GamePlay, ResultsScreen,
   ChartModeSelect, ManualConfig, ManualRecord, ManualAnalyzer,
-  VisualEditor, EditorSetup,
+  VisualEditor, EditorSetup, UpdateScreen,
 } from '@/components';
+import { checkUpdate, getLocalVersion, UpdateInfo } from '@/utils/updateChecker';
 import '@/styles/global.css';
 
 const STORAGE_KEY = 'palab_history';
@@ -165,9 +166,21 @@ const App: React.FC = () => {
   const [gameMirror, setGameMirror] = useState(false);
   const [gameCorrectHitSound, setGameCorrectHitSound] = useState(false);
   const [chartScores, setChartScores] = useState<Record<string, ChartScoreEntry>>(loadChartScores);
-  const [chartListKey, setChartListKey] = useState(0); // +1 强制刷新谱面库（
+  const [chartListKey, setChartListKey] = useState(0);
+  const [pendingUpdate, setPendingUpdate] = useState<UpdateInfo | null>(null);
+  const [showUpdateBar, setShowUpdateBar] = useState(false);
 
   const devMode = settings.devMode;
+
+  // 启动时自动检查更新
+  useEffect(() => {
+    checkUpdate().then(result => {
+      if (result.update) {
+        setPendingUpdate(result.update);
+        setShowUpdateBar(true);
+      }
+    });
+  }, []);
 
   // 手动制作流程状态
   const [manualConfig, setManualConfig] = useState<GameConfig | null>(null);
@@ -791,7 +804,7 @@ const App: React.FC = () => {
   const renderScreen = (s: AppScreen) => {
     switch (s) {
       case 'menu':
-        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onProfile={goToProfile} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onDev={goToDev} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} />;
+        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onProfile={goToProfile} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} />;
       case 'chart-library':
         return <ChartLibrary key={chartListKey} onPlay={handleChartPlay} lang={lang} highScores={chartScores} onSettings={goToSettings} uiBlur={settings.uiBlur} />;
       case 'settings':
@@ -830,6 +843,8 @@ const App: React.FC = () => {
         return <AboutScreen lang={lang} onClose={() => { setScreen('menu'); setScreenStack(['menu']); }} onShowEULA={() => { localStorage.removeItem('palab_eula'); setEulaAccepted(false); setScreen('menu'); setScreenStack(['menu']); }} />;
       case 'help':
         return <HelpScreen lang={lang} onBack={navigateBack} />;
+      case 'update':
+        return <UpdateScreen lang={lang} onBack={navigateBack} pendingUpdate={pendingUpdate} devMode={devMode} />;
       case 'dev':
         return <DevPanel lang={lang} settings={settings} onSave={(s) => { setSettings(s); saveSettings(s); }} onBack={navigateBack} />;
       default:
@@ -844,6 +859,14 @@ const App: React.FC = () => {
       {/* EULA */}
       {!eulaAccepted && (
         <EULAModal lang={lang} onAgree={() => { localStorage.setItem('palab_eula', '1'); setEulaAccepted(true); }} />
+      )}
+
+      {/* 更新通知条 */}
+      {showUpdateBar && pendingUpdate && screen === 'menu' && (
+        <div className="update-notify-bar" onClick={() => { setShowUpdateBar(false); goToUpdate(); }}>
+          <span>{lang === 'zh' ? '最新版本' : 'Latest'}: <b>{pendingUpdate.version}</b></span>
+          <span className="update-notify-arrow">&#x203A;</span>
+        </div>
       )}
 
       {/* ── 全局 Brand (字母+RKS) — 主页居中，子页移到顶栏 ── */}

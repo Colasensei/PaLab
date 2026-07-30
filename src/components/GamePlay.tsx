@@ -253,15 +253,26 @@ const AccuracyBar: React.FC<{ lastOffset: number }> = ({ lastOffset }) => {
   const timeB = useMemo(() => getDevOverride('j_timeB'), []); // perfect ±80ms
   const timeA = useMemo(() => getDevOverride('j_timeA'), []); // good ±160ms
 
-  // 对称比例尺：maxRange 收窄，红区截断，绿黄等比放大
-  // 落点超出 ±maxRange 时箭头停在最外围
-  const maxRange = 250; // ms
+  // 颜色分区：红每侧固定 10%，绿+黄每侧 40%，绿:黄 = timeB:(timeA-timeB)
+  const redW = 10; // 每侧红区宽度 %
+  const midW = 50 - redW; // 每侧绿+黄宽度 = 40%
+  const ratioG = timeB / timeA; // 绿占绿+黄的比例 = 80/160 = 0.5
+  const greenHW = midW * ratioG;  // 绿每侧宽度 = 20%
+  const yellowHW = midW - greenHW; // 黄每侧宽度 = 20%
 
-  // offset → bar 百分比，0ms = 50%
+  const redL_end = redW;
+  const yellowL_end = redW + yellowHW;
+  const greenL_at_center = 50;
+  const greenR_end = 50 + greenHW;
+  const yellowR_end = greenR_end + yellowHW;
+
+  // caret: -timeA..0→redW..50%, 0..+timeA→50%..(100-redW), 超出钳位
   const getPercent = useCallback((offset: number) => {
-    const clamped = Math.max(-maxRange, Math.min(maxRange, offset));
-    return ((clamped + maxRange) / (2 * maxRange)) * 100;
-  }, [maxRange]);
+    if (offset <= -timeA) return 0;
+    if (offset >= timeA) return 100;
+    if (offset <= 0) return redW + ((offset + timeA) / timeA) * midW;
+    return 50 + (offset / timeA) * midW;
+  }, [timeA, redW, midW]);
 
   const pct = getPercent(lastOffset);
 
@@ -272,22 +283,16 @@ const AccuracyBar: React.FC<{ lastOffset: number }> = ({ lastOffset }) => {
     }
   }, [lastOffset, pct]);
 
-  // 对称颜色分区：±timeB 绿，±timeA 黄，外侧红
-  const greenL = ((maxRange - timeB) / (2 * maxRange)) * 100; // 左绿→黄
-  const greenR = ((maxRange + timeB) / (2 * maxRange)) * 100; // 右绿→黄
-  const yellowL = ((maxRange - timeA) / (2 * maxRange)) * 100; // 左黄→红
-  const yellowR = ((maxRange + timeA) / (2 * maxRange)) * 100; // 右黄→红
-
   const gradient = [
     `#FF4444 0%`,
-    `#FF4444 ${yellowL.toFixed(1)}%`,
-    `#FFD700 ${yellowL.toFixed(1)}%`,
-    `#FFD700 ${greenL.toFixed(1)}%`,
-    `#44BB44 ${greenL.toFixed(1)}%`,
-    `#44BB44 ${greenR.toFixed(1)}%`,
-    `#FFD700 ${greenR.toFixed(1)}%`,
-    `#FFD700 ${yellowR.toFixed(1)}%`,
-    `#FF4444 ${yellowR.toFixed(1)}%`,
+    `#FF4444 ${redL_end}%`,
+    `#FFD700 ${redL_end}%`,
+    `#FFD700 ${yellowL_end.toFixed(1)}%`,
+    `#44BB44 ${yellowL_end.toFixed(1)}%`,
+    `#44BB44 ${greenR_end.toFixed(1)}%`,
+    `#FFD700 ${greenR_end.toFixed(1)}%`,
+    `#FFD700 ${yellowR_end.toFixed(1)}%`,
+    `#FF4444 ${yellowR_end.toFixed(1)}%`,
     `#FF4444 100%`,
   ].join(', ');
 
@@ -474,7 +479,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   };
 
   const onPressWithFX = useCallback((track: number) => {
-    if (paused || effectiveConfig.autoPlay) return;
+    if (paused || pauseRewindRef2.current > 0 || effectiveConfig.autoPlay) return;
     const result = handlePress(track);
     if (result.hit) {
       // bad/miss 别响了也别闪了（
@@ -565,6 +570,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 进度条纯 performance.now()，扣掉暂停时长，直接写 DOM 不进 React
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
+  const pauseRewindRef2 = useRef(state.pauseRewind);
+  pauseRewindRef2.current = state.pauseRewind;
   const progressStartRef = useRef(0);
   const pauseStartRef = useRef(0);
   const totalPausedMsRef = useRef(0);
@@ -716,19 +723,31 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [engineSetPaused]);
 
   const doResume = useCallback(() => {
-    // 先复活引擎，再放歌（
+    // 不解冻音频/不更新 totalPauseRef——等引擎倒计时 3→2→1 走完才做
     engineSetPaused(false);
-    if (hasSong) {
-      try { audioManager.resume(); } catch { /* 静默 */ }
-    }
-    totalPauseRef.current += performance.now() - pauseTimeRef.current;
     setPaused(false);
-  }, [hasSong, engineSetPaused]);
+  }, [engineSetPaused]);
+
+  // 倒计时结束后：更新 totalPauseRef（含倒计时的 3 秒）+ 恢复音频
+  const pendingResumeRef = useRef(false);
+  useEffect(() => {
+    if (pendingResumeRef.current && !state.paused && !state.isFinished) {
+      pendingResumeRef.current = false;
+      totalPauseRef.current = performance.now() - pauseTimeRef.current;
+      if (hasSong) {
+        try { audioManager.resume(); } catch { /* 静默 */ }
+      }
+    }
+  }, [state.paused, state.isFinished, hasSong]);
+  const doResumeWrapped = useCallback(() => {
+    pendingResumeRef.current = true;
+    doResume();
+  }, [doResume]);
 
   // 暂停双击 400ms 防误触（
   const lastPauseClickRef = useRef<number>(0);
   const handlePause = useCallback(() => {
-    if (pausedRef.current || state.isFinished) return;
+    if (pausedRef.current || state.isFinished || pauseRewindRef2.current > 0) return;
     const now = Date.now();
     if (now - lastPauseClickRef.current < 400) {
       lastPauseClickRef.current = 0;
@@ -739,8 +758,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [state.isFinished, doPause]);
 
   const handleResume = useCallback(() => {
-    doResume();
-  }, [doResume]);
+    doResumeWrapped();
+  }, [doResumeWrapped]);
 
   const handleRetry = useCallback(() => {
     doResume();
@@ -759,7 +778,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     const h = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       e.preventDefault();
-      if (pausedRef.current) return; // 已暂停：不恢复
+      if (pausedRef.current || pauseRewindRef2.current > 0) return; // 已暂停或倒计时中
       const now = Date.now();
       if (now - lastEscRef.current < 400) {
         lastEscRef.current = 0;
@@ -1079,16 +1098,23 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       )}
 
       {/* 暂停遮罩 */}
-      {paused && (
+      {paused && state.pauseRewind <= 0 && (
         <div className="pause-overlay" onPointerDown={e => e.stopPropagation()}>
           <div className="glass-panel pause-panel" style={{ minWidth: pausePanelMaxW, minHeight: pausePanelMinH }}>
-            <h2 style={{ fontSize: pauseTitleFontSize }}>PAUSED</h2>
+            <h2 style={{ fontSize: pauseTitleFontSize }}>{lang === 'zh' ? '暂停' : 'PAUSED'}</h2>
             <div className="pause-buttons">
-              <button className="pause-sym-btn pause-sym-resume" disabled style={{ opacity: 0.3, cursor: 'not-allowed' }} title={lang === 'zh' ? '暂不可用' : 'Unavailable'}>▶</button>
+              <button className="pause-sym-btn pause-sym-resume" onClick={handleResume} title={lang === 'zh' ? '继续' : 'Resume'}>▶</button>
               <button className="pause-sym-btn pause-sym-retry" onClick={handleRetry} title={lang === 'zh' ? '重试' : 'Retry'}>⟳</button>
               <button className="pause-sym-btn pause-sym-quit" onClick={handleQuit} title={t('quit', lang)}>✕</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 恢复倒计时 */}
+      {state.pauseRewind > 0 && (
+        <div className="rewind-overlay">
+          <span className="rewind-count">{state.pauseRewind}</span>
         </div>
       )}
 

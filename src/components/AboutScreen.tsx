@@ -9,6 +9,46 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 5.2（正式版）', date: '2026-07-29',
+    items: [
+      '修复 import.meta.env 生产构建兼容性',
+      '准度条红区缩小、素材修复直链',
+      '更新系统 lingyanspace 升级托管',
+    ],
+  },
+  {
+    ver: 'Alpha 5.1（正式版）', date: '2026-07-29',
+    items: [
+      '准度条红区大幅缩小（10%），绿黄占比增大',
+      '素材修复切换至升级托管服务直链',
+      '更新系统完善（进度条+速度+错误详情）',
+    ],
+  },
+  {
+    ver: 'Alpha 5.0（正式版）', date: '2026-07-29',
+    items: [
+      '更新系统切换至 lingyanspace 升级托管服务',
+      '下载进度条 + 速度显示 + 错误详情',
+      '素材修复云端下载 + 检查更新完善',
+    ],
+  },
+  {
+    ver: 'Alpha 4.7（正式版）', date: '2026-07-29',
+    items: [
+      '素材修复改为云端一键下载（七牛云）',
+      '新增更新检查系统（主菜单 + 自动检测）',
+      '打击音效延迟优化、高密度渲染修复',
+    ],
+  },
+  {
+    ver: 'Alpha 4.6（正式版）', date: '2026-07-29',
+    items: [
+      '素材修复改为云端一键下载（七牛云）',
+      '新增更新检查系统（主菜单按钮 + 自动检测）',
+      'perf_maxVisibleNotes 默认提升至 1000',
+    ],
+  },
+  {
     ver: 'Alpha 4.5（正式版）', date: '2026-07-29',
     items: [
       '修复高密度谱面渲染停止恶性 bug',
@@ -116,8 +156,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 4.5</div>
-      <div className="about-ver about-ver-sub">v0.4.5</div>
+      <div className="about-ver">Alpha 5.2</div>
+      <div className="about-ver about-ver-sub">v0.5.2</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>

@@ -29,6 +29,8 @@ export interface GameEngineState {
   hasBreak: boolean;
   /** 最近一次打击的偏移 (ms)，正=晚，负=早，用于准度条 */
   lastOffset: number;
+  /** 暂停恢复倒计时，-1=无，3/2/1=倒计时中，0=刚结束 */
+  pauseRewind: number;
 }
 
 interface UseGameEngineOptions {
@@ -80,6 +82,10 @@ export function useGameEngine({
   const correctSoundDoublesRef = useRef<Set<number>>(new Set());
   // 渲染窗口起始索引：避免 notes.filter 全量遍历，高密度谱面 O(n)→O(窗口)
   const renderStartIdxRef = useRef(0);
+  // 暂停计时：外部 getCurrentTime 已处理补偿（有歌=音频自然不动，无歌=扣 totalPauseRef）
+  const pauseStartRef = useRef(0);
+  // 恢复后的倒计时：-1=无，3/2/1=倒计时中
+  const pauseRewindRef = useRef(-1);
   const devRef = useRef({
     timeB: getDevOverride('j_timeB'),
     timeA: getDevOverride('j_timeA'),
@@ -113,6 +119,7 @@ export function useGameEngine({
     hasGood: false,
     hasBreak: false,
     lastOffset: 0,
+    pauseRewind: -1,
   });
 
   // 判定窗口，dev 覆盖优先（
@@ -138,24 +145,48 @@ export function useGameEngine({
     pausedRef.current = false;
 
     audioManager.onEnded(() => { finishedRef.current = true; });
+    pauseStartRef.current = 0; pauseRewindRef.current = -1;
 
     setState(s => ({
       ...s,
       currentTime: 0, results: new Map(), combo: 0, maxCombo: 0, score: 0,
       activeNotes: [], activeHolds: new Set(), isPlaying: true, isFinished: false, paused: false,
-      resumeKey: 0, hasGood: false, hasBreak: false, lastOffset: 0,
+      resumeKey: 0, hasGood: false, hasBreak: false, lastOffset: 0, pauseRewind: -1,
     }));
   }, []);
 
   const setPaused = useCallback((p: boolean) => {
-    pausedRef.current = p;
-    setState(s => ({ ...s, paused: p, resumeKey: p ? s.resumeKey : s.resumeKey + 1 }));
+    if (p) {
+      // 暂停：记时刻 + 冻结一切
+      pauseStartRef.current = performance.now();
+      pausedRef.current = true;
+      // 如果正在倒计时中又暂停，取消倒计时
+      pauseRewindRef.current = -1;
+      setState(s => ({ ...s, paused: true, pauseRewind: -1 }));
+    } else {
+      // 恢复：累计暂停时长，但先不解冻——等 3→2→1 数完
+      // 冻结状态不变，只登记倒计时
+      pauseRewindRef.current = 3;
+      setState(s => ({ ...s, pauseRewind: 3, resumeKey: s.resumeKey + 1 }));
+      const tick = () => {
+        pauseRewindRef.current--;
+        if (pauseRewindRef.current > 0) {
+          setState(s => ({ ...s, pauseRewind: pauseRewindRef.current }));
+          setTimeout(tick, 1000);
+        } else {
+          // 倒计时结束 → 真正解冻
+          pausedRef.current = false;
+          setState(s => ({ ...s, paused: false, pauseRewind: -1 }));
+        }
+      };
+      setTimeout(tick, 1000);
+    }
   }, []);
 
   // ——— 按下去 ———
   const handlePress = useCallback(
     (track: number): { hit: boolean; playSound: boolean; judgmentType: string } => {
-      if (!isPlayingRef.current || pausedRef.current) return { hit: false, playSound: false, judgmentType: '' };
+      if (!isPlayingRef.current || pausedRef.current || pauseRewindRef.current > 0) return { hit: false, playSound: false, judgmentType: '' };
       pressedTracksRef.current.add(track);
       const now = getTimeRef.current();
       const results = resultsRef.current;
@@ -226,7 +257,7 @@ export function useGameEngine({
   // ——— 松手 ———
   const handleRelease = useCallback(
     (track: number) => {
-      if (!isPlayingRef.current || pausedRef.current) return;
+      if (!isPlayingRef.current || pausedRef.current || pauseRewindRef.current > 0) return;
       pressedTracksRef.current.delete(track);
 
       holdActiveRef.current.forEach((_info, noteId) => {
@@ -285,9 +316,9 @@ export function useGameEngine({
     const loop = () => {
       const now = getCurrentTime() + latencyRef.current;
       const results = resultsRef.current;
+      const inPause = pausedRef.current || pauseRewindRef.current > 0;
 
-      // AutoPlay：机器人大杀四方（
-      if (autoPlayRef.current) {
+      if (autoPlayRef.current && !inPause) {
         for (let i = noteIndexRef.current; i < notes.length; i++) {
           const note = notes[i];
           if (results.has(note.id)) continue;
@@ -312,8 +343,8 @@ export function useGameEngine({
         updateScoreState(Array.from(results.values()));
       }
 
-      // 正确音效：到点自动播放，不碰 results，不影响计分（autoplay 已自带正确音效，互斥）
-      if (correctHitSoundRef.current && !autoPlayRef.current) {
+      // 正确音效：到点自动播放，不碰 results（暂停/倒计时跳过）
+      if (correctHitSoundRef.current && !autoPlayRef.current && !inPause) {
         const csDoubles = correctSoundDoublesRef.current;
         let csIdx = correctSoundIdxRef.current;
         while (csIdx < notes.length && now >= notes[csIdx].startTime) {
@@ -331,10 +362,10 @@ export function useGameEngine({
         correctSoundIdxRef.current = csIdx;
       }
 
-      // Miss 检测：到点了还没人管 → 不好意思（
+      // Miss 检测：暂停/倒计时跳过
+      if (!inPause) {
       while (noteIndexRef.current < notes.length) {
         const note = notes[noteIndexRef.current];
-        // 已经在 hold 了，跳过
         if (holdActiveRef.current.has(note.id)) { noteIndexRef.current++; continue; }
         if (results.has(note.id)) { noteIndexRef.current++; continue; }
         if (isNoteMissed(note, now, windows)) {
@@ -343,8 +374,10 @@ export function useGameEngine({
           noteIndexRef.current++;
         } else break;
       }
+      }
 
-      // hold 自动收尾：按到 endTime → 自动 perfect
+      // hold 自动收尾：暂停/倒计时跳过
+      if (!inPause) {
       holdActiveRef.current.forEach((_info, noteId) => {
         const note = notes.find(n => n.id === noteId);
         if (!note) return;
@@ -356,8 +389,10 @@ export function useGameEngine({
           updateScoreState(Array.from(results.values()));
         }
       });
+      }
 
-      // 结束了？
+      // 结束了？暂停中不结算
+      if (!inPause) {
       const effectiveDuration = duration > 0 ? duration : 999_999_999;
       const songEnded = now >= effectiveDuration - devRef.current.gameEndEarly;
       const shouldEnd = hasSongRef.current
@@ -383,6 +418,7 @@ export function useGameEngine({
         onFinish(finalResults);
         return;
       }
+      } // end !inPause
 
       // 节流：别每帧都刷 React，扛不住（
       frameCountRef.current++;
@@ -406,7 +442,7 @@ export function useGameEngine({
           && results.has(notes[rsIdx].id)) {
           rsIdx++;
         }
-        renderStartIdxRef.current = Math.max(0, rsIdx - 10); // 留 10 个余量防抖动
+        renderStartIdxRef.current = Math.max(0, rsIdx);
 
         const visibleNotes: Note[] = [];
         const maxN = devRef.current.maxVisibleNotes;
