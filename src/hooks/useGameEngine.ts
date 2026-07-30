@@ -43,6 +43,8 @@ interface UseGameEngineOptions {
   latencyOffset?: number;
   /** 正确音效：到点自动播放正确打击音，但不影响判定和计分 */
   correctHitSound?: boolean;
+  /** 倒计时结束回调：引擎解冻时调用，用于恢复音频等 */
+  onResume?: () => void;
 }
 
 export function useGameEngine({
@@ -54,6 +56,7 @@ export function useGameEngine({
   onPlayHitSound,
   latencyOffset = 0,
   correctHitSound = false,
+  onResume,
 }: UseGameEngineOptions) {
   const rafRef = useRef<number>(0);
   const frameCountRef = useRef(0);
@@ -176,6 +179,7 @@ export function useGameEngine({
         } else {
           // 倒计时结束 → 真正解冻
           pausedRef.current = false;
+          onResume?.();
           setState(s => ({ ...s, paused: false, pauseRewind: -1 }));
         }
       };

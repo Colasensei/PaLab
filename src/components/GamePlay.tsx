@@ -463,8 +463,15 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 霸王模式就是套一层 auto，但藏标、亮轨、记成绩（
   const effectiveConfig = useMemo(() => (invincibleMode || isOverlord()) ? { ...config, autoPlay: true } : config, [config, invincibleMode]);
 
+  // 引擎倒计时结束时恢复音频
+  const handleEngineResume = useCallback(() => {
+    if (hasSong) {
+      try { audioManager.resume(); } catch { /* 静默 */ }
+    }
+  }, [hasSong]);
+
   const { state, start, setPaused: engineSetPaused, handlePress, handleRelease } = useGameEngine({
-    config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound,
+    config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound, onResume: handleEngineResume,
   });
 
   // combo 颜色：全P金 / 有G蓝 / 断白
@@ -724,12 +731,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   const doResume = useCallback(() => {
     totalPauseRef.current = performance.now() - pauseTimeRef.current;
-    if (hasSong) {
-      try { audioManager.resume(); } catch { /* 静默 */ }
-    }
     engineSetPaused(false);
     setPaused(false);
-  }, [hasSong, engineSetPaused]);
+  }, [engineSetPaused]);
 
   // 暂停双击 400ms 防误触（
   const lastPauseClickRef = useRef<number>(0);
