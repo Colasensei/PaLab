@@ -29,6 +29,7 @@ export interface GameEngineState {
   hasBreak: boolean;
   /** 最近一次打击的偏移 (ms)，正=晚，负=早，用于准度条 */
   lastOffset: number;
+  pauseRewind: number;
 }
 
 interface UseGameEngineOptions {
@@ -41,6 +42,7 @@ interface UseGameEngineOptions {
   latencyOffset?: number;
   /** 正确音效：到点自动播放正确打击音，但不影响判定和计分 */
   correctHitSound?: boolean;
+  onResume?: () => void;
 }
 
 export function useGameEngine({
@@ -52,6 +54,7 @@ export function useGameEngine({
   onPlayHitSound,
   latencyOffset = 0,
   correctHitSound = false,
+  onResume,
 }: UseGameEngineOptions) {
   const rafRef = useRef<number>(0);
   const frameCountRef = useRef(0);
@@ -63,6 +66,9 @@ export function useGameEngine({
   const finishedRef = useRef(false);
   const isPlayingRef = useRef(false);
   const pausedRef = useRef(false);
+  const pauseRewindRef = useRef(-1);
+  const onResumeRef = useRef<(() => void) | undefined>(undefined);
+  onResumeRef.current = onResume;
   const autoPlayRef = useRef(config.autoPlay);
   autoPlayRef.current = config.autoPlay;
   const latencyRef = useRef(latencyOffset);
@@ -113,6 +119,7 @@ export function useGameEngine({
     hasGood: false,
     hasBreak: false,
     lastOffset: 0,
+    pauseRewind: -1,
   });
 
   // 判定窗口，dev 覆盖优先（
@@ -136,6 +143,7 @@ export function useGameEngine({
     finishedRef.current = false;
     isPlayingRef.current = true;
     pausedRef.current = false;
+    pauseRewindRef.current = -1;
 
     audioManager.onEnded(() => { finishedRef.current = true; });
 
@@ -148,8 +156,26 @@ export function useGameEngine({
   }, []);
 
   const setPaused = useCallback((p: boolean) => {
-    pausedRef.current = p;
-    setState(s => ({ ...s, paused: p, resumeKey: p ? s.resumeKey : s.resumeKey + 1 }));
+    if (p) {
+      pausedRef.current = true;
+      pauseRewindRef.current = -1;
+      setState(s => ({ ...s, paused: true, pauseRewind: -1 }));
+    } else {
+      pauseRewindRef.current = 3;
+      setState(s => ({ ...s, pauseRewind: 3, resumeKey: s.resumeKey + 1 }));
+      const tick = () => {
+        pauseRewindRef.current--;
+        if (pauseRewindRef.current > 0) {
+          setState(s => ({ ...s, pauseRewind: pauseRewindRef.current }));
+          setTimeout(tick, 1000);
+        } else {
+          pausedRef.current = false;
+          onResumeRef.current?.();
+          setState(s => ({ ...s, paused: false, pauseRewind: -1 }));
+        }
+      };
+      setTimeout(tick, 1000);
+    }
   }, []);
 
   // ——— 按下去 ———

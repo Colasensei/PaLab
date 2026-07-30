@@ -457,8 +457,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 霸王模式就是套一层 auto，但藏标、亮轨、记成绩（
   const effectiveConfig = useMemo(() => (invincibleMode || isOverlord()) ? { ...config, autoPlay: true } : config, [config, invincibleMode]);
 
+  // 引擎倒计时结束时恢复音频
+  const handleEngineResume = useCallback(() => {
+    if (hasSong) audioManager.play(1);
+  }, [hasSong]);
+
   const { state, start, setPaused: engineSetPaused, handlePress, handleRelease } = useGameEngine({
-    config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound,
+    config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound, onResume: handleEngineResume,
   });
 
   // combo 颜色：全P金 / 有G蓝 / 断白
@@ -713,10 +718,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   const doResume = useCallback(() => {
     totalPauseRef.current += performance.now() - pauseTimeRef.current;
-    if (hasSong) audioManager.play(1);
     engineSetPaused(false);
     setPaused(false);
-  }, [hasSong, engineSetPaused]);
+  }, [engineSetPaused]);
 
   const handlePause = useCallback(() => {
     if (paused || state.isFinished) return;
@@ -1074,7 +1078,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       )}
 
       {/* 暂停遮罩 */}
-      {paused && (
+      {paused && state.pauseRewind <= 0 && (
         <div className="pause-overlay" onPointerDown={e => e.stopPropagation()}>
           <div className="glass-panel pause-panel" style={{ minWidth: pausePanelMaxW, minHeight: pausePanelMinH }}>
             <h2 style={{ fontSize: pauseTitleFontSize }}>{lang === 'zh' ? '暂停' : 'PAUSED'}</h2>
@@ -1084,6 +1088,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
               <button className="pause-sym-btn pause-sym-quit" onClick={handleQuit} title={t('quit', lang)}>✕</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 恢复倒计时 */}
+      {state.pauseRewind > 0 && (
+        <div className="rewind-overlay">
+          <span className="rewind-count">{state.pauseRewind}</span>
         </div>
       )}
 
