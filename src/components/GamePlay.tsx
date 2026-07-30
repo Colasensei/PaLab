@@ -465,10 +465,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   // 引擎倒计时结束时恢复音频
   const handleEngineResume = useCallback(() => {
-    if (hasSong) {
-      try { audioManager.resume(); } catch { /* 静默 */ }
-    }
-  }, [hasSong]);
+    audioManager.setVolume(musicVolume / 100);
+  }, [musicVolume]);
 
   const { state, start, setPaused: engineSetPaused, handlePress, handleRelease } = useGameEngine({
     config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound, onResume: handleEngineResume,
@@ -533,9 +531,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     return () => clearTimeout(timer);
   }, [start, hasSong]);
 
-  // 离开页面 / 结算 → 停 keep-alive
+  // 离开页面 / 结算 → 停 keep-alive + 停音乐
   useEffect(() => {
-    return () => { stopHitKeepAlive(); };
+    return () => { stopHitKeepAlive(); audioManager.stop(); };
   }, []);
 
   // FC/AP 炸了：停歌 → 动画 → 重开
@@ -723,7 +721,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [effects.length]);
 
   const doPause = useCallback(() => {
-    audioManager.pause();
+    audioManager.setVolume(0);
     engineSetPaused(true);
     setPaused(true);
     pauseTimeRef.current = performance.now();
@@ -753,15 +751,15 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [doResume]);
 
   const handleRetry = useCallback(() => {
-    doResume();
+    audioManager.stop();
     if (onRestart) onRestart();
     else onBack();
-  }, [doResume, onRestart, onBack]);
+  }, [onRestart, onBack]);
 
   const handleQuit = useCallback(() => {
-    doResume();
+    audioManager.stop();
     onBack();
-  }, [doResume, onBack]);
+  }, [onBack]);
 
   // Esc 键暂停（双击），暂停后不再支持 ESC 恢复
   const lastEscRef = useRef<number>(0);
