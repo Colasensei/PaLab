@@ -21,7 +21,6 @@ export interface GameEngineState {
   activeHolds: Set<number>;
   isPlaying: boolean;
   isFinished: boolean;
-  paused: boolean;
   resumeKey: number;
   /** 是否出现过 Good */
   hasGood: boolean;
@@ -62,7 +61,6 @@ export function useGameEngine({
   const noteIndexRef = useRef(0);
   const finishedRef = useRef(false);
   const isPlayingRef = useRef(false);
-  const pausedRef = useRef(false);
   const autoPlayRef = useRef(config.autoPlay);
   autoPlayRef.current = config.autoPlay;
   const latencyRef = useRef(latencyOffset);
@@ -108,7 +106,6 @@ export function useGameEngine({
     activeHolds: new Set(),
     isPlaying: false,
     isFinished: false,
-    paused: false,
     resumeKey: 0,
     hasGood: false,
     hasBreak: false,
@@ -135,27 +132,21 @@ export function useGameEngine({
     noteIndexRef.current = 0;
     finishedRef.current = false;
     isPlayingRef.current = true;
-    pausedRef.current = false;
 
     audioManager.onEnded(() => { finishedRef.current = true; });
 
     setState(s => ({
       ...s,
       currentTime: 0, results: new Map(), combo: 0, maxCombo: 0, score: 0,
-      activeNotes: [], activeHolds: new Set(), isPlaying: true, isFinished: false, paused: false,
+      activeNotes: [], activeHolds: new Set(), isPlaying: true, isFinished: false,
       resumeKey: 0, hasGood: false, hasBreak: false, lastOffset: 0,
     }));
-  }, []);
-
-  const setPaused = useCallback((p: boolean) => {
-    pausedRef.current = p;
-    setState(s => ({ ...s, paused: p, resumeKey: p ? s.resumeKey : s.resumeKey + 1 }));
   }, []);
 
   // ——— 按下去 ———
   const handlePress = useCallback(
     (track: number): { hit: boolean; playSound: boolean; judgmentType: string } => {
-      if (!isPlayingRef.current || pausedRef.current) return { hit: false, playSound: false, judgmentType: '' };
+      if (!isPlayingRef.current) return { hit: false, playSound: false, judgmentType: '' };
       pressedTracksRef.current.add(track);
       const now = getTimeRef.current();
       const results = resultsRef.current;
@@ -226,7 +217,7 @@ export function useGameEngine({
   // ——— 松手 ———
   const handleRelease = useCallback(
     (track: number) => {
-      if (!isPlayingRef.current || pausedRef.current) return;
+      if (!isPlayingRef.current) return;
       pressedTracksRef.current.delete(track);
 
       holdActiveRef.current.forEach((_info, noteId) => {
@@ -279,15 +270,12 @@ export function useGameEngine({
   // ——— 主循环 ———
   useEffect(() => {
     if (!state.isPlaying) return;
-    // 暂停就别转了，省电（
-    if (state.paused) return;
 
     const loop = () => {
       const now = getCurrentTime() + latencyRef.current;
       const results = resultsRef.current;
-      const inPause = pausedRef.current;
 
-      if (autoPlayRef.current && !inPause) {
+      if (autoPlayRef.current) {
         for (let i = noteIndexRef.current; i < notes.length; i++) {
           const note = notes[i];
           if (results.has(note.id)) continue;
@@ -313,7 +301,7 @@ export function useGameEngine({
       }
 
       // 正确音效：到点自动播放，不碰 results（暂停/倒计时跳过）
-      if (correctHitSoundRef.current && !autoPlayRef.current && !inPause) {
+      if (correctHitSoundRef.current && !autoPlayRef.current) {
         const csDoubles = correctSoundDoublesRef.current;
         let csIdx = correctSoundIdxRef.current;
         while (csIdx < notes.length && now >= notes[csIdx].startTime) {
@@ -331,8 +319,7 @@ export function useGameEngine({
         correctSoundIdxRef.current = csIdx;
       }
 
-      // Miss 检测：暂停/倒计时跳过
-      if (!inPause) {
+      // Miss 检测
       while (noteIndexRef.current < notes.length) {
         const note = notes[noteIndexRef.current];
         if (holdActiveRef.current.has(note.id)) { noteIndexRef.current++; continue; }
@@ -343,10 +330,8 @@ export function useGameEngine({
           noteIndexRef.current++;
         } else break;
       }
-      }
 
-      // hold 自动收尾：暂停/倒计时跳过
-      if (!inPause) {
+      // hold 自动收尾
       holdActiveRef.current.forEach((_info, noteId) => {
         const note = notes.find(n => n.id === noteId);
         if (!note) return;
@@ -358,10 +343,8 @@ export function useGameEngine({
           updateScoreState(Array.from(results.values()));
         }
       });
-      }
 
-      // 结束了？暂停中不结算
-      if (!inPause) {
+      // 结束了？
       const effectiveDuration = duration > 0 ? duration : 999_999_999;
       const songEnded = now >= effectiveDuration - devRef.current.gameEndEarly;
       const shouldEnd = hasSongRef.current
@@ -387,7 +370,6 @@ export function useGameEngine({
         onFinish(finalResults);
         return;
       }
-      } // end !inPause
 
       // 节流：别每帧都刷 React，扛不住（
       frameCountRef.current++;
@@ -436,7 +418,7 @@ export function useGameEngine({
 
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [state.isPlaying, state.paused, state.resumeKey, notes, duration, windows, onFinish, getCurrentTime, onPlayHitSound, noteScore]);
+  }, [state.isPlaying, state.resumeKey, notes, duration, windows, onFinish, getCurrentTime, onPlayHitSound, noteScore]);
 
-  return { state, start, setPaused, handlePress, handleRelease };
+  return { state, start, handlePress, handleRelease };
 }
