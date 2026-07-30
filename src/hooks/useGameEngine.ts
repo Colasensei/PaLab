@@ -21,6 +21,7 @@ export interface GameEngineState {
   activeHolds: Set<number>;
   isPlaying: boolean;
   isFinished: boolean;
+  paused: boolean;
   resumeKey: number;
   /** 是否出现过 Good */
   hasGood: boolean;
@@ -61,6 +62,7 @@ export function useGameEngine({
   const noteIndexRef = useRef(0);
   const finishedRef = useRef(false);
   const isPlayingRef = useRef(false);
+  const pausedRef = useRef(false);
   const autoPlayRef = useRef(config.autoPlay);
   autoPlayRef.current = config.autoPlay;
   const latencyRef = useRef(latencyOffset);
@@ -106,6 +108,7 @@ export function useGameEngine({
     activeHolds: new Set(),
     isPlaying: false,
     isFinished: false,
+    paused: false,
     resumeKey: 0,
     hasGood: false,
     hasBreak: false,
@@ -132,21 +135,27 @@ export function useGameEngine({
     noteIndexRef.current = 0;
     finishedRef.current = false;
     isPlayingRef.current = true;
+    pausedRef.current = false;
 
     audioManager.onEnded(() => { finishedRef.current = true; });
 
     setState(s => ({
       ...s,
       currentTime: 0, results: new Map(), combo: 0, maxCombo: 0, score: 0,
-      activeNotes: [], activeHolds: new Set(), isPlaying: true, isFinished: false,
+      activeNotes: [], activeHolds: new Set(), isPlaying: true, isFinished: false, paused: false,
       resumeKey: 0, hasGood: false, hasBreak: false, lastOffset: 0,
     }));
+  }, []);
+
+  const setPaused = useCallback((p: boolean) => {
+    pausedRef.current = p;
+    setState(s => ({ ...s, paused: p, resumeKey: p ? s.resumeKey : s.resumeKey + 1 }));
   }, []);
 
   // ——— 按下去 ———
   const handlePress = useCallback(
     (track: number): { hit: boolean; playSound: boolean; judgmentType: string } => {
-      if (!isPlayingRef.current) return { hit: false, playSound: false, judgmentType: '' };
+      if (!isPlayingRef.current || pausedRef.current) return { hit: false, playSound: false, judgmentType: '' };
       pressedTracksRef.current.add(track);
       const now = getTimeRef.current();
       const results = resultsRef.current;
@@ -217,7 +226,7 @@ export function useGameEngine({
   // ——— 松手 ———
   const handleRelease = useCallback(
     (track: number) => {
-      if (!isPlayingRef.current) return;
+      if (!isPlayingRef.current || pausedRef.current) return;
       pressedTracksRef.current.delete(track);
 
       holdActiveRef.current.forEach((_info, noteId) => {
@@ -270,6 +279,7 @@ export function useGameEngine({
   // ——— 主循环 ———
   useEffect(() => {
     if (!state.isPlaying) return;
+    if (state.paused) return;
 
     const loop = () => {
       const now = getCurrentTime() + latencyRef.current;
@@ -418,7 +428,7 @@ export function useGameEngine({
 
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [state.isPlaying, state.resumeKey, notes, duration, windows, onFinish, getCurrentTime, onPlayHitSound, noteScore]);
+  }, [state.isPlaying, state.paused, state.resumeKey, notes, duration, windows, onFinish, getCurrentTime, onPlayHitSound, noteScore]);
 
-  return { state, start, handlePress, handleRelease };
+  return { state, start, setPaused, handlePress, handleRelease };
 }

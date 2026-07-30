@@ -353,6 +353,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const [effects, setEffects] = useState<JEffect[]>([]);
   const effectIdRef = useRef(0);
 
+  const [paused, setPaused] = useState(false);
+  const pauseTimeRef = useRef<number>(0);
+  const totalPauseRef = useRef<number>(0);
   const hasSong = !!config.songUrl;
 
   // FC/AP 炸了 → 回旋镖动画
@@ -395,6 +398,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const comboFontSize = useMemo(() => getDevOverride('e_comboFontSize'), []);
   const scoreFontSize = useMemo(() => getDevOverride('e_scoreFontSize'), []);
   const gameStartDelay = useMemo(() => getDevOverride('u_gameStartDelay'), []);
+  const pausePanelMaxW = useMemo(() => getDevOverride('u_pauseMaxW'), []);
+  const pausePanelMinH = useMemo(() => getDevOverride('u_pauseMinH'), []);
+  const pauseTitleFontSize = useMemo(() => getDevOverride('u_pauseTitleFont'), []);
 
   // 特效
   const doubleGlowSize = useMemo(() => getDevOverride('e_doubleGlowSize'), []);
@@ -443,7 +449,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 获取游戏时间
   const getCurrentTime = useCallback((): number => {
     if (hasSong) return audioManager.getCurrentTime();
-    return performance.now() - gameStartRef.current;
+    return performance.now() - gameStartRef.current - totalPauseRef.current;
   }, [hasSong]);
 
   // 无敌娱乐模式 → 等同于 autoPlay
@@ -451,7 +457,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 霸王模式就是套一层 auto，但藏标、亮轨、记成绩（
   const effectiveConfig = useMemo(() => (invincibleMode || isOverlord()) ? { ...config, autoPlay: true } : config, [config, invincibleMode]);
 
-  const { state, start, handlePress, handleRelease } = useGameEngine({
+  const { state, start, setPaused: engineSetPaused, handlePress, handleRelease } = useGameEngine({
     config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound,
   });
 
@@ -467,7 +473,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   };
 
   const onPressWithFX = useCallback((track: number) => {
-    if (effectiveConfig.autoPlay) return;
+    if (paused || effectiveConfig.autoPlay) return;
     const result = handlePress(track);
     if (result.hit) {
       // bad/miss 别响了也别闪了（
@@ -486,7 +492,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       }
     }
     setKeysDown(prev => new Set(prev).add(track));
-  }, [effectiveConfig.autoPlay, handlePress, correctHitSound]);
+  }, [paused, effectiveConfig.autoPlay, handlePress, correctHitSound]);
 
   const onReleaseWithFX = useCallback((track: number) => {
     if (effectiveConfig.autoPlay) return;
@@ -506,6 +512,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     const timer = setTimeout(() => {
       resetProgressTimer();
       gameStartRef.current = performance.now();
+      totalPauseRef.current = 0;
       startHitKeepAlive();
       if (hasSong) { audioManager.setVolume(musicVolume / 100); audioManager.play(1); }
       start();
@@ -541,6 +548,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         retryAnimRef.current = false;
         audioManager.stop();
         gameStartRef.current = performance.now();
+        totalPauseRef.current = 0;
         lastResultCountRef.current = 0;
         resetProgressTimer();
         setEffects([]);
@@ -553,16 +561,28 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     }
   }, [state.results, state.isFinished, target, start, hasSong]);
 
-  // 进度条——简化版，无暂停
+  // 进度条
   const progressStartRef = useRef(0);
+  const pauseStartRef = useRef(0);
+  const totalPausedMsRef = useRef(0);
   const devTimeThrottleRef = useRef(0);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   useEffect(() => {
     let running = true;
     let raf = 0;
     const tick = () => {
       if (!running) return;
       raf = requestAnimationFrame(tick);
-      const elapsed = Math.max(0, performance.now() - progressStartRef.current);
+      if (pausedRef.current) {
+        if (!pauseStartRef.current) pauseStartRef.current = performance.now();
+        return;
+      }
+      if (pauseStartRef.current) {
+        totalPausedMsRef.current += performance.now() - pauseStartRef.current;
+        pauseStartRef.current = 0;
+      }
+      const elapsed = Math.max(0, performance.now() - progressStartRef.current - totalPausedMsRef.current);
       displayTimeRef.current = elapsed;
       if (progressBarRef.current) {
         const pct = duration > 0 ? Math.min(100, (elapsed / duration) * 100) : 0;
@@ -580,6 +600,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   const resetProgressTimer = () => {
     progressStartRef.current = performance.now();
+    pauseStartRef.current = 0;
+    totalPausedMsRef.current = 0;
     displayTimeRef.current = 0;
     setDevDisplayTime(0);
     if (progressBarRef.current) progressBarRef.current.style.width = '0%';
@@ -682,6 +704,35 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     return () => clearInterval(iv);
   }, [effects.length]);
 
+  const doPause = useCallback(() => {
+    audioManager.pause();
+    engineSetPaused(true);
+    setPaused(true);
+    pauseTimeRef.current = performance.now();
+  }, [engineSetPaused]);
+
+  const doResume = useCallback(() => {
+    totalPauseRef.current += performance.now() - pauseTimeRef.current;
+    if (hasSong) audioManager.play(1);
+    engineSetPaused(false);
+    setPaused(false);
+  }, [hasSong, engineSetPaused]);
+
+  const handlePause = useCallback(() => {
+    if (paused || state.isFinished) return;
+    const now = Date.now();
+    if (now - lastPauseClickRef.current < 400) {
+      lastPauseClickRef.current = 0;
+      doPause();
+    } else {
+      lastPauseClickRef.current = now;
+    }
+  }, [paused, state.isFinished, doPause]);
+
+  const handleResume = useCallback(() => {
+    doResume();
+  }, [doResume]);
+
   const handleRetry = useCallback(() => {
     audioManager.stop();
     if (onRestart) onRestart();
@@ -692,6 +743,28 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     audioManager.stop();
     onBack();
   }, [onBack]);
+
+  // 暂停双击
+  const lastPauseClickRef = useRef<number>(0);
+
+  // Esc 暂停
+  const lastEscRef = useRef<number>(0);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      if (paused) return;
+      const now = Date.now();
+      if (now - lastEscRef.current < 400) {
+        lastEscRef.current = 0;
+        doPause();
+      } else {
+        lastEscRef.current = now;
+      }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [paused, doPause]);
 
   // 轨道宽度，80~180px 自适应（
   const trackWidth = Math.max(trackMinW, Math.min(trackMaxW, Math.floor((window.innerWidth - hMargin) / config.trackCount)));
@@ -768,6 +841,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
       {/* HUD */}
       <div className="hud-left">
+        <button className="btn btn-small btn-pause" onClick={handlePause}>{lang === 'zh' ? '暂停' : 'Pause'}</button>
         {effectiveConfig.autoPlay && !isOverlord() && <span className="autoplay-badge">{invincibleMode ? 'INVINCIBLE' : 'AUTO'}</span>}
       </div>
       <div className="hud-center">
@@ -1000,6 +1074,18 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       )}
 
       {/* 暂停遮罩 */}
+      {paused && (
+        <div className="pause-overlay" onPointerDown={e => e.stopPropagation()}>
+          <div className="glass-panel pause-panel" style={{ minWidth: pausePanelMaxW, minHeight: pausePanelMinH }}>
+            <h2 style={{ fontSize: pauseTitleFontSize }}>{lang === 'zh' ? '暂停' : 'PAUSED'}</h2>
+            <div className="pause-buttons">
+              <button className="pause-sym-btn pause-sym-resume" onClick={handleResume} title={lang === 'zh' ? '继续' : 'Resume'}>▶</button>
+              <button className="pause-sym-btn pause-sym-retry" onClick={handleRetry} title={lang === 'zh' ? '重试' : 'Retry'}>⟳</button>
+              <button className="pause-sym-btn pause-sym-quit" onClick={handleQuit} title={t('quit', lang)}>✕</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 开发者调试面板 */}
       {devMode && devCollapsed && (
