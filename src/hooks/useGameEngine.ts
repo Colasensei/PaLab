@@ -29,8 +29,6 @@ export interface GameEngineState {
   hasBreak: boolean;
   /** 最近一次打击的偏移 (ms)，正=晚，负=早，用于准度条 */
   lastOffset: number;
-  /** 暂停恢复倒计时，-1=无，3/2/1=倒计时中，0=刚结束 */
-  pauseRewind: number;
 }
 
 interface UseGameEngineOptions {
@@ -82,8 +80,6 @@ export function useGameEngine({
   const correctSoundDoublesRef = useRef<Set<number>>(new Set());
   // 渲染窗口起始索引：避免 notes.filter 全量遍历，高密度谱面 O(n)→O(窗口)
   const renderStartIdxRef = useRef(0);
-  // 暂停倒计时：-1=无，3/2/1=倒计时中
-  const pauseRewindRef = useRef(-1);
   const devRef = useRef({
     timeB: getDevOverride('j_timeB'),
     timeA: getDevOverride('j_timeA'),
@@ -117,7 +113,6 @@ export function useGameEngine({
     hasGood: false,
     hasBreak: false,
     lastOffset: 0,
-    pauseRewind: -1,
   });
 
   // 判定窗口，dev 覆盖优先（
@@ -143,20 +138,18 @@ export function useGameEngine({
     pausedRef.current = false;
 
     audioManager.onEnded(() => { finishedRef.current = true; });
-    pauseRewindRef.current = -1;
 
     setState(s => ({
       ...s,
       currentTime: 0, results: new Map(), combo: 0, maxCombo: 0, score: 0,
       activeNotes: [], activeHolds: new Set(), isPlaying: true, isFinished: false, paused: false,
-      resumeKey: 0, hasGood: false, hasBreak: false, lastOffset: 0, pauseRewind: -1,
+      resumeKey: 0, hasGood: false, hasBreak: false, lastOffset: 0,
     }));
   }, []);
 
   const setPaused = useCallback((p: boolean) => {
     pausedRef.current = p;
-    pauseRewindRef.current = -1;
-    setState(s => ({ ...s, paused: p, pauseRewind: -1, resumeKey: p ? s.resumeKey : s.resumeKey + 1 }));
+    setState(s => ({ ...s, paused: p, resumeKey: p ? s.resumeKey : s.resumeKey + 1 }));
   }, []);
 
   // ——— 按下去 ———
