@@ -3955,15 +3955,15 @@ body::after {
 /* ─── 主菜单 ─── */
 .menu-screen {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding-top: 40vh;
-  padding-bottom: 0;
+  justify-content: center;
+  padding: 0;
   position: relative;
   overflow: hidden;
 }
 
-/* 看板娘立绘 — 居中，z-index 高于 logo（景深：立绘在字母前方） */
+/* 看板娘立绘 */
 .menu-mascot {
   position: absolute;
   z-index: 2;
@@ -3981,65 +3981,209 @@ body::after {
   opacity: 1;
 }
 
-/* 按钮区 — 屏幕中部偏下，强模糊 */
+/* ─── 卡片按钮区 ─── */
 .menu-actions {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 24px;
   position: relative;
   z-index: 3;
 }
-.menu-buttons {
+
+.menu-card-row {
+  display: flex;
+  gap: 24px;
+  align-items: stretch;
+}
+
+/* 行内竖向列 */
+.menu-card-col {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  align-items: center;
-  background: rgba(3, 3, 12, 0.72);
-  backdrop-filter: blur(32px);
-  -webkit-backdrop-filter: blur(32px);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 16px;
-  padding: 16px;
+  gap: 24px;
+  flex: 1.2;
 }
 
-.menu-play-row {
+/* 紧凑行：按钮不拉伸，居中 */
+.menu-card-row-fit {
+  justify-content: center;
+}
+.menu-card-row-fit .menu-card {
+  flex: 0 0 auto;
+  min-width: 130px;
+}
+
+/* ─── 卡片通用 ─── */
+.menu-card {
   display: flex;
-  gap: 8px;
-  align-items: stretch;
-  width: 280px;
-}
-
-.menu-btn-play {
-  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 28px 36px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-main);
   min-width: 0;
 }
+.menu-card:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 30px rgba(0,0,0,0.35);
+}
+.menu-card:active {
+  transform: scale(0.97);
+}
 
-.menu-btn {
-  width: 280px;
-  padding: 16px 0;
-  font-size: 16px;
+.menu-card-icon {
+  font-size: 48px;
+  opacity: 0.8;
+}
+
+.menu-card-label {
+  font-size: 26px;
+  font-weight: 600;
   letter-spacing: 5px;
-  border-radius: 12px;
+  white-space: nowrap;
 }
 
-.menu-btn.btn-primary {
-  background: linear-gradient(135deg, #888888, #666666);
+/* ─── 主卡片：谱面库 ─── */
+.menu-card-primary {
+  flex: 3;
+  padding: 50px 36px;
+  gap: 24px;
+  align-items: flex-start;
+  justify-content: flex-end;
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.18);
+  position: relative;
+  overflow: hidden;
+}
+/* 曲绘覆盖层 */
+.menu-card-cover-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.menu-card-cover-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 2;
+}
+.menu-card-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+.menu-card-cover.anim {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.menu-card-cover.out { transform: translateY(100%); }
+.menu-card-cover.in  { transform: translateY(0); }
+.menu-card-primary .menu-card-label {
+  position: relative;
+  z-index: 2;
+}
+.menu-card-primary .menu-card-icon { font-size: 80px; opacity: 1; }
+.menu-card-primary .menu-card-label { font-size: 36px; letter-spacing: 10px; }
+.menu-card-primary:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.3);
+  box-shadow: 0 10px 50px rgba(0,0,0,0.45);
 }
 
-.menu-btn.btn-outline {
-  border-color: rgba(255, 255, 255, 0.12);
+/* ─── 个人卡片：头像左 + RKS 右 ─── */
+.menu-card-profile {
+  flex-direction: row;
+  gap: 14px;
+  padding: 16px 28px;
+}
+.menu-card-profile .menu-card-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2.5px solid rgba(255,255,255,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.05);
+}
+.menu-card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.menu-card-avatar span {
+  font-size: 26px;
+  color: rgba(255,255,255,0.4);
+}
+.menu-card-rks {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.menu-card-rks-val {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+.menu-card-rks-label {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  opacity: 0.5;
 }
 
-.menu-btn-help {
-  width: 280px !important;
-  padding: 16px 0 !important;
-  font-size: 16px !important;
-  letter-spacing: 5px !important;
-  border-radius: 12px !important;
-  align-self: center;
+/* ─── 底部信息栏 ─── */
+.menu-credit-bar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 3;
+  font-size: 12px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 1px;
+}
+.menu-credit-item {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.menu-credit-item:hover {
+  color: rgba(255,255,255,0.5);
+}
+.menu-credit-dot {
+  opacity: 0.4;
 }
 
-/* ─── 全局 Brand (字母+RKS，主页↔顶栏过渡) ─── */
+/* DEV badge 保留 */
+.menu-dev-badge {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(255,255,100,0.5);
+  cursor: pointer;
+  text-align: center;
+  letter-spacing: 3px;
+}
+
+/* ─── 全局 Brand (字母+RKS) ─── */
 .global-brand {
   position: fixed;
   z-index: 220;
@@ -4047,12 +4191,8 @@ body::after {
   align-items: center;
   pointer-events: none;
 }
+.global-brand .brand-rks { pointer-events: auto; }
 
-.global-brand .brand-rks {
-  pointer-events: auto;
-}
-
-/* 主页 */
 .global-brand.at-menu {
   top: 28%;
   left: 50%;
@@ -4061,12 +4201,7 @@ body::after {
   gap: 12px;
   z-index: 1;
 }
-
-.global-brand.at-menu .brand-logo {
-  display: flex;
-  gap: 8px;
-}
-
+.global-brand.at-menu .brand-logo { display: flex; gap: 8px; }
 .global-brand.at-menu .brand-char {
   font-size: 80px;
   font-weight: 900;
@@ -4080,63 +4215,34 @@ body::after {
   font-family: var(--font-main);
   letter-spacing: 2px;
 }
-
-/* 竖屏：logo 在底部 */
-@media (max-aspect-ratio: 1/1) {
-  .global-brand.at-menu {
-    top: auto;
-    bottom: 6vh;
-    transform: translate(-50%, 0);
-  }
-  .global-brand.at-menu .brand-char {
-    font-size: 72px;
-  }
-}
-
-.global-brand.at-menu .brand-rks {
-  display: none;
-}
-
-.brand-arrow {
-  font-size: 12px;
-}
-
 @keyframes charFloat {
   0% { filter: brightness(1); transform: translateY(0); }
   100% { filter: brightness(1.35); transform: translateY(-4px); }
 }
+.global-brand.at-menu .brand-rks { display: none; }
+.brand-arrow { font-size: 12px; }
 
-/* 子页：顶栏 — 中心扩散 */
+/* 子页顶栏 */
 .global-brand.at-topbar {
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   height: 48px;
   flex-direction: row;
   justify-content: space-between;
   padding: 0 20px;
-  background: rgba(10, 10, 25, 0.7);
+  background: rgba(10,10,25,0.7);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255,255,255,0.06);
   gap: 0;
-  animation: topbarClipIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: topbarClipIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
 }
-
 @keyframes topbarClipIn {
   from { clip-path: inset(0 50% 0 50%); opacity: 0; }
   to   { clip-path: inset(0 0 0 0); opacity: 1; }
 }
-
-.global-brand.at-topbar .brand-logo {
-  display: flex;
-  gap: 2px;
-}
-
+.global-brand.at-topbar .brand-logo { display: flex; gap: 2px; }
 .global-brand.at-topbar .brand-char {
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-size: 20px; font-weight: 800; letter-spacing: 0;
   background: linear-gradient(135deg, #CCCCCC, #FFFFFF, #CCCCCC);
   background-size: 200% 200%;
   -webkit-background-clip: text;
@@ -4146,12 +4252,64 @@ body::after {
   font-family: var(--font-main);
 }
 
-/* ─── 顶栏 brand-rks 样式已移至下方「个人信息/头像系统」区块 ─── */
-
-/* 横屏：字母在左侧，看板娘居中重叠字母，按钮在右侧 */
-@media (min-aspect-ratio: 1/1) {
+/* 竖屏：logo 永远在上方 */
+@media (max-aspect-ratio: 1/1) {
   .global-brand.at-menu {
-    left: 18%;
+    top: 22vh;
+    bottom: auto;
+    transform: translate(-50%, 0);
+  }
+  .global-brand.at-menu .brand-char { font-size: 72px; }
+}
+
+/* ─── 竖屏：logo 在上，卡片在下 ─── */
+@media (max-aspect-ratio: 1/1) {
+  .menu-mascot { display: none !important; }
+  .menu-screen {
+    justify-content: flex-start;
+    padding-top: 34vh;
+  }
+  .menu-actions {
+    width: 88vw;
+    max-width: 340px;
+  }
+  /* 竖屏：Row2 撑满宽度 */
+  .menu-card-row-fit .menu-card {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  /* 竖屏：卡片整体缩小 */
+  .menu-actions { gap: 16px; }
+  .menu-card-row { gap: 16px; }
+  .menu-card-col { gap: 16px; }
+  .menu-card { gap: 12px; padding: 20px 24px; }
+  .menu-card-icon { font-size: 36px; }
+  .menu-card-label { font-size: 20px; letter-spacing: 3px; }
+  .menu-card-primary { padding: 36px 24px; gap: 16px; }
+  .menu-card-primary .menu-card-icon { font-size: 60px; }
+  .menu-card-primary .menu-card-label { font-size: 28px; letter-spacing: 8px; }
+  /* 竖屏：个人卡片上下布局 */
+  .menu-card-profile {
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 24px;
+  }
+  .menu-card-profile .menu-card-rks {
+    align-items: center;
+  }
+}
+
+/* ─── 横屏：logo 左 30%，卡片右 70% ─── */
+@media (min-aspect-ratio: 1/1) {
+  .menu-screen {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .global-brand.at-menu {
+    left: 20%;
     top: 50%;
     transform: translate(-50%, -50%);
     flex-direction: column;
@@ -4177,13 +4335,6 @@ body::after {
   .global-brand.at-menu .brand-char:nth-child(4) { margin-left: 44px; margin-top: 14px; }
   .global-brand.at-menu .brand-char:nth-child(5) { margin-left: -48px; margin-top: -10px; }
 
-  .menu-screen {
-    justify-content: center;
-    align-items: center;
-    padding: 0;
-  }
-
-  /* 横屏：看板娘在字母右方，完全遮挡 */
   .menu-mascot {
     inset: 0;
     align-items: center;
@@ -4200,26 +4351,35 @@ body::after {
 
   .menu-actions {
     position: absolute;
-    left: 75%;
+    left: 63%;
     top: 50%;
     transform: translate(-50%, -50%);
-    align-items: center;
+    width: 50%;
+    max-width: 620px;
   }
 
-  .menu-btn {
-    width: 260px;
-    padding: 18px 0;
-    font-size: 18px;
+  /* 横屏：Row2 横向布局 + 撑满宽度 */
+  .menu-card-h {
+    flex-direction: row;
+    gap: 16px;
+    padding: 20px 28px;
   }
+  .menu-card-h .menu-card-icon { font-size: 30px; }
+  .menu-card-h .menu-card-label { font-size: 18px; }
 
-  .menu-play-row {
-    width: 260px;
+  .menu-card-row-fit .menu-card {
+    flex: 1 1 0;
+    min-width: 0;
   }
+}
 
-  .menu-btn-help {
-    width: 260px !important;
-    padding: 18px 0 !important;
-    font-size: 18px !important;
+/* ─── 关闭立绘：横屏字母位置调整 ─── */
+@media (min-aspect-ratio: 1/1) {
+  .app-root.no-mascot .global-brand.at-menu {
+    left: 28%;
+  }
+  .app-root.no-mascot .menu-actions {
+    left: 63%;
   }
 }
 

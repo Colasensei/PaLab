@@ -157,7 +157,7 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
     <>
       <div className="about-logo">PALAB</div>
       <div className="about-ver">Alpha 5.2</div>
-      <div className="about-ver about-ver-sub">v0.5.2</div>
+      <div className="about-ver about-ver-sub">v0.5.3</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>

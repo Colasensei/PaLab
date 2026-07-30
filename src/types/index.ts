@@ -194,6 +194,8 @@ export interface AppSettings {
   judgeLineThickness: number;
   /** 准度条：显示最近打击偏移 */
   showAccuracyBar: boolean;
+  /** 主界面显示看板娘立绘 */
+  showMascot: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -211,6 +213,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   musicVolume: 50,
   judgeLineThickness: 3,
   showAccuracyBar: false,
+  showMascot: true,
 };
 
 // ============ 账号信息 ============

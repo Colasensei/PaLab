@@ -804,7 +804,7 @@ const App: React.FC = () => {
   const renderScreen = (s: AppScreen) => {
     switch (s) {
       case 'menu':
-        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onProfile={goToProfile} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} />;
+        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={settings.showMascot} />;
       case 'chart-library':
         return <ChartLibrary key={chartListKey} onPlay={handleChartPlay} lang={lang} highScores={chartScores} onSettings={goToSettings} uiBlur={settings.uiBlur} />;
       case 'settings':
@@ -855,7 +855,7 @@ const App: React.FC = () => {
   const isFullscreen = FULLSCREEN_PAGES.includes(screen);
 
   return (
-    <div className={`app-root${settings.uiBlur ? '' : ' no-ui-blur'}`}>
+    <div className={`app-root${settings.uiBlur ? '' : ' no-ui-blur'}${!settings.showMascot && screen === 'menu' ? ' no-mascot' : ''}`}>
       {/* EULA */}
       {!eulaAccepted && (
         <EULAModal lang={lang} onAgree={() => { localStorage.setItem('palab_eula', '1'); setEulaAccepted(true); }} />
