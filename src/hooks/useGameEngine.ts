@@ -185,7 +185,7 @@ export function useGameEngine({
       };
       setTimeout(tick, 1000);
     }
-  }, []);
+  }, [onResume]);
 
   // ——— 按下去 ———
   const handlePress = useCallback(

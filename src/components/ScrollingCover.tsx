@@ -29,8 +29,8 @@ export const useScrollingCover = () => {
         if (cancelled) return;
         const urls: string[] = [];
         for (const c of charts) {
-          const u = c.coverUrl || c.illustrationUrl;
-          if (u) urls.push(u);
+          if (c.coverUrl) urls.push(c.coverUrl);
+          if (c.illustrationUrl) urls.push(c.illustrationUrl);
         }
         for (let i = urls.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
