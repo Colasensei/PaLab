@@ -723,26 +723,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [engineSetPaused]);
 
   const doResume = useCallback(() => {
-    // 不解冻音频/不更新 totalPauseRef——等引擎倒计时 3→2→1 走完才做
+    totalPauseRef.current = performance.now() - pauseTimeRef.current;
+    if (hasSong) {
+      try { audioManager.resume(); } catch { /* 静默 */ }
+    }
     engineSetPaused(false);
     setPaused(false);
-  }, [engineSetPaused]);
-
-  // 倒计时结束后：更新 totalPauseRef（含倒计时的 3 秒）+ 恢复音频
-  const pendingResumeRef = useRef(false);
-  useEffect(() => {
-    if (pendingResumeRef.current && !state.paused && !state.isFinished) {
-      pendingResumeRef.current = false;
-      totalPauseRef.current = performance.now() - pauseTimeRef.current;
-      if (hasSong) {
-        try { audioManager.resume(); } catch { /* 静默 */ }
-      }
-    }
-  }, [state.paused, state.isFinished, hasSong]);
-  const doResumeWrapped = useCallback(() => {
-    pendingResumeRef.current = true;
-    doResume();
-  }, [doResume]);
+  }, [hasSong, engineSetPaused]);
 
   // 暂停双击 400ms 防误触（
   const lastPauseClickRef = useRef<number>(0);
@@ -758,8 +745,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [state.isFinished, doPause]);
 
   const handleResume = useCallback(() => {
-    doResumeWrapped();
-  }, [doResumeWrapped]);
+    doResume();
+  }, [doResume]);
 
   const handleRetry = useCallback(() => {
     doResume();
