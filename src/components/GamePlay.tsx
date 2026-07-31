@@ -937,14 +937,19 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       for (const note of s.activeNotes) {
         const result = results.get(note.id);
         const isBadOrMiss = result && (result.judgment.type === 'bad' || result.judgment.type === 'miss');
-        const isHolding = note.type === 'hold' && activeHolds.has(note.id);
-        const isHoldDone = note.type === 'hold' && result && !isBadOrMiss && !activeHolds.has(note.id);
+        // autoPlay：音符到判定线即算"已被判"（必然 perfect）。这消除 canvas 渲染
+        // 与引擎判定之间的 1 帧时序差——否则音符会整个越过判定线才消失。
+        const reachedLineInAuto = effectiveConfig.autoPlay && now >= note.startTime;
+        const isHolding = note.type === 'hold' && (activeHolds.has(note.id) || reachedLineInAuto);
+        const isHoldDone = note.type === 'hold' && !isHolding && (result && !isBadOrMiss || reachedLineInAuto);
         const isRed = !!isBadOrMiss || (note.id === fid && !result);
         const isFailed = note.id === fid && !result;
 
         const startY = jy - ((note.startTime - now) / eff) * (jy - 50);
         if (note.type === 'tap') {
           if (result && !isBadOrMiss) continue;
+          // autoPlay 到线即消失（不依赖判定帧）
+          if (reachedLineInAuto) continue;
           const noteW = trackWidth - notePadX;
           const nx = note.track * trackWidth + trackWidth / 2 - noteW / 2;
           const ny = startY;
@@ -1030,7 +1035,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     return () => cancelAnimationFrame(raf);
   }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, trackWidth, notePadX, tapHeight, holdMinH, holdRingR, holdRingW, holdRingColor,
       doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop,
-      getCurrentTime, engineResultsRef, engineHoldsRef]);
+      getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay]);
 
   const getNoteY = (noteTime: number): number => {
     const timeUntil = noteTime - state.currentTime;
