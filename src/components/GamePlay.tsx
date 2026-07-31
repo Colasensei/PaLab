@@ -478,36 +478,42 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const leadInMsRef = useRef(0);
   leadInMsRef.current = leadInMs;
   const [leadInActive, setLeadInActive] = useState(false);
+  // 供 canvas 循环同步读取（避免 React state 异步延迟导致音符抽搐）
+  const leadInActiveRef = useRef(false);
+  leadInActiveRef.current = leadInActive;
   const leadInTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const songStartedRef = useRef(true);
-  // READY? 期间锁定玩家输入；结束前 100ms 提前开放
-  const inputLockedRef = useRef(false);
-  const unlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 开局统一入口：有前摇则延迟 leadInMs 放歌（期间谱面冻结、进度条 100→0、显示 READY?、禁用输入）
+  // 开局统一入口：有前摇则延迟 leadInMs 放歌（期间谱面冻结、进度条不走、显示 READY?）
   const beginSong = useCallback(() => {
     if (leadInTimerRef.current) { clearTimeout(leadInTimerRef.current); leadInTimerRef.current = null; }
-    if (unlockTimerRef.current) { clearTimeout(unlockTimerRef.current); unlockTimerRef.current = null; }
     if (leadInMs > 0) {
       songStartedRef.current = false;
+      leadInActiveRef.current = true;
       setLeadInActive(true);
-      inputLockedRef.current = true;
       if (hasSong) audioManager.setVolume(musicVolume / 100);
       leadInTimerRef.current = setTimeout(() => {
         songStartedRef.current = true;
-        setLeadInActive(false);
-        inputLockedRef.current = false;
-        if (hasSong) audioManager.play(1);
+        // audio.play() 是异步的：若先解除冻结再 play()，在播放真正启动前
+        // audio.currentTime 会停在 0（引擎判定时间不动），而 canvas 视觉时钟
+        // 已按性能时钟提前走 → hold 视觉先到判定线而引擎未判定（「漏过判定线」），
+        // 播放真正开始后引擎时间猛涨又触发一次大重锁（「卡一下」）。
+        // 所以先 play()，等音频真正开始播放（promise resolve）再解除前摇冻结。
+        const unstickLeadIn = () => {
+          leadInActiveRef.current = false;
+          setLeadInActive(false);
+        };
+        if (hasSong) {
+          const p = audioManager.play(1);
+          if (p) p.then(unstickLeadIn).catch(unstickLeadIn);
+          else unstickLeadIn();
+        } else {
+          unstickLeadIn();
+        }
         leadInTimerRef.current = null;
       }, leadInMs);
-      // 前摇结束前 100ms 提前开放输入，让玩家能赶第一下
-      unlockTimerRef.current = setTimeout(() => {
-        inputLockedRef.current = false;
-        unlockTimerRef.current = null;
-      }, Math.max(0, leadInMs - 100));
     } else {
       songStartedRef.current = true;
-      inputLockedRef.current = false;
       if (hasSong) { audioManager.setVolume(musicVolume / 100); audioManager.play(1); }
     }
   }, [leadInMs, hasSong, musicVolume]);
@@ -520,7 +526,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [hasSong, leadInMs, beginSong]);
 
   const { state, start, setPaused: engineSetPaused, handlePress, handleRelease } = useGameEngine({
-    config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound, onResume: handleEngineResume,
+    config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound, onResume: handleEngineResume, getLeadFrozen: () => leadInActiveRef.current,
   });
 
   // combo 颜色：全P金 / 有G蓝 / 断白
@@ -535,7 +541,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   };
 
   const onPressWithFX = useCallback((track: number) => {
-    if (paused || effectiveConfig.autoPlay || inputLockedRef.current) return;
+    if (paused || effectiveConfig.autoPlay) return;
     const result = handlePress(track);
     if (result.hit) {
       // bad/miss 别响了也别闪了（
@@ -557,7 +563,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [paused, effectiveConfig.autoPlay, handlePress, correctHitSound]);
 
   const onReleaseWithFX = useCallback((track: number) => {
-    if (effectiveConfig.autoPlay || inputLockedRef.current) return;
+    if (effectiveConfig.autoPlay) return;
     handleRelease(track);
     setKeysDown(prev => { const n = new Set(prev); n.delete(track); return n; });
   }, [effectiveConfig.autoPlay, handleRelease]);
@@ -881,7 +887,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     let clockBaseAudio = 0;   // 上次与音频同步时的音频时间 (ms)
     let clockBasePerf = 0;    // 对应 performance.now() (ms)
     let clockInited = false;
-    let clockResync = 0;
+    let wasLeadIn = false;    // 上一帧是否处于前摇冻结（用于检测刚解除冻结的瞬间）
 
     const loop = () => {
       const w = totalWidth + 10;
@@ -903,22 +909,37 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         clockInited = true;
         clockBaseAudio = rawMs;
         clockBasePerf = perf;
-      } else if (s.paused || !s.isPlaying) {
-        // 暂停/结束：直接锁到音频时间（音符静止）
+      } else if (s.paused || !s.isPlaying || leadInActiveRef.current) {
+        // 暂停/结束/前摇：直接锁到音频时间（音符静止，避免前摇期间抽搐）
+        clockBaseAudio = rawMs;
+        clockBasePerf = perf;
+      } else if (wasLeadIn) {
+        // 前摇刚结束（冻结→播放）的第一帧：从真实引擎位置起锚，
+        // 避免 play() 启动期任何残余的视觉/引擎时间错位造成首帧跳变
         clockBaseAudio = rawMs;
         clockBasePerf = perf;
       } else {
-        // 每 30 帧与音频重锁一次，防止长时间漂移（跳变在亚帧内，不可见）
-        clockResync++;
-        if (clockResync >= 30) {
-          clockResync = 0;
+        // 播放中：按性能时钟平滑推进（帧间恒定，避免 audio.currentTime 粒度
+        // 不均导致的「一顿一顿」）。同时每帧把平滑值轻微向真实音频时间靠拢，
+        // 消除 media clock 与页面时钟的累计漂移——否则漂移攒到一定量再硬重锁
+        // 会在某刻产生一次可见跳变（前摇结束后「卡一下」）。
+        // 只有大幅偏差（seek/切歌/长卡顿）才立即硬重锁。
+        const v = clockBaseAudio + (perf - clockBasePerf);
+        const drift = rawMs - v;
+        if (Math.abs(drift) > 120) {
+          // 大幅偏差：直接重锁（跳变不可避免，但只在异常时发生）
           clockBaseAudio = rawMs;
+          clockBasePerf = perf;
+        } else if (Math.abs(drift) > 2) {
+          // 轻微漂移：把基点朝真实值挪一小段（每帧 12%），指数收敛、永不积累
+          clockBaseAudio += drift * 0.12;
           clockBasePerf = perf;
         }
       }
+      wasLeadIn = leadInActiveRef.current;
 
-      // 视觉时间：播放中按显示时钟平滑推进；暂停/结束时跟随音频
-      const now = (s.paused || !s.isPlaying) ? rawMs : clockBaseAudio + (perf - clockBasePerf);
+      // 视觉时间：播放中按显示时钟平滑推进；暂停/结束/前摇时跟随音频（冻结）
+      const now = (s.paused || !s.isPlaying || leadInActiveRef.current) ? rawMs : clockBaseAudio + (perf - clockBasePerf);
       const eff = fallDuration / config.speedMultiplier;
       const jy = JUDGMENT_LINE_Y;
       const fid = canvasFailedRef.current;

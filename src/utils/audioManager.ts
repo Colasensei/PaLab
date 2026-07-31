@@ -27,14 +27,15 @@ export class AudioManager {
     return this._duration;
   }
 
-  play(rate: number = 1) {
-    if (!this.audio) return;
+  /** 开始播放。返回 play() 的 Promise（resolve = 已真正开始播放），调用方可据此感知启动完成 */
+  play(rate: number = 1): Promise<void> | undefined {
+    if (!this.audio) return undefined;
     this.playbackRate = rate;
     this.audio.playbackRate = rate;
     this.audio.currentTime = 0;
-    this.audio.play();
     this._isPlaying = true;
     this.startedAt = performance.now();
+    return this.audio.play();
   }
 
   pause() {

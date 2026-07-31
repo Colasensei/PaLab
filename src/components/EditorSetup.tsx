@@ -42,6 +42,8 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
   const [importingOsu, setImportingOsu] = useState(false);
   const [osuChoices, setOsuChoices] = useState<{ path: string; label: string }[] | null>(null);
   const pendingRef = useRef<{ file: File; url: string; rd: { bpm: number } | null } | null>(null);
+  // 谱面包导入（zip/osu）待确认：同意才执行 commit，取消则 revoke urls
+  const pendingImportRef = useRef<{ urls: string[]; commit: () => void } | null>(null);
   const existingNotesRef = useRef<Note[] | undefined>(undefined);
 
   const handleSongSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,17 +66,33 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
   };
 
   const handleDisclaimerAgree = () => {
+    setShowDisclaimer(false);
+    // 谱面包导入（zip/osu）：同意 → 执行真正导入
+    if (pendingImportRef.current) {
+      const p = pendingImportRef.current;
+      pendingImportRef.current = null;
+      p.commit();
+      return;
+    }
+    // 选择音频
     if (!pendingRef.current) return;
     const { rd } = pendingRef.current;
     pendingRef.current = null;
-    setShowDisclaimer(false);
     if (rd) setBpm(String(Math.round(rd.bpm)));
   };
 
   const handleDisclaimerCancel = () => {
+    setShowDisclaimer(false);
+    // 谱面包导入：取消 → 清理已生成的 blob URL
+    if (pendingImportRef.current) {
+      const p = pendingImportRef.current;
+      pendingImportRef.current = null;
+      p.urls.forEach(u => URL.revokeObjectURL(u));
+      return;
+    }
+    // 选择音频
     if (pendingRef.current) URL.revokeObjectURL(pendingRef.current.url);
     pendingRef.current = null;
-    setShowDisclaimer(false);
     setSongFile(null);
     setSongName('');
     if (songUrl) { URL.revokeObjectURL(songUrl); setSongUrl(null); }
@@ -130,23 +148,30 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
         // 等待异步兜底完成
         await new Promise(r => setTimeout(r, 100));
       }
+      // 分析 BPM
+      let rd: { bpm: number } | null = null;
       if (songBlob) {
-        const url = URL.createObjectURL(songBlob);
-        if (songUrl) URL.revokeObjectURL(songUrl);
-        setSongUrl(url);
-        setSongName(info.title ? `${info.title}.${songExt}` : `song.${songExt}`);
-        // 分析 BPM
         const audioFile = new File([songBlob], `song.${songExt}`, { type: `audio/${songExt}` });
-        let rd: { bpm: number } | null = null;
         try { rd = await analyzeAudio(audioFile); } catch { /* */ }
-        if (rd) setBpm(String(Math.round(rd.bpm)));
-        else if (info.config?.bpm) setBpm(String(info.config.bpm));
-      } else if (info.config?.bpm) {
-        setBpm(String(info.config.bpm));
       }
-      if (info.config?.trackCount) setTrackCount(info.config.trackCount);
-      if (info.title) setSongName(info.title);
-      existingNotesRef.current = chartNotes;
+      const url = songBlob ? URL.createObjectURL(songBlob) : null;
+      // 弹免责声明，同意后才真正应用
+      pendingImportRef.current = {
+        urls: url ? [url] : [],
+        commit: () => {
+          if (url) {
+            if (songUrl) URL.revokeObjectURL(songUrl);
+            setSongUrl(url);
+            setSongName(info.title ? `${info.title}.${songExt}` : `song.${songExt}`);
+          }
+          if (rd) setBpm(String(Math.round(rd.bpm)));
+          else if (info.config?.bpm) setBpm(String(info.config.bpm));
+          if (info.config?.trackCount) setTrackCount(info.config.trackCount);
+          if (info.title) setSongName(info.title);
+          existingNotesRef.current = chartNotes;
+        },
+      };
+      setShowDisclaimer(true);
     } catch { alert(lang === 'zh' ? '导入失败' : 'Import failed'); }
     setImportingZip(false);
     if (zipInputRef.current) zipInputRef.current.value = '';
@@ -208,8 +233,8 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
       }
       const blob = await audioEntry.async('blob');
       const url = URL.createObjectURL(blob);
-      if (songUrl) URL.revokeObjectURL(songUrl);
-      // 提取曲绘（背景图）—— 补上图片 MIME，否则 blob → dataURL 会变成 text/plain 无法显示
+      // 弹免责声明，同意后才进入编辑器
+      const urls = [url];
       let coverUrl: string | undefined;
       let coverFileName: string | undefined;
       if (parsed.backgroundFilename) {
@@ -220,22 +245,29 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
           const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', bmp: 'image/bmp' };
           const typed: Blob = imgBlob.type ? imgBlob : new Blob([imgBlob], { type: mimeMap[ext] || 'image/png' });
           coverUrl = URL.createObjectURL(typed);
+          urls.push(coverUrl);
           coverFileName = parsed.backgroundFilename;
         }
       }
-      // 自动解析并进入编辑器（元数据预填：标题/作者/谱师/曲绘）
-      onConfirm({
-        bpm: parsed.bpm,
-        trackCount: 4,
-        songUrl: url,
-        songFileName: parsed.title || path,
-        existingNotes: parsed.notes,
-        title: parsed.title,
-        artist: parsed.artist,
-        author: parsed.creator,
-        coverUrl,
-        coverFileName,
-      });
+      pendingImportRef.current = {
+        urls,
+        commit: () => {
+          if (songUrl) URL.revokeObjectURL(songUrl);
+          onConfirm({
+            bpm: parsed.bpm,
+            trackCount: 4,
+            songUrl: url,
+            songFileName: parsed.title || path,
+            existingNotes: parsed.notes,
+            title: parsed.title,
+            artist: parsed.artist,
+            author: parsed.creator,
+            coverUrl,
+            coverFileName,
+          });
+        },
+      };
+      setShowDisclaimer(true);
     } catch (err) {
       const msg = (err as Error).message;
       if (msg === 'not_mania') alert(lang === 'zh' ? '不是 mania 谱面（Mode 必须为 3）' : 'Not a mania beatmap (Mode must be 3)');
@@ -314,16 +346,16 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
             <div className="cp-disclaimer-body">
               {lang === 'zh' ? (
                 <>
-                  <p>您即将使用此音频制作谱面。</p>
-                  <p><b>请确保您拥有该音频的合法使用权</b>，或该音频为原创、已获授权、或属于合理使用范围。</p>
-                  <p>因使用未经授权的音频而产生的任何版权纠纷，<b>均由您自行承担法律责任</b>，与本软件及开发者无关。</p>
+                  <p>您即将使用导入的内容制作谱面，其中包括：<b>音频（歌曲）、图片（曲绘/封面/背景）、谱面数据</b>。</p>
+                  <p><b>请确保您拥有以上所有内容的合法使用权</b>，或其为原创、已获授权、或属于合理使用范围。</p>
+                  <p>因使用未经授权的内容而产生的任何版权纠纷，<b>均由您自行承担法律责任</b>，与本软件及开发者无关。</p>
                   <p>点击「同意」即表示您已阅读并接受以上条款。</p>
                 </>
               ) : (
                 <>
-                  <p>You are about to use this audio to create a chart.</p>
-                  <p><b>Please ensure you have legal rights to use this audio</b>, or it is original, licensed, or falls under fair use.</p>
-                  <p>Any copyright disputes arising from unauthorized use of audio are <b>your sole legal responsibility</b>.</p>
+                  <p>You are about to use imported content to create a chart, including: <b>audio (song), images (cover/illustration/background), and chart data</b>.</p>
+                  <p><b>Please ensure you have legal rights to all of the above</b>, or they are original, licensed, or fall under fair use.</p>
+                  <p>Any copyright disputes arising from unauthorized use of content are <b>your sole legal responsibility</b>.</p>
                   <p>Click "Agree" to confirm you have read and accept these terms.</p>
                 </>
               )}

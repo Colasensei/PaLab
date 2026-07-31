@@ -43,6 +43,8 @@ interface UseGameEngineOptions {
   /** 正确音效：到点自动播放正确打击音，但不影响判定和计分 */
   correctHitSound?: boolean;
   onResume?: () => void;
+  /** 前摇冻结：为 true 时不做任何判定（自动/手动/正确音效/结束） */
+  getLeadFrozen?: () => boolean;
 }
 
 export function useGameEngine({
@@ -55,6 +57,7 @@ export function useGameEngine({
   latencyOffset = 0,
   correctHitSound = false,
   onResume,
+  getLeadFrozen = () => false,
 }: UseGameEngineOptions) {
   const rafRef = useRef<number>(0);
   const frameCountRef = useRef(0);
@@ -84,6 +87,8 @@ export function useGameEngine({
   correctHitSoundRef.current = correctHitSound;
   const correctSoundIdxRef = useRef(0);
   const correctSoundDoublesRef = useRef<Set<number>>(new Set());
+  const getLeadFrozenRef = useRef(getLeadFrozen);
+  getLeadFrozenRef.current = getLeadFrozen;
   // 渲染窗口起始索引：避免 notes.filter 全量遍历，高密度谱面 O(n)→O(窗口)
   const renderStartIdxRef = useRef(0);
   const devRef = useRef({
@@ -181,7 +186,8 @@ export function useGameEngine({
   // ——— 按下去 ———
   const handlePress = useCallback(
     (track: number): { hit: boolean; playSound: boolean; judgmentType: string } => {
-      if (!isPlayingRef.current || pausedRef.current) return { hit: false, playSound: false, judgmentType: '' };
+      // 前摇冻结：还不判定
+      if (!isPlayingRef.current || pausedRef.current || getLeadFrozenRef.current()) return { hit: false, playSound: false, judgmentType: '' };
       pressedTracksRef.current.add(track);
       const now = getTimeRef.current();
       const results = resultsRef.current;
@@ -252,7 +258,8 @@ export function useGameEngine({
   // ——— 松手 ———
   const handleRelease = useCallback(
     (track: number) => {
-      if (!isPlayingRef.current || pausedRef.current) return;
+      // 前摇冻结：还不判定
+      if (!isPlayingRef.current || pausedRef.current || getLeadFrozenRef.current()) return;
       pressedTracksRef.current.delete(track);
 
       holdActiveRef.current.forEach((_info, noteId) => {
@@ -309,6 +316,8 @@ export function useGameEngine({
 
     const loop = () => {
       const now = getCurrentTime() + latencyRef.current;
+      // 前摇冻结：判定用超大负时间，任何音符都远不到判定点（自动/正确音效/miss/hold 收尾/结束全被屏蔽）
+      const judgeNow = getLeadFrozenRef.current() ? Number.NEGATIVE_INFINITY : now;
       const results = resultsRef.current;
 
       if (autoPlayRef.current) {
@@ -316,7 +325,7 @@ export function useGameEngine({
           const note = notes[i];
           if (results.has(note.id)) continue;
           if (holdActiveRef.current.has(note.id)) continue;
-          if (now >= note.startTime) {
+          if (judgeNow >= note.startTime) {
             if (note.type === 'hold') {
               // hold：先按住，等自动收尾
               holdActiveRef.current.set(note.id, { pressTime: now });
@@ -340,7 +349,7 @@ export function useGameEngine({
       if (correctHitSoundRef.current && !autoPlayRef.current) {
         const csDoubles = correctSoundDoublesRef.current;
         let csIdx = correctSoundIdxRef.current;
-        while (csIdx < notes.length && now >= notes[csIdx].startTime) {
+        while (csIdx < notes.length && judgeNow >= notes[csIdx].startTime) {
           const note = notes[csIdx];
           if (note.isDouble && note.doubleGroupId !== null) {
             if (!csDoubles.has(note.doubleGroupId)) {
@@ -360,7 +369,7 @@ export function useGameEngine({
         const note = notes[noteIndexRef.current];
         if (holdActiveRef.current.has(note.id)) { noteIndexRef.current++; continue; }
         if (results.has(note.id)) { noteIndexRef.current++; continue; }
-        if (isNoteMissed(note, now, windows)) {
+        if (isNoteMissed(note, judgeNow, windows)) {
           results.set(note.id, { note, judgment: { type: 'miss', offset: Infinity, time: note.startTime }, score: 0 });
           updateScoreState(Array.from(results.values()));
           noteIndexRef.current++;
@@ -373,7 +382,7 @@ export function useGameEngine({
         if (!note) return;
         const track = note.track;
         const isPressed = pressedTracksRef.current.has(track);
-        if (shouldAutoEndHold(note, now, isPressed)) {
+        if (shouldAutoEndHold(note, judgeNow, isPressed)) {
           results.set(note.id, { note, judgment: { type: 'perfect', offset: 0, time: note.endTime }, score: noteScore });
           holdActiveRef.current.delete(noteId);
           updateScoreState(Array.from(results.values()));
@@ -382,7 +391,7 @@ export function useGameEngine({
 
       // 结束了？
       const effectiveDuration = duration > 0 ? duration : 999_999_999;
-      const songEnded = now >= effectiveDuration - devRef.current.gameEndEarly;
+      const songEnded = judgeNow >= effectiveDuration - devRef.current.gameEndEarly;
       const shouldEnd = hasSongRef.current
         ? (songEnded || finishedRef.current)
         : (results.size + holdActiveRef.current.size >= notes.length || songEnded || finishedRef.current);

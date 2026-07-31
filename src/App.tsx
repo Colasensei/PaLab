@@ -904,7 +904,7 @@ const App: React.FC = () => {
       case 'editor-setup':
         return <EditorSetup onConfirm={handleEditorConfirm} onBack={navigateBack} lang={lang} />;
       case 'visual-editor':
-        return editorConfig ? <VisualEditor config={editorConfig} onBack={() => { setFromEditor(false); setScreen('chart-mode-select'); setScreenStack(['chart-mode-select']); }} onSave={handleEditorSave} onTrial={handleEditorTrial} lang={lang} latencyOffset={settings.latencyOffset} /> : null;
+        return editorConfig ? <VisualEditor config={editorConfig} onBack={() => { setFromEditor(false); setScreen('chart-mode-select'); setScreenStack(['menu', 'chart-mode-select']); }} onSave={handleEditorSave} onTrial={handleEditorTrial} lang={lang} latencyOffset={settings.latencyOffset} /> : null;
       case 'records':
         return <RecordsScreen lang={lang} account={account} rks={rks} history={history} highPP={highPP} onProfile={goToProfile} onBack={navigateBack} playTime={playTime} />;
       case 'profile':
