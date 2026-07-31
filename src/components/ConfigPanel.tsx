@@ -26,6 +26,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onConfirm, onBack, lan
   const [timeSignature, setTimeSignature] = useState<TimeSignature>('4/4');
   const [trackCount, setTrackCount] = useState<TrackCount>(4);
   const [chartConstant, setChartConstant] = useState(8.0);
+  const [enableHolds, setEnableHolds] = useState(true);
   const [advanced, setAdvanced] = useState(false);
   const [songFile, setSongFile] = useState<File | null>(null);
   const [songName, setSongName] = useState<string>('');
@@ -111,6 +112,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onConfirm, onBack, lan
       timingWindows: defaultWindows, speedMultiplier: 5.0,
       noteColor: '#35BFFF', holdNoteColor: '#35BFFF', bgColor: '#0a0a14', judgeLineColor: '#999999',
       songUrl, songFileName: songName || null, autoPlay: false,
+      enableHolds,
       rhythmData: rhythmData ?? undefined,
     });
   };
@@ -165,6 +167,17 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onConfirm, onBack, lan
           <p className="cp-hint">
             {trackCount === 2 ? 'F J' : trackCount === 4 ? 'D F J K' : trackCount === 6 ? 'S D F J K L' : 'A S D F J K L ;'}
           </p>
+        </div>
+
+        <div className="cp-section">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span className="cp-label">{t('hold.notes', lang)}</span>
+            <label className="toggle-switch">
+              <input type="checkbox" checked={enableHolds} onChange={e => setEnableHolds(e.target.checked)} />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
+          <p className="cp-hint">{t('hold.notes.tip', lang)}</p>
         </div>
 
         <div className="cp-section">

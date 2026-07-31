@@ -1,11 +1,13 @@
-import { GameConfig, Note, NoteType, TrackCount } from '@/types';
-import { alignToBeat } from './manualAnalyzer';
+import { GameConfig, Note, NoteType } from '@/types';
+import { alignToBeat, constantToNps } from './manualAnalyzer';
 
 /**
  * 根据谱面定数计算难度参数
- * 对标 Phigros 实际密度曲线
+ *
+ * 核心思路：以「目标 NPS」驱动密度，与分析器 estimateDifficulty 完全对版。
+ * 给定定数 c → 期望 NPS → 换算成每 tick 的落键概率，保证 round-trip 自洽。
  */
-function getDifficultyParams(chartConstant: number): {
+interface DiffParams {
   noteProbability: number;
   holdProbability: number;
   doubleProbability: number;
@@ -14,75 +16,123 @@ function getDifficultyParams(chartConstant: number): {
   stairProbability: number;
   trillProbability: number;
   jackProbability: number;
-} {
-  const t = Math.max(0, Math.min(1, (chartConstant - 1.0) / 17.0));
-  const t3 = t * t * t;
-  // 三次曲线：低难平缓、高难飚，对标 Phigros（
+}
+
+function getDifficultyParams(
+  chartConstant: number,
+  trackCount: number,
+  bpm: number,
+  beatsPerMeasure: number,
+): DiffParams {
+  const c = chartConstant;
+  const t = Math.max(0, Math.min(1, (c - 1.0) / 17.0));
+  const t2 = t * t;
+  const t3 = t2 * t;
+
+  // 轨道因子：与分析器 estimateDifficulty 一致（4K 基准）
+  const trackFactor = Math.pow(4 / Math.max(2, trackCount), 0.25);
+
+  // 期望总 NPS：把双押/hold/峰值加成折算掉（约 0.35 定数）
+  const effC = Math.max(1.0, (c - 0.35) / trackFactor);
+  const targetNps = constantToNps(effC);
+
+  // 每拍 tick 数 → 每秒 tick 数
+  const subdivision = Math.max(2, beatsPerMeasure + Math.floor(c / 3));
+  const beatMs = 60000 / bpm;
+  const ticksPerSec = subdivision / (beatMs / 1000);
+
+  // 平均强拍加权（downbeat ×2 / mid ×1.5 / 其它 ×1）
+  const avgBeatWeight = (2.0 + 1.5 + Math.max(0, subdivision - 2) * 1.0) / subdivision;
+
+  // 每 tick 基础落键概率：目标 NPS / (每秒tick数 × 平均加权 × 放置效率系数)
+  // 效率系数随密度上升（高难间距/轨冲突更多，需补偿）
+  const acceptance = 1.12 + t * 0.55;
+  let noteProbability = Math.min(1, targetNps / ticksPerSec / avgBeatWeight * acceptance);
+  // 低难别完全空，给个地板
+  noteProbability = Math.max(0.02, noteProbability);
+
   return {
-    noteProbability: 0.32 + t * 0.28 + t3 * 0.40,
-    holdProbability: 0.03 + t * 0.15 + t3 * 0.12,
-    doubleProbability: 0.01 + t * 0.20 + t3 * 0.32,
-    minSpacing: Math.round(750 - t * 580),
-    tripleProbability: chartConstant >= 15.0 ? (t - 0.82) * 0.55 : 0,
-    stairProbability: 0.06 + t * 0.14,
-    trillProbability: 0.04 + t * 0.14 + t3 * 0.10,
-    jackProbability: t3 * 0.15,
+    noteProbability,
+    holdProbability: 0.04 + t * 0.12,
+    doubleProbability: 0.05 + t * 0.22,
+    minSpacing: Math.round(720 - t * 620),
+    tripleProbability: c >= 15.0 ? (t - 0.82) * 0.5 : 0,
+    stairProbability: 0.05 + t * 0.12,
+    trillProbability: 0.04 + t * 0.12 + t3 * 0.08,
+    jackProbability: t2 * 0.12,
   };
 }
 
 export function generateChart(config: GameConfig, durationMs: number | null, enableHolds: boolean = true): Note[] {
-  // 有音频数据 → 跟着波形走（
-  let notes: Note[];
-  if (config.rhythmData && config.rhythmData.onsets.length > 0) {
-    notes = generateFromAudio(config, config.rhythmData, enableHolds);
-  } else {
+  const strengthAt = config.rhythmData && config.rhythmData.onsets.length > 0
+    ? buildStrengthAt(config.rhythmData)
+    : null;
 
+  const notes = generateTicks(config, durationMs ?? 120_000, enableHolds, strengthAt);
+
+  // 节拍对齐，吸到半拍网格上（
+  if (config.snapToBeat) {
+    return alignToBeat(notes, config.bpm);
+  }
+  return notes;
+}
+
+/**
+ * 统一的 tick 密度引擎
+ * - strengthAt 为 null：程序生成，密度按定数均匀铺
+ * - strengthAt 存在（音频）：有音乐的地方才铺，强度调制概率，密度仍由定数决定
+ */
+function generateTicks(
+  config: GameConfig,
+  durationMs: number,
+  enableHolds: boolean,
+  strengthAt: ((t: number) => number) | null,
+): Note[] {
   const beatInterval = 60000 / config.bpm;
-  const params = getDifficultyParams(config.chartConstant);
-  const totalDuration = durationMs ?? 120_000;
   const [beatsPerMeasure] = config.timeSignature.split('/').map(Number);
+  const params = getDifficultyParams(config.chartConstant, config.trackCount as number, config.bpm, beatsPerMeasure);
+
   // 越难越密，tick 越多（
   const subdivision = Math.max(2, beatsPerMeasure + Math.floor(config.chartConstant / 3));
-
-  notes = [];
-  let noteId = 0;
-  let doubleGroupId = 0;
-  const lastNoteTime: number[] = new Array(config.trackCount).fill(-Infinity);
-
   const tickInterval = beatInterval / subdivision;
-  const totalTicks = Math.floor(totalDuration / tickInterval);
+  const totalTicks = Math.floor(durationMs / tickInterval);
   const tk = config.trackCount as number;
 
-  // 轨数补偿：同定数下，轨道越多 → 单轨密度越低（总物量相近）
-  const trackDensity = 4 / tk;  // 4K 基准
-  // BPM 补偿：快歌 tick 多 → 降低单 tick 概率（难度不变）
-  const bpmFactor = 120 / config.bpm;
-  // 综合密度系数：定数一样 = 难度一样，无视轨数和 BPM
-  const densityMul = trackDensity * bpmFactor;
-  const adjMinSpacing = Math.round(params.minSpacing * bpmFactor);
+  const notes: Note[] = [];
+  let noteId = 0;
+  let doubleGroupId = 0;
+  const lastNoteTime: number[] = new Array(tk).fill(-Infinity);
 
   let stairDir = 0, stairLen = 0, lastTrack = -1;
   let trillTrack = -1, trillAlt = false;
 
   for (let i = 0; i < totalTicks; i++) {
     const time = i * tickInterval;
-    if (time < 2000 || time > totalDuration - 2000) continue;
+    if (time < 2000 || time > durationMs - 2000) continue;
+
+    // 音频：只在有音乐的地方落键，强度调制概率
+    let strengthMod = 1;
+    if (strengthAt) {
+      const s = strengthAt(time);
+      if (s <= 0.05) continue;
+      strengthMod = 0.5 + 0.5 * s;
+    }
 
     const posInMeasure = i % subdivision;
     const isDownbeat = posInMeasure === 0;
     const isMidBeat = subdivision >= 4 && posInMeasure === Math.floor(subdivision / 2);
     // 强拍加权，定数唯一话事（
-    const effProb = Math.min(1, (isDownbeat ? params.noteProbability * 2.0
-      : isMidBeat ? params.noteProbability * 1.5
-      : params.noteProbability) * densityMul);
+    const effProb = Math.min(1, params.noteProbability
+      * (isDownbeat ? 2.0 : isMidBeat ? 1.5 : 1.0)
+      * strengthMod);
     if (Math.random() > effProb) continue;
 
     const r = Math.random();
+    const sf = params.minSpacing;
 
     // 四押，定数 > 18 才给（
     if (tk >= 4 && config.chartConstant > 18.0 && r < 0.008) {
       const trks = quadPress(tk);
-      const sf = adjMinSpacing;
       if (trks.every(t => time - lastNoteTime[t] >= sf)) {
         for (const t of trks) {
           notes.push(mkN(noteId++, 'tap', t, time, 0, true, doubleGroupId));
@@ -95,7 +145,6 @@ export function generateChart(config: GameConfig, durationMs: number | null, ena
     // 三押，15 起步（
     if (tk >= 4 && params.tripleProbability > 0 && r < params.tripleProbability) {
       const trks = triplePress(tk);
-      const sf = adjMinSpacing;
       if (trks.every(t => time - lastNoteTime[t] >= sf)) {
         for (const t of trks) {
           notes.push(mkN(noteId++, 'tap', t, time, 0, true, doubleGroupId));
@@ -109,7 +158,6 @@ export function generateChart(config: GameConfig, durationMs: number | null, ena
     if (params.stairProbability > 0 && r < params.stairProbability && lastTrack >= 0 && tk >= 4) {
       if (stairLen === 0) stairDir = Math.random() > 0.5 ? 1 : -1;
       const nt = lastTrack + stairDir;
-      const sf = adjMinSpacing;
       if (nt >= 0 && nt < tk && time - lastNoteTime[nt] >= sf) {
         const ntype = rHold(params.holdProbability, enableHolds);
         const hl = ntype === 'hold' ? beatInterval * 2 : 0;
@@ -128,15 +176,15 @@ export function generateChart(config: GameConfig, durationMs: number | null, ena
       if (trillTrack < 0 || Math.random() < 0.3) trillTrack = Math.floor(Math.random() * (tk - 1));
       const tt = trillAlt ? trillTrack + 1 : trillTrack;
       trillAlt = !trillAlt;
-      if (time - lastNoteTime[tt] >= adjMinSpacing) {
+      if (time - lastNoteTime[tt] >= sf) {
         notes.push(mkN(noteId++, 'tap', tt, time, 0, false, null));
-        lastNoteTime[tt] = time + adjMinSpacing; lastTrack = tt; stairLen = 0; continue;
+        lastNoteTime[tt] = time + sf; lastTrack = tt; stairLen = 0; continue;
       }
     }
 
     // 叠键，同一轨连着敲（
     if (params.jackProbability > 0 && r < params.jackProbability && lastTrack >= 0) {
-      const mj = Math.max(adjMinSpacing * 0.6, 150);
+      const mj = Math.max(sf * 0.6, 150);
       if (time - lastNoteTime[lastTrack] >= mj) {
         notes.push(mkN(noteId++, 'tap', lastTrack, time, 0, false, null));
         lastNoteTime[lastTrack] = time + mj; stairLen = 0; continue;
@@ -144,49 +192,46 @@ export function generateChart(config: GameConfig, durationMs: number | null, ena
     }
 
     // 双押
-    if (Math.random() < params.doubleProbability && tk >= 4) {
-      const trks = selDbl(tk);
-      if (trks.every(t => time - lastNoteTime[t] >= adjMinSpacing)) {
+    if (Math.random() < params.doubleProbability && tk >= 2) {
+      const trks = selDbl(tk, time, lastNoteTime, sf);
+      if (trks) {
         for (const t of trks) {
           const ntype = rHold(params.holdProbability, enableHolds);
           const hl = ntype === 'hold' ? beatInterval * 2 : 0;
           notes.push(mkN(noteId++, ntype, t, time, hl, true, doubleGroupId));
-          lastNoteTime[t] = ntype === 'hold' ? time + hl : time + adjMinSpacing;
+          lastNoteTime[t] = ntype === 'hold' ? time + hl : time + sf;
         }
         doubleGroupId++; lastTrack = trks[1]; stairLen = 0; continue;
       }
     }
 
-    // 单押，朴实无华（
-    let track: number;
-    if (lastTrack >= 0 && Math.random() < 0.3) {
-      const cand: number[] = [];
-      for (let t = 0; t < tk; t++) {
-        if (Math.abs(t - lastTrack) >= 2 && time - lastNoteTime[t] >= adjMinSpacing) cand.push(t);
-      }
-      track = cand.length > 0 ? cand[Math.floor(Math.random() * cand.length)] : Math.floor(Math.random() * tk);
-    } else {
-      track = Math.floor(Math.random() * tk);
-    }
-    if (time - lastNoteTime[track] >= adjMinSpacing) {
-      const ntype = rHold(params.holdProbability, enableHolds);
-      const hl = ntype === 'hold' ? beatInterval * 2 : 0;
-      notes.push(mkN(noteId++, ntype, track, time, hl, false, null));
-      lastNoteTime[track] = ntype === 'hold' ? time + hl : time + adjMinSpacing;
-      lastTrack = track;
-    }
+    // 单押，选最近没用的轨（减少碰撞拒绝）
+    const track = pickTrack(tk, time, lastNoteTime, sf, lastTrack);
+    if (track < 0) { stairLen = 0; continue; }
+    const ntype = rHold(params.holdProbability, enableHolds);
+    const hl = ntype === 'hold' ? beatInterval * 2 : 0;
+    notes.push(mkN(noteId++, ntype, track, time, hl, false, null));
+    lastNoteTime[track] = ntype === 'hold' ? time + hl : time + sf;
+    lastTrack = track;
     stairLen = 0;
   }
 
   notes.sort((a, b) => a.startTime - b.startTime);
-  } // 程序生成到此为止
-
-  // 节拍对齐，吸到半拍网格上（
-  if (config.snapToBeat) {
-    notes = alignToBeat(notes, config.bpm);
-  }
-
   return notes;
+}
+
+/** 优先选「最近没碰过」的轨，且倾向远离 lastTrack，降低单轨碰撞 */
+function pickTrack(tk: number, time: number, lastNoteTime: number[], minSpacing: number, lastTrack: number): number {
+  const cand: number[] = [];
+  for (let t = 0; t < tk; t++) {
+    if (time - lastNoteTime[t] >= minSpacing) cand.push(t);
+  }
+  if (cand.length === 0) return -1;
+  if (lastTrack >= 0 && cand.length > 1 && Math.random() < 0.5) {
+    const far = cand.filter(t => Math.abs(t - lastTrack) >= 2);
+    if (far.length > 0) return far[Math.floor(Math.random() * far.length)];
+  }
+  return cand[Math.floor(Math.random() * cand.length)];
 }
 
 function rHold(prob: number, en: boolean): NoteType { return en && Math.random() < prob ? 'hold' : 'tap'; }
@@ -196,14 +241,27 @@ function mkN(id: number, type: NoteType, track: number, startTime: number, hLen:
   return { id, type, track, startTime, endTime: startTime + hl, isDouble, doubleGroupId: dgId };
 }
 
-function selDbl(tc: number): [number, number] {
-  if (tc <= 4) { const t1 = Math.floor(Math.random() * (tc - 1)); return [t1, t1 + 1 + Math.floor(Math.random() * (tc - t1 - 1))]; }
-  const lc = Math.floor(tc / 2);
-  return [Math.floor(Math.random() * lc), lc + Math.floor(Math.random() * lc)];
+function selDbl(tc: number, time: number, lastNoteTime: number[], minSpacing: number): number[] | null {
+  const avail: number[] = [];
+  for (let t = 0; t < tc; t++) {
+    if (time - lastNoteTime[t] >= minSpacing) avail.push(t);
+  }
+  if (avail.length < 2) return null;
+  if (tc <= 4) {
+    const i = Math.floor(Math.random() * (avail.length - 1));
+    const t1 = avail[i];
+    const rest = avail.filter(t => t !== t1);
+    return [t1, rest[Math.floor(Math.random() * rest.length)]];
+  }
+  const lc = Math.floor(avail.length / 2);
+  const left = avail.slice(0, Math.max(1, lc));
+  const right = avail.slice(lc);
+  if (left.length === 0 || right.length === 0) return [avail[0], avail[1]];
+  return [left[Math.floor(Math.random() * left.length)], right[Math.floor(Math.random() * right.length)]];
 }
 
 function triplePress(tc: number): number[] {
-  if (tc <= 4) return selDbl(tc);
+  if (tc <= 4) { const t1 = Math.floor(Math.random() * (tc - 1)); return [t1, t1 + 1]; }
   const lc = Math.floor(tc / 2);
   if (Math.random() > 0.5) { const t1 = Math.floor(Math.random() * (lc - 1)); return [t1, t1 + 1, lc + Math.floor(Math.random() * lc)]; }
   const t1 = Math.floor(Math.random() * lc);
@@ -219,62 +277,23 @@ function quadPress(tc: number): number[] {
 }
 
 /**
- * 基于完整波形能量包络自动生成谱面
- * 不再依赖离散 onset 点，而是直接遍历包络，在能量突增处放置音符
+ * 构建「给定时刻最近的 onset 强度」查询函数
+ * onsets 升序，time 单调递增 → 用游标往前扫，O(1) 均摊
  */
-function generateFromAudio(config: GameConfig, rhythm: { bpm: number; onsets: number[]; strengths: number[]; envelope: number[] }, enableHolds: boolean): Note[] {
-  const notes: Note[] = [];
-  let noteId = 0;
-  let doubleGroupId = 0;
-  const tk = config.trackCount;
-  const lastNoteTime: number[] = new Array(tk).fill(-Infinity);
-  const t = Math.max(0, Math.min(1, (config.chartConstant - 1.0) / 17.0));
-  const beatMs = 60000 / rhythm.bpm;
-
-  // 定数决定采多少音，跟波形走（
-  const total = rhythm.onsets.length;
-  const density = (4 / tk) * (120 / Math.max(60, rhythm.bpm));
-  const takeCount = Math.floor(total * (0.12 + t * 0.88) * density);
-  const step = Math.max(1, Math.floor(total / Math.max(1, takeCount)));
-
-  const doubleProb = 0.01 + t * 0.20;
-  const holdProb = 0.01 + t * 0.08;
-  let lastTrack = -1;
-
-  for (let idx = 0; idx < total; idx += step) {
-    const timeMs = rhythm.onsets[idx];
-    const strength = rhythm.strengths[idx] || 0.3;
-
-    if (t > 0.3 && Math.random() < doubleProb * strength && tk >= 4) {
-      const trks = selDbl(tk);
-      if (trks.every(tr => timeMs - lastNoteTime[tr] >= beatMs * 0.4)) {
-        for (const tr of trks) {
-          const hl = enableHolds && Math.random() < holdProb ? Math.max(200, Math.floor(strength * 400)) : 0;
-          notes.push(mkN(noteId++, hl > 0 ? 'hold' : 'tap', tr, timeMs, hl, true, doubleGroupId));
-          lastNoteTime[tr] = timeMs;
-        }
-        doubleGroupId++; lastTrack = trks[1]; continue;
-      }
+function buildStrengthAt(rhythm: { onsets: number[]; strengths: number[] }): (t: number) => number {
+  const ons = rhythm.onsets;
+  const str = rhythm.strengths;
+  let cursor = 0;
+  return (t: number) => {
+    while (cursor + 1 < ons.length && ons[cursor + 1] <= t) cursor++;
+    let best = -1, bestD = Infinity;
+    for (let k = Math.max(0, cursor - 2); k < ons.length && ons[k] <= t + 250; k++) {
+      const d = Math.abs(ons[k] - t);
+      if (d < bestD) { bestD = d; best = k; }
     }
-
-    let track: number;
-    if (lastTrack >= 0 && Math.random() < 0.3) {
-      const cand: number[] = [];
-      for (let tr = 0; tr < tk; tr++) {
-        if (Math.abs(tr - lastTrack) >= 2 && timeMs - lastNoteTime[tr] >= beatMs * 0.35) cand.push(tr);
-      }
-      track = cand.length > 0 ? cand[Math.floor(Math.random() * cand.length)] : Math.floor(Math.random() * tk);
-    } else {
-      track = Math.floor(Math.random() * tk);
-    }
-    if (timeMs - lastNoteTime[track] < beatMs * 0.3) continue;
-    const hl = enableHolds && Math.random() < holdProb ? Math.max(200, Math.floor(strength * 400)) : 0;
-    notes.push(mkN(noteId++, hl > 0 ? 'hold' : 'tap', track, timeMs, hl, false, null));
-    lastNoteTime[track] = timeMs; lastTrack = track;
-  }
-
-  notes.sort((a, b) => a.startTime - b.startTime);
-  return notes;
+    if (bestD > 250) return 0;
+    return str[best] ?? 0.5;
+  };
 }
 
 export function getChartDuration(notes: Note[]): number {

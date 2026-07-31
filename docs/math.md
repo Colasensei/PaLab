@@ -193,29 +193,36 @@ chartConstant 有效范围：**1.0 ~ 18.0**（普通模式）/ **0 ~ 25.0**（�
 
 ### 8.2 轨道补偿
 
-$$\text{trackFactor} = \frac{4}{\max(2, \text{trackCount})}$$
+$$\text{trackFactor} = \left(\frac{4}{\max(2, \text{trackCount})}\right)^{0.25}$$
 
-### 8.3 基础分（NPS → 0~14）
+### 8.3 基础分（NPS → 定数，对标 Phigros）
 
 | NPS 区间 | 公式 |
 |----------|------|
-| $[0, 1.5]$ | $1.0 + \frac{\text{NPS}}{1.5} \times 2.0$ |
-| $(1.5, 4.0]$ | $3.0 + \frac{\text{NPS} - 1.5}{2.5} \times 6.0$ |
-| $(4.0, \infty)$ | $9.0 + \min(1, \frac{\text{NPS} - 4.0}{3.0}) \times 5.0$ |
+| $[0, 1.0]$ | $1.0 + \text{NPS} \times 2.0$ |
+| $(1.0, 3.0]$ | $3.0 + (\text{NPS} - 1.0) \times 2.5$ |
+| $(3.0, 5.0]$ | $8.0 + (\text{NPS} - 3.0) \times 1.75$ |
+| $(5.0, 8.0]$ | $11.5 + (\text{NPS} - 5.0) \times 1.5$ |
+| $(8.0, \infty)$ | $16.0 + \min(1, \frac{\text{NPS} - 8.0}{2.0}) \times 2.0$ |
 
 $$\text{baseScore} \mathrel{*}= \text{trackFactor}$$
+
+> 参考点：NPS 1→3 (EZ)，NPS 3→8 (HD)，NPS 5→11.5 (IN)，NPS 8→16 (AT)。
 
 ### 8.4 加成
 
 | 加成项 | 公式 | 范围 |
 |--------|------|------|
-| 双押加成 | $\text{doubleRatio} \times 4.0$ | 0 ~ 3.0 |
-| Hold 加成 | $\text{holdRatio} \times 2.0$ | 0 ~ 1.5 |
-| 峰值加成 | $\max(0, \text{maxWindowNps} - 4) \times 0.4$ | 0 ~ 2.0 |
+| 双押加成 | $\text{doubleRatio} \times 1.2$ | 0 ~ 1.2 |
+| Hold 加成 | $\text{holdRatio} \times 0.6$ | 0 ~ 0.6 |
+| 峰值加成 | $\max(0, \text{maxWindowNps} - 8) \times 0.25$ | 0 ~ 1.0 |
 
 $$\text{chartConstant} = \text{clamp}(\text{baseScore} + \text{doubleBonus} + \text{holdBonus} + \text{peakBonus},\ 1.0,\ 18.0)$$
 
 最终保留一位小数。
+
+> **自洽保证：** 自动生成器 (`src/utils/chartGenerator.ts`) 与手动分析器共用同一 NPS↔定数映射
+> (`npsToConstant` / `constantToNps`)，因此「选定定数生成 → 丢进编辑器分析」的 round-trip 结果 ≈ 原定数。
 
 ---
 

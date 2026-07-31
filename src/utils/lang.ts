@@ -31,6 +31,8 @@ const zh: TextMap = {
   'select.audio': '选择音频...',
   'tracks': '轨道',
   'difficulty': '难度',
+  'hold.notes': '长条音符',
+  'hold.notes.tip': '关闭后谱面不生成任何长条',
 
   // 歌曲面板
   'normal': '普通',
@@ -125,6 +127,8 @@ const en: TextMap = {
   'select.audio': 'SELECT AUDIO...',
   'tracks': 'TRACKS',
   'difficulty': 'DIFFICULTY',
+  'hold.notes': 'HOLD NOTES',
+  'hold.notes.tip': 'No hold notes when off',
 
   'normal': 'NORMAL',
   'easy': 'EASY',

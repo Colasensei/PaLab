@@ -71,6 +71,8 @@ export interface GameConfig {
   rhythmData?: { bpm: number; onsets: number[]; strengths: number[]; envelope: number[] };
   /** 节拍对齐（自动分析谱面用） */
   snapToBeat?: boolean;
+  /** 是否生成 hold 长条（默认 true） */
+  enableHolds?: boolean;
 }
 
 // ============ 音符 ============

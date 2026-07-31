@@ -130,13 +130,38 @@ export function ensureDoubleGroups(notes: Note[], windowMs: number = 35): Note[]
 }
 
 /**
+ * NPS → 基础定数（对标 Phigros 实际密度曲线）
+ *
+ *   NPS 0.5 → ~2 (EZ)     NPS 1 → ~3     NPS 2 → ~5.5
+ *   NPS 3   → ~8 (HD)     NPS 4 → ~9.8   NPS 5 → ~11.5 (IN)
+ *   NPS 6   → ~13         NPS 7 → ~14.5  NPS 8 → ~16 (AT)
+ *   NPS 10  → ~18
+ */
+export function npsToConstant(nps: number): number {
+  if (nps <= 1.0) return 1.0 + nps * 2.0;                    // NPS 0→1, 1→3
+  if (nps <= 3.0) return 3.0 + (nps - 1.0) * 2.5;            // NPS 1→3, 3→8
+  if (nps <= 5.0) return 8.0 + (nps - 3.0) * 1.75;           // NPS 3→8, 5→11.5
+  if (nps <= 8.0) return 11.5 + (nps - 5.0) * 1.5;           // NPS 5→11.5, 8→16
+  return 16.0 + Math.min(1, (nps - 8.0) / 2.0) * 2.0;        // NPS 8→16, 10→18
+}
+
+/** 定数 → 期望 NPS（npsToConstant 的逆函数，供生成器校准用） */
+export function constantToNps(c: number): number {
+  if (c <= 3.0) return Math.max(0, (c - 1.0) / 2.0);
+  if (c <= 8.0) return 1.0 + (c - 3.0) / 2.5;
+  if (c <= 11.5) return 3.0 + (c - 8.0) / 1.75;
+  if (c <= 16.0) return 5.0 + (c - 11.5) / 1.5;
+  return 8.0 + (c - 16.0) / 1.0;
+}
+
+/**
  * 难度自动评定
  *
- * 基于以下指标映射到 chartConstant (1.0~18.0)：
- * - NPS (notes per second)：总物量 / 时长
- * - 双押比例：多押音符数 / 总音符数
+ * 基于以下指标映射到 chartConstant (1.0~18.0)，与自动生成器保持一致：
+ * - NPS (notes per second)：总物量 / 时长（主指标，对标 Phigros）
+ * - 双押比例：多押音符数 / 总音符数（读谱/协调加成）
  * - Hold 比例：Hold 音符数 / 总音符数
- * - 最大 NPS（峰值密度）
+ * - 最大 NPS（峰值密度，爆发加成）
  */
 export function estimateDifficulty(notes: Note[], durationMs: number, trackCount: number): number {
   if (notes.length === 0 || durationMs <= 0) return 1.0;
@@ -168,31 +193,21 @@ export function estimateDifficulty(notes: Note[], durationMs: number, trackCount
   // hold 率
   const holdRatio = totalNotes > 0 ? holdCount / totalNotes : 0;
 
-  // 轨道补偿：以 4K 为基准
-  const trackFactor = 4 / Math.max(2, trackCount);
+  // 轨道补偿：4K 基准，轨少→单轨更密→略难；轨多→略降
+  const trackFactor = Math.pow(4 / Math.max(2, trackCount), 0.25);
 
   // NPS → 基础定数
-  // Low: NPS 1.0 → ~3, Mid: NPS 3.0 → ~9, High: NPS 6.0 → ~14
-  let baseScore = 0;
-  if (nps <= 1.5) {
-    baseScore = 1.0 + (nps / 1.5) * 7.0; // 1.0~8.0
-  } else if (nps <= 5.0) {
-    baseScore = 8.0 + ((nps - 1.5) / 3.5) * 8.0; // 8.0~16.0
-  } else {
-    baseScore = 16.0 + Math.min(1, (nps - 5.0) / 2.0) * 2.0; // 16.0~18.0
-  }
-
-  // 轨道补偿，别让多轨欺负少轨（
+  let baseScore = npsToConstant(nps);
   baseScore *= trackFactor;
 
-  // 双押 +0~2
-  const doubleBonus = doubleRatio * 2.0;
+  // 双押 +0~1.2（协调/读谱）
+  const doubleBonus = doubleRatio * 1.2;
 
-  // hold +0~1
-  const holdBonus = holdRatio * 1.0;
+  // hold +0~0.6
+  const holdBonus = holdRatio * 0.6;
 
-  // 峰值 +0~2
-  const peakBonus = Math.max(0, (maxWindowNps - 6) * 0.25);
+  // 峰值 +0~1.0（极限爆发）
+  const peakBonus = Math.max(0, (maxWindowNps - 8) * 0.25);
 
   let finalScore = baseScore + doubleBonus + holdBonus + peakBonus;
 

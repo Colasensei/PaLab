@@ -9,6 +9,14 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 5.7（正式版）', date: '2026-07-31',
+    items: [
+      '自动分析歌曲面板新增「关闭长条」开关（不生成 Hold 音符）',
+      '难度体系重新校准：自动生成与分析器共用 Phigros 密度曲线，谱面难度互相自洽',
+      '修复高难度自动谱面偏稀疏、手动/编辑器分析难度偏高的问题',
+    ],
+  },
+  {
     ver: 'Alpha 5.6（正式版）', date: '2026-07-31',
     items: [
       'Android 端注册为游戏（isGame + 游戏分类）',

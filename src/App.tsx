@@ -565,7 +565,7 @@ const App: React.FC = () => {
   const handleStart = useCallback(() => {
     // 来自编辑器试玩：不重新生成谱面，用编辑器已有的音符
     if (!fromEditor) {
-      const generatedNotes = generateChart(config, config.songUrl ? duration : null, true);
+      const generatedNotes = generateChart(config, config.songUrl ? duration : null, config.enableHolds ?? true);
       setNotes(ensureDoubleGroups(generatedNotes));
     }
     chartGeneratedRef.current = true;
