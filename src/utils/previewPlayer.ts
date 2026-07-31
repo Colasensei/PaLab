@@ -10,6 +10,8 @@ export const PREVIEW_VOLUME = 0.6;
 export const PREVIEW_LOW_VOLUME = 0.12;
 
 let fadeTimer: ReturnType<typeof setInterval> | null = null;
+/** 递增令牌：stop/换歌时使进行中的异步 load 失效，防止退出后还在播放 */
+let previewSeq = 0;
 
 function clearFade() {
   if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
@@ -17,19 +19,23 @@ function clearFade() {
 
 /** 渐入播放预览（切换谱面时新歌渐入） */
 export function playPreview(url: string, targetVol: number = PREVIEW_VOLUME) {
+  const seq = ++previewSeq;
   clearFade();
   audioManager.load(url).then(() => {
+    // 已经被停止/切换成别的歌：什么都不做（也不能去动 audioManager，可能已被游戏占用）
+    if (seq !== previewSeq) return;
     audioManager.setVolume(0);
     audioManager.play(1);
     // 渐入 250ms
     const start = performance.now();
     const dur = 250;
     fadeTimer = setInterval(() => {
+      if (seq !== previewSeq) { clearFade(); return; }
       const p = Math.min(1, (performance.now() - start) / dur);
       audioManager.setVolume(targetVol * p);
       if (p >= 1) clearFade();
     }, 30);
-  }).catch(() => { clearFade(); });
+  }).catch(() => { if (seq === previewSeq) clearFade(); });
 }
 
 /** 直接设置预览音量（低档 / 正常档） */
@@ -38,8 +44,9 @@ export function setPreviewVolume(v: number) {
   audioManager.setVolume(v);
 }
 
-/** 停止预览 */
+/** 停止预览（使所有进行中的预览 load 失效） */
 export function stopPreview() {
+  previewSeq++;
   clearFade();
   audioManager.stop();
 }
