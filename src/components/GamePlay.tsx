@@ -157,8 +157,17 @@ export function getHitVolume() { return hitVolume; }
 
 function playHitSound() {
   if (audioCtx && hitBuffer && hitGain) {
-    // 快速 resume（移动端切后台回来可能 suspend）
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    // 快速 resume（移动端切后台回来可能 suspend）；先等 resume 完成再调度，避免掉音/延迟
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().then(() => {
+        const src = audioCtx!.createBufferSource();
+        src.buffer = hitBuffer!;
+        src.connect(hitGain!);
+        src.start(0);
+        src.onended = () => { try { src.disconnect(); } catch {} };
+      }).catch(() => {});
+      return;
+    }
     const src = audioCtx.createBufferSource();
     src.buffer = hitBuffer;
     src.connect(hitGain);
@@ -845,16 +854,24 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
           ctx.globalAlpha = isRed ? 0.7 : 1;
           ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : config.noteColor;
-          if (note.isDouble && showDoubleGlow && !isRed) {
+          const isDoubleNote = note.isDouble && showDoubleGlow && !isRed;
+          if (isDoubleNote) {
             ctx.shadowColor = doubleGlowColor;
-            ctx.shadowBlur = doubleGlowSize / 2;
+            ctx.shadowBlur = doubleGlowSize;
           }
           ctx.fillRect(nx, ny, noteW, nh);
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
-          ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(nx, ny, noteW, nh);
+          if (isDoubleNote) {
+            // 双押：明显的黄边
+            ctx.strokeStyle = doubleGlowColor;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(nx, ny, noteW, nh);
+          } else {
+            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(nx, ny, noteW, nh);
+          }
 
         } else {
           const endY = jy - ((note.endTime - now) / eff) * (jy - 50);
@@ -878,9 +895,16 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           ctx.globalAlpha = isRed ? 0.7 : isHoldDone ? 0.4 : 1;
           ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : isHoldDone ? config.holdNoteColor + '66' : config.holdNoteColor;
           ctx.fillRect(nx, ny, noteW, nh);
-          ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(nx, ny, noteW, nh);
+          if (note.isDouble && showDoubleGlow && !isRed) {
+            // 双押 hold：明显的黄边
+            ctx.strokeStyle = doubleGlowColor;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(nx, ny, noteW, nh);
+          } else {
+            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(nx, ny, noteW, nh);
+          }
 
           if (isHolding) {
             const dur = note.endTime - note.startTime;

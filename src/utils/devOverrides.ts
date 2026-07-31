@@ -491,7 +491,7 @@ export const DEFAULT_OVERRIDES: DevOverrides = {
   // Effects
   e_comboFontSize: 28,
   e_scoreFontSize: 20,
-  e_doubleGlowSize: 18,
+  e_doubleGlowSize: 30,
   e_doubleGlowAlpha: 0.7,
   e_doubleGlowColor: '#FFFF00',
   e_tapEffInitial: 16,
