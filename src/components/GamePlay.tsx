@@ -902,7 +902,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       ctx.clearRect(0, 0, w, h);
 
       const s = canvasStateRef.current;
-      const rawMs = s.currentTime; // 音频时钟 (ms)
+      // 用【实时】getCurrentTime() 而不是滞后的 s.currentTime（React state 有
+      // 渲染/批处理滞后）：与 autoplay/真人判定同源同刻，避免视觉时钟落后于
+      // 判定时钟（autoplay 看起来过了判定线才按），也避免 state 跳变导致一顿一顿。
+      const rawMs = getCurrentTime(); // 音频时钟 (ms)
       const perf = performance.now();
 
       if (!clockInited) {
@@ -1041,7 +1044,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, trackWidth, notePadX, tapHeight, holdMinH, holdRingR, holdRingW, holdRingColor,
-      doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop]);
+      doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop,
+      getCurrentTime]);
 
   const getNoteY = (noteTime: number): number => {
     const timeUntil = noteTime - state.currentTime;
