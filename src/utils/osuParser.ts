@@ -16,6 +16,8 @@ export interface OsuParseResult {
   trackCount: number;
   bpm: number;
   audioFilename: string;
+  /** 背景/曲绘文件名（[Events] 首行 0,0,"bg.jpg"） */
+  backgroundFilename: string | null;
   notes: Note[];
 }
 
@@ -74,6 +76,16 @@ export function parseOsuBeatmap(text: string): OsuParseResult {
   const version = sectionValue(metadata, 'Version') || '';
   const audioFilename = sectionValue(general, 'AudioFilename') || '';
 
+  // 背景/曲绘文件名（[Events] 背景事件 0,0,"bg.jpg",x,y）
+  let backgroundFilename: string | null = null;
+  const events = sections['Events'] || [];
+  for (const line of events) {
+    const t = line.trim();
+    if (!t || t.startsWith('//')) continue;
+    const m = /^0,0,"([^"]+)"/.exec(t);
+    if (m) { backgroundFilename = m[1]; break; }
+  }
+
   // BPM：首个正数（非继承）TimingPoint
   let bpm = 120;
   for (const line of timing) {
@@ -129,6 +141,7 @@ export function parseOsuBeatmap(text: string): OsuParseResult {
     trackCount: 4,
     bpm,
     audioFilename,
+    backgroundFilename,
     notes: ensureDoubleGroups(notes),
   };
 }

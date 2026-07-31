@@ -11,6 +11,11 @@ interface EditorConfig {
   songUrl: string;
   songFileName: string;
   existingNotes?: Note[];
+  title?: string;
+  artist?: string;
+  author?: string;
+  coverUrl?: string;
+  coverFileName?: string;
 }
 
 interface Props {
@@ -204,14 +209,32 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
       const blob = await audioEntry.async('blob');
       const url = URL.createObjectURL(blob);
       if (songUrl) URL.revokeObjectURL(songUrl);
-      const display = parsed.title ? `${parsed.title}${parsed.version ? ` [${parsed.version}]` : ''}` : path;
-      // 自动解析并进入编辑器
+      // 提取曲绘（背景图）—— 补上图片 MIME，否则 blob → dataURL 会变成 text/plain 无法显示
+      let coverUrl: string | undefined;
+      let coverFileName: string | undefined;
+      if (parsed.backgroundFilename) {
+        const imgEntry = findImageInZip(zip, parsed.backgroundFilename);
+        if (imgEntry) {
+          const imgBlob = (await imgEntry.async('blob')) as Blob;
+          const ext = (parsed.backgroundFilename.split('.').pop() || 'png').toLowerCase();
+          const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', bmp: 'image/bmp' };
+          const typed: Blob = imgBlob.type ? imgBlob : new Blob([imgBlob], { type: mimeMap[ext] || 'image/png' });
+          coverUrl = URL.createObjectURL(typed);
+          coverFileName = parsed.backgroundFilename;
+        }
+      }
+      // 自动解析并进入编辑器（元数据预填：标题/作者/谱师/曲绘）
       onConfirm({
         bpm: parsed.bpm,
         trackCount: 4,
         songUrl: url,
-        songFileName: display,
+        songFileName: parsed.title || path,
         existingNotes: parsed.notes,
+        title: parsed.title,
+        artist: parsed.artist,
+        author: parsed.creator,
+        coverUrl,
+        coverFileName,
       });
     } catch (err) {
       const msg = (err as Error).message;
@@ -351,4 +374,17 @@ function findAudioInZip(zip: JSZip, audioFilename: string): JSZip.JSZipObject | 
     }
   });
   return fallback;
+}
+
+/** 定位曲绘/背景图（按文件名或 basename） */
+function findImageInZip(zip: JSZip, filename: string): JSZip.JSZipObject | null {
+  if (!filename) return null;
+  const exact = zip.file(filename);
+  if (exact) return exact;
+  const base = filename.split(/[\\/]/).pop() || filename;
+  let byBase: JSZip.JSZipObject | null = null;
+  zip.forEach((relPath, file) => {
+    if (!byBase && !file.dir && (relPath.split(/[\\/]/).pop() || '') === base) byBase = file;
+  });
+  return byBase;
 }

@@ -13,9 +13,9 @@ interface Props {
 
 
 export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) => {
-  const [title, setTitle] = useState(config.songFileName?.replace(/\.[^.]+$/, '') || '');
-  const [artist, setArtist] = useState('');
-  const [author, setAuthor] = useState('');
+  const [title, setTitle] = useState(config.chartTitle || config.songFileName?.replace(/\.[^.]+$/, '') || '');
+  const [artist, setArtist] = useState(config.chartArtist || '');
+  const [author, setAuthor] = useState(config.chartAuthor || '');
   const [description, setDescription] = useState('');
   const [coverDataUrl, setCoverDataUrl] = useState<string | null>(null);
   const [coverFileName, setCoverFileName] = useState('');
@@ -39,6 +39,21 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
       setSongDataUrl(config.songUrl);
     }
   }, [config.songUrl]);
+
+  // 预填曲绘（OSU 导入的 blob URL → data URL，保证导出可用）
+  useEffect(() => {
+    if (!config.coverUrl) return;
+    if (config.coverUrl.startsWith('blob:')) {
+      fetch(config.coverUrl).then(r => r.blob()).then(b => {
+        const reader = new FileReader();
+        reader.onload = () => { setCoverDataUrl(reader.result as string); setCoverFileName(config.coverFileName || 'cover.png'); };
+        reader.readAsDataURL(b);
+      }).catch(() => {});
+    } else {
+      setCoverDataUrl(config.coverUrl);
+      setCoverFileName(config.coverFileName || 'cover.png');
+    }
+  }, [config.coverUrl, config.coverFileName]);
   const coverRef = useRef<HTMLInputElement>(null);
   const illusRef = useRef<HTMLInputElement>(null);
 

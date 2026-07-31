@@ -12,6 +12,8 @@ function makeWav(seconds: number): Buffer {
   return buf;
 }
 
+const px = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+
 const mapA = `osu file format v14
 
 [General]
@@ -26,6 +28,10 @@ Version:4K Normal
 
 [Difficulty]
 CircleSize:4
+
+[Events]
+//背景
+0,0,"bg.png",0,0
 
 [TimingPoints]
 0,500,4,2,1,65,1,0
@@ -64,6 +70,7 @@ CircleSize:4
 async function main() {
   const zip = new JSZip();
   zip.file('song.wav', makeWav(2));
+  zip.file('bg.png', px);
   zip.file('maps/OSU Test Song (Maker) [4K Normal].osu', mapA);
   zip.file('maps/OSU Test Song (Maker) [4K Hard].osu', mapB);
   const buf = await zip.generateAsync({ type: 'nodebuffer' });

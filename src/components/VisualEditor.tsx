@@ -3,7 +3,7 @@ import { Lang } from '@/utils/lang';
 import { getDevOverride } from '@/utils/devOverrides';
 import { Note } from '@/types';
 
-interface EditorConfig { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; }
+interface EditorConfig { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; }
 interface Props { config: EditorConfig; onBack: () => void; onSave: (notes: Note[]) => void; onTrial: (notes: Note[]) => void; lang: Lang; latencyOffset: number; }
 type AlignMode = 'none' | 'beat' | 'half' | 'quarter';
 interface PlacedNote { id: number; track: number; startBeat: number; endBeat: number; startTime: number; endTime: number; }

@@ -192,7 +192,7 @@ const App: React.FC = () => {
   const [manualDuration, setManualDuration] = useState<number>(0);
 
   // 可视化编辑器流程
-  const [editorConfig, setEditorConfig] = useState<{ bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[] } | null>(null);
+  const [editorConfig, setEditorConfig] = useState<{ bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string } | null>(null);
   const [editorNotes, setEditorNotes] = useState<Note[]>([]);
   const [fromEditor, setFromEditor] = useState(false);
 
@@ -474,7 +474,7 @@ const App: React.FC = () => {
   const goToManualConfig = useCallback(() => navigateTo('manual-config'), [navigateTo]);
   const goToEditorSetup = useCallback(() => navigateTo('editor-setup'), [navigateTo]);
 
-  const handleEditorConfirm = useCallback((cfg: { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[] }) => {
+  const handleEditorConfirm = useCallback((cfg: { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string }) => {
     setEditorConfig(cfg);
     navigateTo('visual-editor');
   }, [navigateTo]);
@@ -501,6 +501,11 @@ const App: React.FC = () => {
       speedMultiplier: 5.0, noteColor: '#35BFFF', holdNoteColor: '#35BFFF',
       bgColor: '#0a0a14', judgeLineColor: '#999999',
       songUrl: editorConfig.songUrl, songFileName: editorConfig.songFileName,
+      chartTitle: editorConfig.title,
+      chartArtist: editorConfig.artist,
+      chartAuthor: editorConfig.author,
+      coverUrl: editorConfig.coverUrl,
+      coverFileName: editorConfig.coverFileName,
       autoPlay: false,
     };
     setConfig(cfg);
@@ -525,6 +530,11 @@ const App: React.FC = () => {
       speedMultiplier: 5.0, noteColor: '#35BFFF', holdNoteColor: '#35BFFF',
       bgColor: '#0a0a14', judgeLineColor: '#999999',
       songUrl: editorConfig.songUrl, songFileName: editorConfig.songFileName,
+      chartTitle: editorConfig.title,
+      chartArtist: editorConfig.artist,
+      chartAuthor: editorConfig.author,
+      coverUrl: editorConfig.coverUrl,
+      coverFileName: editorConfig.coverFileName,
       autoPlay: false,
     };
     setConfig(cfg);

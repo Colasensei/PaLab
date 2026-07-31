@@ -73,6 +73,12 @@ export interface GameConfig {
   snapToBeat?: boolean;
   /** 是否生成 hold 长条（默认 true） */
   enableHolds?: boolean;
+  /** 编辑器元数据（OSU 导入预填） */
+  chartTitle?: string;
+  chartArtist?: string;
+  chartAuthor?: string;
+  coverUrl?: string;
+  coverFileName?: string;
 }
 
 // ============ 音符 ============
