@@ -365,8 +365,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const effectIdRef = useRef(0);
 
   const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  pausedRef.current = paused;
   const pauseTimeRef = useRef<number>(0);
   const totalPauseRef = useRef<number>(0);
+  // 歌曲真正开始播放的 performance.now()（前摇结束后 / 无前摇直接开播时设置）。
+  // 判定与视觉共用这个 perf 外推时钟，绕开 audio.currentTime 的读取延迟/粒度问题。
+  const songStartPerfRef = useRef<number>(0);
   const hasSong = !!config.songUrl;
 
   // FC/AP 炸了 → 回旋镖动画
@@ -457,7 +462,17 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   // 获取游戏时间
   const getCurrentTime = useCallback((): number => {
-    if (hasSong) return audioManager.getCurrentTime();
+    if (hasSong) {
+      // 用 performance.now() 外推真实播放时间（而非 audio.currentTime）：
+      // audio.currentTime 读取有延迟/粒度不均，直接用它会让音符一顿一顿，
+      // 且与用 perf 的视觉时钟错位。前摇/未开始（songStartPerfRef=0）时保持 0。
+      if (!songStartPerfRef.current) return 0;
+      if (pausedRef.current) {
+        // 暂停：冻结在暂停开始时刻
+        return Math.max(0, pauseTimeRef.current - songStartPerfRef.current - totalPauseRef.current);
+      }
+      return Math.max(0, performance.now() - songStartPerfRef.current - totalPauseRef.current);
+    }
     // 无歌时用性能时钟，前摇期间（leadInMs 内）保持 0
     return Math.max(0, performance.now() - gameStartRef.current - leadInMsRef.current - totalPauseRef.current);
   }, [hasSong]);
@@ -487,6 +502,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 开局统一入口：有前摇则延迟 leadInMs 放歌（期间谱面冻结、进度条不走、显示 READY?）
   const beginSong = useCallback(() => {
     if (leadInTimerRef.current) { clearTimeout(leadInTimerRef.current); leadInTimerRef.current = null; }
+    // 歌曲真正开始播放的时刻 = perf 外推时钟的 0 点（与音符时间轴 0 对齐）
+    const markStarted = () => { songStartPerfRef.current = performance.now(); };
     if (leadInMs > 0) {
       songStartedRef.current = false;
       leadInActiveRef.current = true;
@@ -494,12 +511,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       if (hasSong) audioManager.setVolume(musicVolume / 100);
       leadInTimerRef.current = setTimeout(() => {
         songStartedRef.current = true;
-        // audio.play() 是异步的：若先解除冻结再 play()，在播放真正启动前
-        // audio.currentTime 会停在 0（引擎判定时间不动），而 canvas 视觉时钟
-        // 已按性能时钟提前走 → hold 视觉先到判定线而引擎未判定（「漏过判定线」），
-        // 播放真正开始后引擎时间猛涨又触发一次大重锁（「卡一下」）。
-        // 所以先 play()，等音频真正开始播放（promise resolve）再解除前摇冻结。
+        // audio.play() 是异步的：先 play()，等音频真正开始播放（promise resolve）
+        // 再标记起始时刻并解除冻结，保证音符时间轴与音频播放严格对齐
+        // （避免 play 启动期 audio.currentTime 停 0 导致的漏判与卡顿）。
         const unstickLeadIn = () => {
+          markStarted();
           leadInActiveRef.current = false;
           setLeadInActive(false);
         };
@@ -514,7 +530,14 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       }, leadInMs);
     } else {
       songStartedRef.current = true;
-      if (hasSong) { audioManager.setVolume(musicVolume / 100); audioManager.play(1); }
+      if (hasSong) {
+        audioManager.setVolume(musicVolume / 100);
+        const p = audioManager.play(1);
+        if (p) p.then(markStarted).catch(markStarted);
+        else markStarted();
+      } else {
+        markStarted();
+      }
     }
   }, [leadInMs, hasSong, musicVolume]);
 
@@ -581,6 +604,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       resetProgressTimer();
       gameStartRef.current = performance.now();
       totalPauseRef.current = 0;
+      songStartPerfRef.current = 0;
       startHitKeepAlive();
       beginSong();
       start();
@@ -617,6 +641,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         audioManager.stop();
         gameStartRef.current = performance.now();
         totalPauseRef.current = 0;
+        songStartPerfRef.current = 0;
         lastResultCountRef.current = 0;
         resetProgressTimer();
         setEffects([]);
@@ -653,8 +678,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [showFPS]);
 
   // 进度条
-  const pausedRef = useRef(paused);
-  pausedRef.current = paused;
   const pauseRewindRef2 = useRef(state.pauseRewind);
   pauseRewindRef2.current = state.pauseRewind;
   useEffect(() => {
@@ -882,12 +905,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     const ctx = canvas.getContext('2d')!;
 
     let raf = 0;
-    // 平滑视觉时钟：音符位置跟随 performance.now()（显示刷新时钟），避免
-    // audio.currentTime 的媒体时钟与 rAF 不同步导致「一顿一顿」（电脑高刷屏尤其明显）
-    let clockBaseAudio = 0;   // 上次与音频同步时的音频时间 (ms)
-    let clockBasePerf = 0;    // 对应 performance.now() (ms)
-    let clockInited = false;
-    let wasLeadIn = false;    // 上一帧是否处于前摇冻结（用于检测刚解除冻结的瞬间）
 
     const loop = () => {
       const w = totalWidth + 10;
@@ -902,47 +919,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       ctx.clearRect(0, 0, w, h);
 
       const s = canvasStateRef.current;
-      // 用【实时】getCurrentTime() 而不是滞后的 s.currentTime（React state 有
-      // 渲染/批处理滞后）：与 autoplay/真人判定同源同刻，避免视觉时钟落后于
-      // 判定时钟（autoplay 看起来过了判定线才按），也避免 state 跳变导致一顿一顿。
-      const rawMs = getCurrentTime(); // 音频时钟 (ms)
-      const perf = performance.now();
-
-      if (!clockInited) {
-        clockInited = true;
-        clockBaseAudio = rawMs;
-        clockBasePerf = perf;
-      } else if (s.paused || !s.isPlaying || leadInActiveRef.current) {
-        // 暂停/结束/前摇：直接锁到音频时间（音符静止，避免前摇期间抽搐）
-        clockBaseAudio = rawMs;
-        clockBasePerf = perf;
-      } else if (wasLeadIn) {
-        // 前摇刚结束（冻结→播放）的第一帧：从真实引擎位置起锚，
-        // 避免 play() 启动期任何残余的视觉/引擎时间错位造成首帧跳变
-        clockBaseAudio = rawMs;
-        clockBasePerf = perf;
-      } else {
-        // 播放中：按性能时钟平滑推进（帧间恒定，避免 audio.currentTime 粒度
-        // 不均导致的「一顿一顿」）。同时以极小比例（12%）把视觉偏移向真实
-        // 音频时间收敛——但【只挪偏移、不重置 clockBasePerf】，外推速率保持
-        // 恒定 1x：因此不会产生视觉滞后（autoplay 不会显得提前按）、不会积累
-        // 漂移（偏差指数收敛）、没有周期重锁（无「卡一下」）、每帧变化微小
-        // （平滑无「一顿一顿」）。只有大幅偏差（seek/切歌）才硬重锁。
-        const v = clockBaseAudio + (perf - clockBasePerf);
-        const drift = rawMs - v;
-        if (Math.abs(drift) > 120) {
-          // 大幅偏差：直接重锁（异常场景，跳变不可避免）
-          clockBaseAudio = rawMs;
-          clockBasePerf = perf;
-        } else if (Math.abs(drift) > 2) {
-          // 轻微偏差：只挪偏移，保持速率连续（指数收敛，无滞后/无跳变）
-          clockBaseAudio += drift * 0.12;
-        }
-      }
-      wasLeadIn = leadInActiveRef.current;
-
-      // 视觉时间：播放中按显示时钟平滑推进；暂停/结束/前摇时跟随音频（冻结）
-      const now = (s.paused || !s.isPlaying || leadInActiveRef.current) ? rawMs : clockBaseAudio + (perf - clockBasePerf);
+      // 视觉时钟 = 实时 getCurrentTime()（audio.currentTime），与引擎判定
+      // 完全同源同刻。不引入 performance.now() 外推：perf 是真实时间，往往
+      // 比 audio.currentTime 快（媒体时钟读取有延迟），混入外推会让视觉超前于
+      // 判定（autoplay 看起来「过了判定线才按」），两者错位还会一顿一顿。
+      // 直接跟随音频时间 → 视觉与判定严格同步，无提前/延后、无跳变。
+      const now = getCurrentTime();
       const eff = fallDuration / config.speedMultiplier;
       const jy = JUDGMENT_LINE_Y;
       const fid = canvasFailedRef.current;
