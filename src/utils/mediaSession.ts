@@ -46,6 +46,13 @@ export function clearMediaSession(): void {
   try { n.clear().catch(() => {}); } catch { /* ignore */ }
 }
 
+/** 请求通知权限（Android 13+ 媒体通知需要，打开播放器时调用） */
+export function requestMediaSessionPermission(): void {
+  const n = getNative();
+  if (!n) return;
+  try { n.requestPermissions().catch(() => {}); } catch { /* ignore */ }
+}
+
 /** 监听系统媒体控制（锁屏/通知栏/耳机按键），返回取消函数 */
 export function onMediaControl(cb: (e: MediaControlEvent) => void): () => void {
   const n = getNative();

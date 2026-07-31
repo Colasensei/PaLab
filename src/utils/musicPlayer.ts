@@ -5,7 +5,7 @@
  * - 模块级 Audio 元素，后台/切屏不受组件卸载影响
  */
 import { loadCharts } from './chartDB';
-import { syncMediaSession, clearMediaSession, onMediaControl, MediaControlEvent } from './mediaSession';
+import { syncMediaSession, clearMediaSession, onMediaControl, requestMediaSessionPermission, MediaControlEvent } from './mediaSession';
 import type { ChartPackage } from '@/components/ChartLibrary';
 
 export interface MusicTrack {
@@ -84,6 +84,8 @@ export function getMusicPlayerState(): MusicState { return getState(); }
 
 /** 打开播放器：首次加载谱面库音乐列表，并恢复/开始播放 */
 export async function openMusicPlayer(): Promise<void> {
+  // Android 13+ 媒体通知需要通知权限
+  requestMediaSessionPermission();
   if (!listLoaded) {
     listLoaded = true;
     try {
