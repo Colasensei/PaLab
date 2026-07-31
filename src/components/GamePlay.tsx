@@ -414,8 +414,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const pauseTitleFontSize = useMemo(() => getDevOverride('u_pauseTitleFont'), []);
 
   // 特效
-  const doubleGlowSize = useMemo(() => getDevOverride('e_doubleGlowSize'), []);
-  const doubleGlowAlpha = useMemo(() => getDevOverride('e_doubleGlowAlpha'), []);
   const doubleGlowColor = useMemo(() => getDevOverride('e_doubleGlowColor'), []);
   const tapEffInitial = useMemo(() => getDevOverride('e_tapEffInitial'), []);
   const tapEffSpread = useMemo(() => getDevOverride('e_tapEffSpread'), []);
@@ -813,7 +811,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   useEffect(() => {
     const canvas = noteCanvasRef.current;
     if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
+    // DPR 封顶到 2：高分屏填充量最多 4x CSS 像素，足够清晰且性能好
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const ctx = canvas.getContext('2d')!;
 
     let raf = 0;
@@ -834,12 +833,14 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       const eff = fallDuration / config.speedMultiplier;
       const jy = JUDGMENT_LINE_Y;
       const fid = canvasFailedRef.current;
+      const results = s.results;
+      const activeHolds = s.activeHolds;
 
       for (const note of s.activeNotes) {
-        const result = s.results.get(note.id);
+        const result = results.get(note.id);
         const isBadOrMiss = result && (result.judgment.type === 'bad' || result.judgment.type === 'miss');
-        const isHolding = note.type === 'hold' && s.activeHolds.has(note.id);
-        const isHoldDone = note.type === 'hold' && result && !isBadOrMiss && !s.activeHolds.has(note.id);
+        const isHolding = note.type === 'hold' && activeHolds.has(note.id);
+        const isHoldDone = note.type === 'hold' && result && !isBadOrMiss && !activeHolds.has(note.id);
         const isRed = !!isBadOrMiss || (note.id === fid && !result);
         const isFailed = note.id === fid && !result;
 
@@ -855,15 +856,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           ctx.globalAlpha = isRed ? 0.7 : 1;
           ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : config.noteColor;
           const isDoubleNote = note.isDouble && showDoubleGlow && !isRed;
-          if (isDoubleNote) {
-            ctx.shadowColor = doubleGlowColor;
-            ctx.shadowBlur = doubleGlowSize;
-          }
           ctx.fillRect(nx, ny, noteW, nh);
-          ctx.shadowColor = 'transparent';
-          ctx.shadowBlur = 0;
           if (isDoubleNote) {
-            // 双押：明显的黄边
+            // 双押：黄色描边（无阴影，性能友好）
             ctx.strokeStyle = doubleGlowColor;
             ctx.lineWidth = 3;
             ctx.strokeRect(nx, ny, noteW, nh);
@@ -925,10 +920,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             ctx.beginPath();
             ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
             ctx.strokeStyle = holdRingColor;
-            ctx.shadowColor = holdRingColor;
-            ctx.shadowBlur = 4;
+            ctx.lineWidth = holdRingW;
             ctx.stroke();
-            ctx.shadowBlur = 0;
           }
         }
       }
@@ -938,7 +931,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, trackWidth, notePadX, tapHeight, holdMinH, holdRingR, holdRingW, holdRingColor,
-      doubleGlowSize, doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop]);
+      doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop]);
 
   const getNoteY = (noteTime: number): number => {
     const timeUntil = noteTime - state.currentTime;
