@@ -4068,13 +4068,16 @@ body::after {
   gap: 8px;
   z-index: 3;
   font-size: 14px;
-  color: rgba(255,255,255,0.25);
+  color: #fff;
   letter-spacing: 1px;
   margin-top: 6px;
   margin-left: 2px;
+  text-shadow:
+    0 1px 3px rgba(0,0,0,0.9),
+    0 2px 8px rgba(0,0,0,0.7);
 }
-.menu-credit-item { cursor: pointer; transition: color 0.2s; }
-.menu-credit-item:hover { color: rgba(255,255,255,0.45); }
+.menu-credit-item { cursor: pointer; transition: opacity 0.2s; }
+.menu-credit-item:hover { opacity: 0.75; }
 .menu-credit-dot { opacity: 0.4; }
 
 /* ─── 看板娘 ─── */

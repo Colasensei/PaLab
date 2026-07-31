@@ -835,7 +835,7 @@ const App: React.FC = () => {
   const renderScreen = (s: AppScreen) => {
     switch (s) {
       case 'menu':
-        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={settings.showMascot} hasUpdate={pendingUpdate !== null} />;
+        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={false} hasUpdate={pendingUpdate !== null} />;
       case 'chart-library':
         return <ChartLibrary key={chartListKey} onPlay={handleChartPlay} onSettings={goToSettings} onPreview={handlePreview} lang={lang} highScores={chartScores} uiBlur={settings.uiBlur} />;
       case 'settings':

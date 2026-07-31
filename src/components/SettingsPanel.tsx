@@ -24,7 +24,6 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [noteScale, setNoteScale] = useState(settings.noteScale ?? 1.0);
   const [judgeLineThickness, setJudgeLineThickness] = useState(settings.judgeLineThickness ?? 3);
   const [showAccuracyBar, setShowAccuracyBar] = useState(settings.showAccuracyBar ?? false);
-  const [showMascot, setShowMascot] = useState(settings.showMascot ?? true);
   const [showFPS, setShowFPS] = useState(settings.showFPS ?? false);
   const [musicVol, setMusicVol] = useState(settings.musicVolume ?? 50);
   const [hitVol, setHitVol] = useState(Math.round(getHitVolume() * 100));
@@ -36,7 +35,8 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     noteColor: '#35BFFF', holdNoteColor: '#35BFFF',
     bgColor: '#0a0a14', judgeLineColor: '#999999',
     language: currentLang, showACC, devMode, showWaveform, uiBlur, noPageLoading,
-    noteScale, musicVolume: musicVol, judgeLineThickness, showAccuracyBar, showMascot, showFPS,
+    noteScale, musicVolume: musicVol, judgeLineThickness, showAccuracyBar, showFPS,
+    showMascot: false, // 立绘已移除，永远关闭
     ...o,
   });
 
@@ -90,9 +90,6 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '准度条' : 'Accuracy Bar'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={showAccuracyBar} onChange={e => setShowAccuracyBar(e.target.checked)} /><span className="toggle-slider" /></label>
-          </div>
-          <div className="st-row"><span className="st-label">{lang === 'zh' ? '显示立绘' : 'Show Mascot'}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={showMascot} onChange={e => setShowMascot(e.target.checked)} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '显示帧数' : 'Show FPS'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={showFPS} onChange={e => setShowFPS(e.target.checked)} /><span className="toggle-slider" /></label>
