@@ -370,6 +370,24 @@ export function useGameEngine({
         correctSoundIdxRef.current = csIdx;
       }
 
+      // 按住自动衔接 hold：真人持续按住某轨道时，窗口内到期的下一个未判 hold
+      // 自动激活。否则同轨道连续 hold（前一个 endTime 紧接下一个 startTime）
+      // 玩家一直按住不松手时，第二个 hold 永远等不到 handlePress → 被判 miss「按不住」。
+      pressedTracksRef.current.forEach(track => {
+        for (let i = noteIndexRef.current; i < notes.length; i++) {
+          const note = notes[i];
+          if (note.track !== track) continue;
+          if (note.type !== 'hold') continue;
+          if (results.has(note.id)) continue;
+          if (holdActiveRef.current.has(note.id)) continue;
+          const offset = judgeNow - note.startTime;
+          if (offset > windows.timeA + devRef.current.pressOffset) continue; // 太晚
+          if (offset < -windows.timeC) continue; // 太早
+          holdActiveRef.current.set(note.id, { pressTime: judgeNow });
+          break; // 每轨道一次只衔接一个
+        }
+      });
+
       // Miss 检测
       while (noteIndexRef.current < notes.length) {
         const note = notes[noteIndexRef.current];
