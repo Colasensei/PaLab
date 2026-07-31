@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Lang } from '@/utils/lang';
 import { checkUpdate, getLocalVersion, UpdateInfo } from '@/utils/updateChecker';
+import { installApk } from '@/utils/apkInstaller';
 
 interface Props {
   lang: Lang;
@@ -53,15 +54,17 @@ export const UpdateScreen: React.FC<Props> = ({ lang, pendingUpdate, devMode = f
         if (contentLength > 0) setDlPct(Math.round((received / contentLength) * 100));
         else setDlPct(Math.min(99, Math.round(received / 1024)));
       }
-      const blob = new Blob(chunks);
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = info.fileUrl.split('/').pop() || 'update';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
       setDlPct(100);
-      setDlState('done');
+      const blob = new Blob(chunks);
+      const fileName = info.fileUrl.split('/').pop() || 'update.apk';
+      // Android 端直接拉起系统安装器；其它平台浏览器下载
+      const res = await installApk(blob, fileName);
+      if (res && res.success === false) {
+        setDlErr(res.error || 'Install failed');
+        setDlState('error');
+      } else {
+        setDlState('done');
+      }
     } catch (e: any) {
       setDlErr(e?.message || 'Unknown');
       setDlState('error');

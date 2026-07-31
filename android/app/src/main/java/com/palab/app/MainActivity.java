@@ -12,6 +12,8 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 注册 APK 安装插件
+        registerPlugin(ApkInstallerPlugin.class);
         // 允许 WebView 混合内容（HTTPS 页面请求 HTTP 资源），修复 Android 端 fetch 失败
         try {
             android.webkit.WebView wv = getBridge().getWebView();
