@@ -816,6 +816,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     const ctx = canvas.getContext('2d')!;
 
     let raf = 0;
+    // 平滑视觉时钟：音符位置跟随 performance.now()（显示刷新时钟），避免
+    // audio.currentTime 的媒体时钟与 rAF 不同步导致「一顿一顿」（电脑高刷屏尤其明显）
+    let clockBaseAudio = 0;   // 上次与音频同步时的音频时间 (ms)
+    let clockBasePerf = 0;    // 对应 performance.now() (ms)
+    let clockInited = false;
+    let clockResync = 0;
+
     const loop = () => {
       const w = totalWidth + 10;
       const h = gameHeight;
@@ -829,7 +836,29 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       ctx.clearRect(0, 0, w, h);
 
       const s = canvasStateRef.current;
-      const now = s.currentTime;
+      const rawMs = s.currentTime; // 音频时钟 (ms)
+      const perf = performance.now();
+
+      if (!clockInited) {
+        clockInited = true;
+        clockBaseAudio = rawMs;
+        clockBasePerf = perf;
+      } else if (s.paused || !s.isPlaying) {
+        // 暂停/结束：直接锁到音频时间（音符静止）
+        clockBaseAudio = rawMs;
+        clockBasePerf = perf;
+      } else {
+        // 每 30 帧与音频重锁一次，防止长时间漂移（跳变在亚帧内，不可见）
+        clockResync++;
+        if (clockResync >= 30) {
+          clockResync = 0;
+          clockBaseAudio = rawMs;
+          clockBasePerf = perf;
+        }
+      }
+
+      // 视觉时间：播放中按显示时钟平滑推进；暂停/结束时跟随音频
+      const now = (s.paused || !s.isPlaying) ? rawMs : clockBaseAudio + (perf - clockBasePerf);
       const eff = fallDuration / config.speedMultiplier;
       const jy = JUDGMENT_LINE_Y;
       const fid = canvasFailedRef.current;
