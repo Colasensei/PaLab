@@ -697,7 +697,7 @@ const App: React.FC = () => {
       loadingTaskRef.current = config.songUrl ? async () => { const d = await audioManager.load(config.songUrl!); setDuration(d); } : undefined;
       navigateTo('loading');
     } else {
-      const generatedNotes = generateChart(config, config.songUrl ? duration : null, true);
+      const generatedNotes = generateChart(config, config.songUrl ? duration : null, config.enableHolds ?? true);
       setNotes(ensureDoubleGroups(generatedNotes));
       loadingTaskRef.current = undefined;
       navigateTo('loading');
