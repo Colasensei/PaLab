@@ -458,7 +458,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 获取游戏时间
   const getCurrentTime = useCallback((): number => {
     if (hasSong) return audioManager.getCurrentTime();
-    return performance.now() - gameStartRef.current - totalPauseRef.current;
+    // 无歌时用性能时钟，前摇期间（leadInMs 内）保持 0
+    return Math.max(0, performance.now() - gameStartRef.current - leadInMsRef.current - totalPauseRef.current);
   }, [hasSong]);
 
   // 无敌娱乐模式 → 等同于 autoPlay
@@ -466,10 +467,57 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 霸王模式就是套一层 auto，但藏标、亮轨、记成绩（
   const effectiveConfig = useMemo(() => (invincibleMode || isOverlord()) ? { ...config, autoPlay: true } : config, [config, invincibleMode]);
 
-  // 引擎倒计时结束时恢复音频
+  // ═══ 前摇（lead-in）：开局 1 秒内就有音符判定时，插入 4 拍空档再放歌，提升体验 ═══
+  const leadInMs = useMemo(() => {
+    if (notes.length === 0) return 0;
+    const hasEarly = notes.some(n => n.startTime < 1000);
+    if (!hasEarly) return 0;
+    const bpm = Math.max(30, effectiveConfig.bpm || 120);
+    return Math.round(4 * (60000 / bpm));
+  }, [notes, effectiveConfig.bpm]);
+  const leadInMsRef = useRef(0);
+  leadInMsRef.current = leadInMs;
+  const [leadInActive, setLeadInActive] = useState(false);
+  const leadInTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const songStartedRef = useRef(true);
+  // READY? 期间锁定玩家输入；结束前 100ms 提前开放
+  const inputLockedRef = useRef(false);
+  const unlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 开局统一入口：有前摇则延迟 leadInMs 放歌（期间谱面冻结、进度条 100→0、显示 READY?、禁用输入）
+  const beginSong = useCallback(() => {
+    if (leadInTimerRef.current) { clearTimeout(leadInTimerRef.current); leadInTimerRef.current = null; }
+    if (unlockTimerRef.current) { clearTimeout(unlockTimerRef.current); unlockTimerRef.current = null; }
+    if (leadInMs > 0) {
+      songStartedRef.current = false;
+      setLeadInActive(true);
+      inputLockedRef.current = true;
+      if (hasSong) audioManager.setVolume(musicVolume / 100);
+      leadInTimerRef.current = setTimeout(() => {
+        songStartedRef.current = true;
+        setLeadInActive(false);
+        inputLockedRef.current = false;
+        if (hasSong) audioManager.play(1);
+        leadInTimerRef.current = null;
+      }, leadInMs);
+      // 前摇结束前 100ms 提前开放输入，让玩家能赶第一下
+      unlockTimerRef.current = setTimeout(() => {
+        inputLockedRef.current = false;
+        unlockTimerRef.current = null;
+      }, Math.max(0, leadInMs - 100));
+    } else {
+      songStartedRef.current = true;
+      inputLockedRef.current = false;
+      if (hasSong) { audioManager.setVolume(musicVolume / 100); audioManager.play(1); }
+    }
+  }, [leadInMs, hasSong, musicVolume]);
+
+  // 引擎倒计时结束时恢复音频（前摇期间暂停后恢复 → 重跑前摇）
   const handleEngineResume = useCallback(() => {
-    if (hasSong) audioManager.resume();
-  }, [hasSong]);
+    if (!hasSong) return;
+    if (leadInMs > 0 && !songStartedRef.current) beginSong();
+    else audioManager.resume();
+  }, [hasSong, leadInMs, beginSong]);
 
   const { state, start, setPaused: engineSetPaused, handlePress, handleRelease } = useGameEngine({
     config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound, onResume: handleEngineResume,
@@ -487,7 +535,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   };
 
   const onPressWithFX = useCallback((track: number) => {
-    if (paused || effectiveConfig.autoPlay) return;
+    if (paused || effectiveConfig.autoPlay || inputLockedRef.current) return;
     const result = handlePress(track);
     if (result.hit) {
       // bad/miss 别响了也别闪了（
@@ -509,7 +557,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [paused, effectiveConfig.autoPlay, handlePress, correctHitSound]);
 
   const onReleaseWithFX = useCallback((track: number) => {
-    if (effectiveConfig.autoPlay) return;
+    if (effectiveConfig.autoPlay || inputLockedRef.current) return;
     handleRelease(track);
     setKeysDown(prev => { const n = new Set(prev); n.delete(track); return n; });
   }, [effectiveConfig.autoPlay, handleRelease]);
@@ -528,11 +576,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       gameStartRef.current = performance.now();
       totalPauseRef.current = 0;
       startHitKeepAlive();
-      if (hasSong) { audioManager.setVolume(musicVolume / 100); audioManager.play(1); }
+      beginSong();
       start();
     }, gameStartDelay);
     return () => clearTimeout(timer);
-  }, [start, hasSong]);
+  }, [start, hasSong, beginSong]);
 
   // 离开页面 / 结算 → 停 keep-alive + 停音乐
   useEffect(() => {
@@ -568,12 +616,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         setEffects([]);
         seenRef.current = new Set();
         setTimeout(() => {
-          if (hasSong) { audioManager.setVolume(musicVolume / 100); audioManager.play(1); }
+          beginSong();
           start();
         }, 50);
       }, 1100);
     }
-  }, [state.results, state.isFinished, target, start, hasSong]);
+  }, [state.results, state.isFinished, target, start, hasSong, beginSong]);
 
   // 进度条
   const progressStartRef = useRef(0);
@@ -617,16 +665,25 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         totalPausedMsRef.current += performance.now() - pauseStartRef.current;
         pauseStartRef.current = 0;
       }
-      const elapsed = Math.max(0, performance.now() - progressStartRef.current - totalPausedMsRef.current);
-      displayTimeRef.current = elapsed;
-      if (progressBarRef.current) {
-        const pct = duration > 0 ? Math.min(100, (elapsed / duration) * 100) : 0;
-        progressBarRef.current.style.width = `${pct}%`;
+      const rawElapsed = performance.now() - progressStartRef.current - totalPausedMsRef.current;
+      const leadMs = leadInMsRef.current;
+      if (leadMs > 0 && rawElapsed < leadMs) {
+        // 前摇：进度条从满(100%) 逐渐变到 0，前摇结束刚好到 0
+        const leadPct = 100 - Math.max(0, Math.min(100, (rawElapsed / leadMs) * 100));
+        displayTimeRef.current = 0;
+        if (progressBarRef.current) progressBarRef.current.style.width = `${leadPct}%`;
+      } else {
+        const elapsed = Math.max(0, rawElapsed - leadMs);
+        displayTimeRef.current = elapsed;
+        if (progressBarRef.current) {
+          const pct = duration > 0 ? Math.min(100, (elapsed / duration) * 100) : 0;
+          progressBarRef.current.style.width = `${pct}%`;
+        }
       }
       const now = performance.now();
       if (now - devTimeThrottleRef.current > 200) {
         devTimeThrottleRef.current = now;
-        setDevDisplayTime(elapsed);
+        setDevDisplayTime(displayTimeRef.current);
       }
     };
     raf = requestAnimationFrame(tick);
@@ -639,7 +696,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     totalPausedMsRef.current = 0;
     displayTimeRef.current = 0;
     setDevDisplayTime(0);
-    if (progressBarRef.current) progressBarRef.current.style.width = '0%';
+    // 有前摇：开局进度条从满开始倒数到 0；无前摇：从 0 开始
+    if (progressBarRef.current) progressBarRef.current.style.width = leadInMsRef.current > 0 ? '100%' : '0%';
   };
 
   // 新判定 → 哐叽特效
@@ -738,6 +796,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [effects.length]);
 
   const doPause = useCallback(() => {
+    // 前摇期间暂停：取消待播的歌曲，避免暂停时突然出声
+    if (leadInTimerRef.current) { clearTimeout(leadInTimerRef.current); leadInTimerRef.current = null; }
     audioManager.pause();
     engineSetPaused(true);
     setPaused(true);
@@ -1038,7 +1098,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         {effectiveConfig.autoPlay && !isOverlord() && <span className="autoplay-badge">{invincibleMode ? 'INVINCIBLE' : 'AUTO'}</span>}
       </div>
       <div className="hud-center">
-        {state.combo > 0 && <><span className={`combo-count${comboPulse ? ' combo-pulse' : ''}`} style={{ ...comboStyle, fontSize: comboFontSize }}>
+        {leadInActive ? (
+          <span className="combo-count" style={{ ...comboStyle, fontSize: comboFontSize }}>READY?</span>
+        ) : state.combo > 0 && <><span className={`combo-count${comboPulse ? ' combo-pulse' : ''}`} style={{ ...comboStyle, fontSize: comboFontSize }}>
           {state.combo >= comboKThreshold ? (state.combo / 1000).toFixed(1) + 'k' : state.combo}</span><span className="combo-label"> COMBO</span></>}
       </div>
       <div className="hud-right">
