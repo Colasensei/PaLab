@@ -18,6 +18,7 @@ public class MainActivity extends BridgeActivity {
         // 必须在 super.onCreate() 之前注册：super 内部会 load() 创建 bridge 并把插件注入 WebView，
         // 之后调用 registerPlugin 只会加进 builder，不会进已创建的 bridge，导致 "plugin is not implemented"
         registerPlugin(ApkInstallerPlugin.class);
+        registerPlugin(MediaSessionPlugin.class);
         super.onCreate(savedInstanceState);
         // 允许 WebView 混合内容（HTTPS 页面请求 HTTP 资源），修复 Android 端 fetch 失败
         try {

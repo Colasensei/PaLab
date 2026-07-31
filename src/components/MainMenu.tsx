@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { t, Lang } from '@/utils/lang';
 import { AccountInfo } from '@/types';
 import { getDevOverride } from '@/utils/devOverrides';
@@ -15,6 +15,7 @@ interface MainMenuProps {
   onHelp: () => void;
   onUpdate: () => void;
   onDev: () => void;
+  onOpenMusicPlayer: () => void;
   rks: number;
   lang: Lang;
   devMode: boolean;
@@ -26,7 +27,7 @@ interface MainMenuProps {
 }
 
 export const MainMenu: React.FC<MainMenuProps> = ({
-  onChartLibrary, onCreateChart, onSettings, onAbout, onRecords, onHelp, onUpdate, onDev, rks, lang, devMode, onToggleDev,
+  onChartLibrary, onCreateChart, onSettings, onAbout, onRecords, onHelp, onUpdate, onDev, onOpenMusicPlayer, rks, lang, devMode, onToggleDev,
   account, onSaveAccount,
   showMascot, hasUpdate,
 }) => {
@@ -55,6 +56,23 @@ export const MainMenu: React.FC<MainMenuProps> = ({
     handleDevClick();
     onAbout();
   }, [handleDevClick, onAbout]);
+
+  // 长按谱面库卡片 → 音乐播放器；单击 → 谱面库
+  const longPressTimer = useRef<number | null>(null);
+  const longPressed = useRef(false);
+  const startLongPress = useCallback(() => {
+    longPressed.current = false;
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = window.setTimeout(() => {
+      longPressed.current = true;
+      onOpenMusicPlayer();
+    }, 450);
+  }, [onOpenMusicPlayer]);
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+    // 延迟重置，避免后续 click 误触发进入谱面库
+    setTimeout(() => { longPressed.current = false; }, 350);
+  }, []);
 
   const updateClass = hasUpdate ? ' menu-link-update' : '';
 
@@ -122,8 +140,17 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             <span className="menu-link" onClick={onSettings}>{t('settings', lang)}</span>
           </div>
 
-          {/* 谱面库卡片 */}
-          <button className="menu-chart-card" onClick={onChartLibrary}>
+          {/* 谱面库卡片：单击进入谱面库，长按进入音乐播放 */}
+          <button
+            className="menu-chart-card"
+            onClick={() => { if (longPressed.current) { longPressed.current = false; return; } onChartLibrary(); }}
+            onTouchStart={startLongPress}
+            onTouchEnd={cancelLongPress}
+            onTouchMove={cancelLongPress}
+            onMouseDown={startLongPress}
+            onMouseUp={cancelLongPress}
+            onMouseLeave={cancelLongPress}
+          >
             <div className="menu-chart-cover-wrap">
               <img className={`menu-chart-cover${switching ? ' anim' : ''}${switching ? (slot===0 ? ' out' : ' in') : ''}`}
                 src={urlA ?? ''} alt=""
@@ -133,6 +160,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 style={{ transform: switching ? undefined : (slot===1 ? 'translateY(0)' : 'translateY(-100%)') }} />
             </div>
             <span className="menu-chart-label">{lang === 'zh' ? '谱面库' : 'Charts'}</span>
+            <span className="menu-chart-hint">{t('music.longpress', lang)}</span>
           </button>
 
           <span className="menu-link-sep menu-link-sep-mid">|</span>

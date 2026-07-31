@@ -33,6 +33,13 @@ const zh: TextMap = {
   'difficulty': '难度',
   'hold.notes': '长条音符',
   'hold.notes.tip': '关闭后谱面不生成任何长条',
+  'music.longpress': '长按进入音乐播放',
+  'music.player.title': '音乐播放',
+  'music.no.songs': '谱面库没有可播放的音乐',
+  'music.list': '列表循环',
+  'music.single': '单曲循环',
+  'music.shuffle': '随机播放',
+  'music.close': '关闭',
 
   // 歌曲面板
   'normal': '普通',
@@ -129,6 +136,13 @@ const en: TextMap = {
   'difficulty': 'DIFFICULTY',
   'hold.notes': 'HOLD NOTES',
   'hold.notes.tip': 'No hold notes when off',
+  'music.longpress': 'Long-press to play',
+  'music.player.title': 'MUSIC PLAYER',
+  'music.no.songs': 'No playable music in chart library',
+  'music.list': 'LIST LOOP',
+  'music.single': 'SINGLE LOOP',
+  'music.shuffle': 'SHUFFLE',
+  'music.close': 'CLOSE',
 
   'normal': 'NORMAL',
   'easy': 'EASY',

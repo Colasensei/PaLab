@@ -18,6 +18,7 @@ import {
   SongPanel, LoadingScreen, GamePlay, ResultsScreen,
   ChartModeSelect, ManualConfig, ManualRecord, ManualAnalyzer,
   VisualEditor, EditorSetup, UpdateScreen,
+  MusicPlayer,
 } from '@/components';
 import { checkUpdate, getLocalVersion, UpdateInfo } from '@/utils/updateChecker';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -355,6 +356,8 @@ const App: React.FC = () => {
 
   // ═══ 谱面预览（选曲播放）═══
   const previewState = useRef<{ url: string | null; playing: boolean }>({ url: null, playing: false });
+  // ═══ 音乐播放器（主菜单长按谱面库卡片）═══
+  const [musicPlayerOpen, setMusicPlayerOpen] = useState(false);
   const handlePreview = useCallback((url: string | null) => {
     // 同一首不重启
     if (previewState.current.url === url && previewState.current.playing) return;
@@ -846,7 +849,7 @@ const App: React.FC = () => {
   const renderScreen = (s: AppScreen) => {
     switch (s) {
       case 'menu':
-        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={false} hasUpdate={pendingUpdate !== null} />;
+        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} onOpenMusicPlayer={() => setMusicPlayerOpen(true)} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={false} hasUpdate={pendingUpdate !== null} />;
       case 'chart-library':
         return <ChartLibrary key={chartListKey} onPlay={handleChartPlay} onSettings={goToSettings} onPreview={handlePreview} lang={lang} highScores={chartScores} uiBlur={settings.uiBlur} />;
       case 'settings':
@@ -901,6 +904,11 @@ const App: React.FC = () => {
       {/* EULA */}
       {!eulaAccepted && (
         <EULAModal lang={lang} onAgree={() => { localStorage.setItem('palab_eula', '1'); setEulaAccepted(true); }} />
+      )}
+
+      {/* 音乐播放器（主菜单长按谱面库卡片） */}
+      {musicPlayerOpen && (
+        <MusicPlayer lang={lang} uiBlur={settings.uiBlur} musicVolume={settings.musicVolume} onClose={() => setMusicPlayerOpen(false)} />
       )}
 
       {/* ── 全局 Brand (字母+RKS) — 主页居中，子页移到顶栏 ── */}

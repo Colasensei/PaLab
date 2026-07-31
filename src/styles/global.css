@@ -8097,3 +8097,100 @@ body::after {
 .update-progress-text { font-size: 13px; color: var(--text-secondary); min-width: 36px; }
 .update-progress-speed { font-size: 11px; color: var(--text-secondary); min-width: 50px; }
 .update-debug { width:100%; max-width:560px; max-height:200px; overflow:auto; background:rgba(0,0,0,0.4); color:#0f0; font:11px monospace; padding:8px; border-radius:4px; white-space:pre-wrap; word-break:break-all; }
+
+/* ═══ 音乐播放器 ═══ */
+.music-player-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.music-player-overlay.mp-blur {
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+}
+.music-player {
+  width: min(680px, 100%);
+  height: min(660px, 92vh);
+  background: rgba(16,16,20,0.95);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.55);
+}
+.mp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.mp-title { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: 4px; }
+.mp-close {
+  background: none; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.7);
+  border-radius: 8px; padding: 4px 12px; font-size: 12px; letter-spacing: 2px; cursor: pointer; font-family: var(--font-main);
+}
+.mp-close:hover { border-color: rgba(255,255,255,0.4); color: #fff; }
+.mp-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+.mp-empty { color: rgba(255,255,255,0.4); text-align: center; padding: 48px 24px; font-size: 13px; letter-spacing: 2px; }
+.mp-item { display: flex; align-items: center; gap: 12px; padding: 10px 18px; cursor: pointer; transition: background 0.15s; }
+.mp-item:hover { background: rgba(255,255,255,0.05); }
+.mp-item.active { background: rgba(255,255,255,0.09); }
+.mp-item-cover {
+  width: 42px; height: 42px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
+  background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+}
+.mp-item-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mp-item-ph { color: rgba(255,255,255,0.35); font-size: 12px; }
+.mp-item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mp-item-title { color: rgba(255,255,255,0.85); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-item.active .mp-item-title { color: #fff; }
+.mp-item-artist { color: rgba(255,255,255,0.4); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-item-dur { color: rgba(255,255,255,0.4); font-size: 11px; flex-shrink: 0; }
+
+.mp-controls {
+  border-top: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.28);
+  padding: 14px 20px 18px; display: flex; flex-direction: column; gap: 12px;
+}
+.mp-now { display: flex; align-items: center; gap: 12px; }
+.mp-now-cover {
+  width: 52px; height: 52px; border-radius: 10px; overflow: hidden; flex-shrink: 0;
+  background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center;
+}
+.mp-now-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mp-now-ph { color: rgba(255,255,255,0.4); font-size: 20px; }
+.mp-now-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mp-now-title { color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-now-artist { color: rgba(255,255,255,0.45); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-progress { display: flex; align-items: center; gap: 10px; }
+.mp-time { color: rgba(255,255,255,0.45); font-size: 11px; min-width: 38px; text-align: center; font-variant-numeric: tabular-nums; }
+.mp-range { flex: 1; height: 4px; accent-color: #fff; cursor: pointer; }
+.mp-buttons { display: flex; align-items: center; justify-content: center; gap: 24px; }
+.mp-btn { background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; padding: 6px; line-height: 1; }
+.mp-btn:active { opacity: 0.6; }
+.mp-btn-play {
+  font-size: 26px; width: 54px; height: 54px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.35); display: flex; align-items: center; justify-content: center;
+}
+.mp-mode {
+  background: none; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.5);
+  border-radius: 8px; padding: 6px 10px; font-size: 11px; letter-spacing: 1px; cursor: pointer; font-family: var(--font-main);
+}
+.mp-mode.on { color: #fff; border-color: rgba(255,255,255,0.55); }
+
+/* 主菜单谱面库卡片：长按提示 */
+.menu-chart-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.45);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+@media (max-width: 640px) {
+  .music-player-overlay { padding: 12px; }
+  .music-player { height: 88vh; border-radius: 12px; }
+}

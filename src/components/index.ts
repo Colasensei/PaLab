@@ -1,4 +1,5 @@
 export { MainMenu } from './MainMenu';
+export { MusicPlayer } from './MusicPlayer';
 export { ChartLibrary } from './ChartLibrary';
 export { ChartEditor } from './ChartEditor';
 export { ProfileModal } from './ProfileModal';
