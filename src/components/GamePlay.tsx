@@ -920,20 +920,20 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         clockBasePerf = perf;
       } else {
         // 播放中：按性能时钟平滑推进（帧间恒定，避免 audio.currentTime 粒度
-        // 不均导致的「一顿一顿」）。同时每帧把平滑值轻微向真实音频时间靠拢，
-        // 消除 media clock 与页面时钟的累计漂移——否则漂移攒到一定量再硬重锁
-        // 会在某刻产生一次可见跳变（前摇结束后「卡一下」）。
-        // 只有大幅偏差（seek/切歌/长卡顿）才立即硬重锁。
+        // 不均导致的「一顿一顿」）。同时以极小比例（12%）把视觉偏移向真实
+        // 音频时间收敛——但【只挪偏移、不重置 clockBasePerf】，外推速率保持
+        // 恒定 1x：因此不会产生视觉滞后（autoplay 不会显得提前按）、不会积累
+        // 漂移（偏差指数收敛）、没有周期重锁（无「卡一下」）、每帧变化微小
+        // （平滑无「一顿一顿」）。只有大幅偏差（seek/切歌）才硬重锁。
         const v = clockBaseAudio + (perf - clockBasePerf);
         const drift = rawMs - v;
         if (Math.abs(drift) > 120) {
-          // 大幅偏差：直接重锁（跳变不可避免，但只在异常时发生）
+          // 大幅偏差：直接重锁（异常场景，跳变不可避免）
           clockBaseAudio = rawMs;
           clockBasePerf = perf;
         } else if (Math.abs(drift) > 2) {
-          // 轻微漂移：把基点朝真实值挪一小段（每帧 12%），指数收敛、永不积累
+          // 轻微偏差：只挪偏移，保持速率连续（指数收敛，无滞后/无跳变）
           clockBaseAudio += drift * 0.12;
-          clockBasePerf = perf;
         }
       }
       wasLeadIn = leadInActiveRef.current;

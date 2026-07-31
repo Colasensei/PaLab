@@ -316,8 +316,14 @@ export function useGameEngine({
 
     const loop = () => {
       const now = getCurrentTime() + latencyRef.current;
-      // 前摇冻结：判定用超大负时间，任何音符都远不到判定点（自动/正确音效/miss/hold 收尾/结束全被屏蔽）
-      const judgeNow = getLeadFrozenRef.current() ? Number.NEGATIVE_INFINITY : now;
+      // 判定基准：
+      // - 真人：用本人校准时间 now（含 latencyOffset，补偿设备输出延迟）
+      // - autoPlay：纯自动演示，应与视觉落线一致（音符到线即按），
+      //   若也加 latencyOffset 会系统性提前/延后按键（尤其是设置过延迟校准的用户）。
+      // - 前摇冻结：-Infinity 屏蔽一切判定。
+      const judgeNow = getLeadFrozenRef.current()
+        ? Number.NEGATIVE_INFINITY
+        : (autoPlayRef.current ? now - latencyRef.current : now);
       const results = resultsRef.current;
 
       if (autoPlayRef.current) {
@@ -328,7 +334,7 @@ export function useGameEngine({
           if (judgeNow >= note.startTime) {
             if (note.type === 'hold') {
               // hold：先按住，等自动收尾
-              holdActiveRef.current.set(note.id, { pressTime: now });
+              holdActiveRef.current.set(note.id, { pressTime: judgeNow });
             } else {
               results.set(note.id, { note, judgment: { type: 'perfect', offset: 0, time: note.startTime }, score: noteScore });
             }
