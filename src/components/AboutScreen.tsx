@@ -9,6 +9,20 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 5.8（正式版）', date: '2026-08-01',
+    items: [
+      '修复电脑端音符下落一顿一顿（canvas 改用平滑显示时钟驱动）',
+      '音符渲染性能优化（去掉 shadowBlur 发光、双押只留黄描边、canvas DPR 封顶 2）',
+      '修复试玩时关闭长条后重新开始又启用长条',
+      '编辑器新增「导入 OSU 谱面包」（解析 .osz 内 .osu，仅 4K/mania，自动转谱）',
+      'OSU 导入：标题/曲师/谱师自动预填，曲绘自动提取为封面',
+      '游戏前摇（lead-in）：开局 1 秒内有判定则插入 4 拍 READY 空档再放歌',
+      '前摇期间进度条从满逐渐降到 0，且完全不进行判定',
+      '修复前摇期 hold 漏过判定线、前摇结束后卡顿（时钟每帧漂移校正）',
+      '谱面包（Zip/OSU）导入免责声明覆盖音频+图片+谱面数据三类内容',
+    ],
+  },
+  {
     ver: 'Alpha 5.7（正式版）', date: '2026-07-31',
     items: [
       '新增音乐播放器（主菜单长按谱面库卡片打开）',
@@ -212,8 +226,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 5.7</div>
-      <div className="about-ver about-ver-sub">v0.5.7</div>
+      <div className="about-ver">Alpha 5.8</div>
+      <div className="about-ver about-ver-sub">v0.5.8</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
