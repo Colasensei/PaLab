@@ -609,11 +609,11 @@ export const DEFAULT_OVERRIDES: DevOverrides = {
   profileNameMaxLen: 16,
   avatarSize: 128,
   saveToastMs: 1500,
-  stateThrottleFrames: 3,
+  stateThrottleFrames: 0,
 
   // Performance
   perf_targetFPS: 0,
-  perf_maxVisibleNotes: 1000,
+  perf_maxVisibleNotes: 60,
   perf_noteRenderWindow: 5000,
   perf_maxParticles: 30,
   perf_effectPoolSize: 20,

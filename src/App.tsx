@@ -10,6 +10,7 @@ import { isOverlord, overlordRecord } from '@/utils/overlord';
 import { t } from '@/utils/lang';
 import JSZip from 'jszip';
 import { saveZipBlob } from '@/utils/zipSave';
+import { playPreview, setPreviewVolume, stopPreview, PREVIEW_VOLUME, PREVIEW_LOW_VOLUME } from '@/utils/previewPlayer';
 import { ChartPackage } from '@/components/ChartLibrary';
 import {
   MainMenu, ChartLibrary, ChartEditor,
@@ -350,6 +351,35 @@ const App: React.FC = () => {
   const goToHelp = useCallback(() => navigateTo('help'), [navigateTo]);
   const goToDev = useCallback(() => navigateTo('dev'), [navigateTo]);
   const goToUpdate = useCallback(() => navigateTo('update'), [navigateTo]);
+
+  // ═══ 谱面预览（选曲播放）═══
+  const previewState = useRef<{ url: string | null; playing: boolean }>({ url: null, playing: false });
+  const handlePreview = useCallback((url: string | null) => {
+    // 同一首不重启
+    if (previewState.current.url === url && previewState.current.playing) return;
+    previewState.current.url = url;
+    if (!url) {
+      stopPreview();
+      previewState.current.playing = false;
+      return;
+    }
+    previewState.current.playing = true;
+    playPreview(url, PREVIEW_VOLUME);
+  }, []);
+
+  // 屏幕切换：谱面库满音量；子页低音量；主菜单/全屏页停止
+  useEffect(() => {
+    if (!previewState.current.playing) return;
+    if (screen === 'chart-library') {
+      setPreviewVolume(PREVIEW_VOLUME);
+    } else if (screen === 'menu' || FULLSCREEN_PAGES.includes(screen)) {
+      stopPreview();
+      previewState.current.playing = false;
+      previewState.current.url = null;
+    } else {
+      setPreviewVolume(PREVIEW_LOW_VOLUME);
+    }
+  }, [screen]);
 
   // 第一次来先看 EULA（
   const [eulaAccepted, setEulaAccepted] = useState(() => {
@@ -804,9 +834,9 @@ const App: React.FC = () => {
   const renderScreen = (s: AppScreen) => {
     switch (s) {
       case 'menu':
-        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={settings.showMascot} />;
+        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={settings.showMascot} hasUpdate={pendingUpdate !== null} />;
       case 'chart-library':
-        return <ChartLibrary key={chartListKey} onPlay={handleChartPlay} lang={lang} highScores={chartScores} onSettings={goToSettings} uiBlur={settings.uiBlur} />;
+        return <ChartLibrary key={chartListKey} onPlay={handleChartPlay} onSettings={goToSettings} onPreview={handlePreview} lang={lang} highScores={chartScores} uiBlur={settings.uiBlur} />;
       case 'settings':
         return <SettingsPanel settings={settings} onSave={handleSettingsSave} onBack={navigateBack} lang={lang} devMode={devMode} />;
       case 'config':
@@ -826,7 +856,7 @@ const App: React.FC = () => {
       case 'loading':
         return <LoadingScreen onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={settings.uiBlur} task={loadingTaskRef.current} />;
       case 'gameplay':
-        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={settings.uiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} />;
+        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={settings.uiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} showFPS={settings.showFPS ?? false} />;
       case 'results':
         return results ? <ResultsScreen results={results} onRestart={handleRestart} onBackToPanel={handleBackToPanel} rks={rks} rksChange={rksChange} lang={lang} isTrial={isTrial} onAdjustParams={handleTrialDiscard} onContinueToEditor={handleTrialContinue} chartInfo={chartSource} /> : null;
       case 'editor':
@@ -859,14 +889,6 @@ const App: React.FC = () => {
       {/* EULA */}
       {!eulaAccepted && (
         <EULAModal lang={lang} onAgree={() => { localStorage.setItem('palab_eula', '1'); setEulaAccepted(true); }} />
-      )}
-
-      {/* 更新通知条 */}
-      {showUpdateBar && pendingUpdate && screen === 'menu' && (
-        <div className="update-notify-bar" onClick={() => { setShowUpdateBar(false); goToUpdate(); }}>
-          <span>{lang === 'zh' ? '最新版本' : 'Latest'}: <b>{pendingUpdate.version}</b></span>
-          <span className="update-notify-arrow">&#x203A;</span>
-        </div>
       )}
 
       {/* ── 全局 Brand (字母+RKS) — 主页居中，子页移到顶栏 ── */}

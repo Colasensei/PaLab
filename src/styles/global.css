@@ -2437,6 +2437,24 @@ body::after {
   color: white;
 }
 
+.fps-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+}
+.fps-counter em {
+  font-size: 8px;
+  font-weight: 400;
+  font-style: normal;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 1px;
+}
+
 /* ─── 全局返回导航 ─── */
 .global-nav {
   position: fixed;
@@ -3939,14 +3957,102 @@ body::after {
 .menu-screen {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   padding: 0;
   position: relative;
   overflow: hidden;
 }
 
-/* 看板娘立绘 */
+/* ─── 左上区域（个人信息 + LOGO + 关于） ─── */
+.menu-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  z-index: 4;
+  position: absolute;
+  top: 28px;
+  left: 28px;
+}
+
+/* 个人信息 */
+.menu-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.menu-profile-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.05);
+}
+.menu-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.menu-profile-avatar span { font-size: 15px; color: rgba(255,255,255,0.35); }
+.menu-profile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  line-height: 1;
+}
+.menu-profile-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.75);
+  white-space: nowrap;
+}
+.menu-profile-rks {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 1px;
+}
+
+/* LOGO — Palab 整体，同一字体同一字号 */
+.menu-logo {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+}
+.menu-logo .brand-char {
+  font-size: 96px;
+  font-weight: 900;
+  line-height: 1;
+  background: linear-gradient(135deg, #FFFFFF, #CCCCCC, #AAAAAA);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: var(--font-main);
+  letter-spacing: 2px;
+}
+
+/* by + 捐赠 */
+.menu-credit-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 3;
+  font-size: 14px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 1px;
+  margin-top: 6px;
+  margin-left: 2px;
+}
+.menu-credit-item { cursor: pointer; transition: color 0.2s; }
+.menu-credit-item:hover { color: rgba(255,255,255,0.45); }
+.menu-credit-dot { opacity: 0.4; }
+
+/* ─── 看板娘 ─── */
 .menu-mascot {
   position: absolute;
   z-index: 2;
@@ -3964,104 +4070,104 @@ body::after {
   opacity: 1;
 }
 
-/* ─── 卡片按钮区 ─── */
-.menu-actions {
+/* ─── 底部区域 ─── */
+.menu-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
-  flex-direction: column;
-  gap: 24px;
-  position: relative;
-  z-index: 3;
-}
-
-.menu-card-row {
-  display: flex;
-  gap: 24px;
-  align-items: stretch;
-}
-
-/* 行内竖向列 */
-.menu-card-col {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  flex: 1.2;
-}
-
-/* 紧凑行：按钮不拉伸，居中 */
-.menu-card-row-fit {
+  align-items: flex-end;
   justify-content: center;
-}
-.menu-card-row-fit .menu-card {
-  flex: 0 0 auto;
-  min-width: 130px;
+  padding: 0 24px 32px;
+  z-index: 3;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* ─── 卡片通用 ─── */
-.menu-card {
+/* 链接 + 卡片行 */
+.menu-links-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+}
+
+/* 链接组 */
+.menu-link-group {
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+  justify-content: space-evenly;
+}
+
+/* 文字链接 */
+.menu-link {
+  font-size: 34px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  letter-spacing: 4px;
+  white-space: nowrap;
+  transition: color 0.2s;
+  padding-bottom: 14px;
+}
+.menu-link:hover { color: rgba(255,255,255,0.8); }
+.menu-link-update { color: rgba(255,215,0,0.75) !important; }
+.menu-link-update:hover { color: rgba(255,215,0,1) !important; }
+
+/* 中间分隔线（横屏隐藏，竖屏显示） */
+.menu-link-sep-mid { display: none; }
+
+/* 分隔线 */
+.menu-link-sep {
+  font-size: 30px;
+  color: rgba(255,255,255,0.15);
+  padding: 0 18px 14px 18px;
+  user-select: none;
+}
+
+/* 谱面库卡片 */
+.menu-chart-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 18px;
-  padding: 28px 36px;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
-  background: rgba(255,255,255,0.04);
+  justify-content: flex-end;
+  padding: 32px 28px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.06);
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: var(--font-main);
-  min-width: 0;
-}
-.menu-card:hover {
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.2);
-  transform: translateY(-3px);
-  box-shadow: 0 6px 30px rgba(0,0,0,0.35);
-}
-.menu-card:active {
-  transform: scale(0.97);
-}
-
-.menu-card-icon {
-  font-size: 48px;
-  opacity: 0.8;
-}
-
-.menu-card-label {
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: 5px;
-  white-space: nowrap;
-}
-
-/* ─── 主卡片：谱面库 ─── */
-.menu-card-primary {
-  flex: 3;
-  padding: 50px 36px;
-  gap: 24px;
-  align-items: flex-start;
-  justify-content: flex-end;
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.18);
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
+  margin: 0 16px;
 }
-/* 曲绘覆盖层 */
-.menu-card-cover-wrap {
+.menu-chart-card:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.25);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+}
+.menu-chart-card:active { transform: scale(0.97); }
+
+.menu-chart-cover-wrap {
   position: absolute;
   inset: 0;
   z-index: 0;
   overflow: hidden;
 }
-.menu-card-cover-wrap::after {
+.menu-chart-cover-wrap::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.45);
+  background: rgba(0,0,0,0.5);
   z-index: 2;
 }
-.menu-card-cover {
+.menu-chart-cover {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -4069,301 +4175,105 @@ body::after {
   object-fit: cover;
   z-index: 0;
 }
-.menu-card-cover.anim {
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.menu-card-cover.out { transform: translateY(100%); }
-.menu-card-cover.in  { transform: translateY(0); }
-.menu-card-primary .menu-card-label {
+.menu-chart-cover.anim { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+.menu-chart-cover.out { transform: translateY(100%); }
+.menu-chart-cover.in  { transform: translateY(0); }
+.menu-chart-label {
   position: relative;
   z-index: 2;
-}
-.menu-card-primary .menu-card-icon { font-size: 80px; opacity: 1; }
-.menu-card-primary .menu-card-label { font-size: 36px; letter-spacing: 10px; }
-.menu-card-primary:hover {
-  background: rgba(255,255,255,0.14);
-  border-color: rgba(255,255,255,0.3);
-  box-shadow: 0 10px 50px rgba(0,0,0,0.45);
-}
-
-/* ─── 个人卡片：头像左 + RKS 右 ─── */
-.menu-card-profile {
-  flex-direction: row;
-  gap: 14px;
-  padding: 16px 28px;
-}
-.menu-card-profile .menu-card-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2.5px solid rgba(255,255,255,0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background: rgba(255,255,255,0.05);
-}
-.menu-card-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.menu-card-avatar span {
-  font-size: 26px;
-  color: rgba(255,255,255,0.4);
-}
-.menu-card-rks {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-.menu-card-rks-val {
-  font-size: 20px;
+  font-size: 52px;
   font-weight: 700;
-  letter-spacing: 1px;
-  line-height: 1;
-}
-.menu-card-rks-label {
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 2px;
-  opacity: 0.5;
+  letter-spacing: 10px;
+  white-space: nowrap;
 }
 
-/* ─── 底部信息栏 ─── */
-.menu-credit-bar {
+/* DEV badge */
+.menu-dev-badge {
   position: absolute;
-  bottom: 20px;
+  bottom: 4px;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  z-index: 3;
-  font-size: 12px;
-  color: rgba(255,255,255,0.25);
-  letter-spacing: 1px;
-}
-.menu-credit-item {
+  z-index: 5;
+  font-size: 10px;
+  color: rgba(255,255,100,0.4);
   cursor: pointer;
-  transition: color 0.2s;
-}
-.menu-credit-item:hover {
-  color: rgba(255,255,255,0.5);
-}
-.menu-credit-dot {
-  opacity: 0.4;
-}
-
-/* DEV badge 保留 */
-.menu-dev-badge {
-  margin-top: 4px;
-  font-size: 11px;
-  color: rgba(255,255,100,0.5);
-  cursor: pointer;
-  text-align: center;
   letter-spacing: 3px;
 }
 
-/* ─── 全局 Brand (字母+RKS) ─── */
-.global-brand {
-  position: fixed;
-  z-index: 220;
-  display: flex;
-  align-items: center;
-  pointer-events: none;
-}
-.global-brand .brand-rks { pointer-events: auto; }
-
-.global-brand.at-menu {
-  top: 28%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  flex-direction: column;
-  gap: 12px;
-  z-index: 1;
-}
-.global-brand.at-menu .brand-logo { display: flex; gap: 8px; }
-.global-brand.at-menu .brand-char {
-  font-size: 80px;
-  font-weight: 900;
-  line-height: 1;
-  background: linear-gradient(135deg, #FFFFFF, #CCCCCC, #AAAAAA);
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: charFloat 2.5s ease-in-out infinite alternate;
-  font-family: var(--font-main);
-  letter-spacing: 2px;
-}
-@keyframes charFloat {
-  0% { filter: brightness(1); transform: translateY(0); }
-  100% { filter: brightness(1.35); transform: translateY(-4px); }
-}
-.global-brand.at-menu .brand-rks { display: none; }
-.brand-arrow { font-size: 12px; }
-
-/* 子页顶栏 */
-.global-brand.at-topbar {
-  top: 0; left: 0; right: 0;
-  height: 48px;
-  flex-direction: row;
-  justify-content: space-between;
-  padding: 0 20px;
-  background: rgba(10,10,25,0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  gap: 0;
-  animation: topbarClipIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
-}
-@keyframes topbarClipIn {
-  from { clip-path: inset(0 50% 0 50%); opacity: 0; }
-  to   { clip-path: inset(0 0 0 0); opacity: 1; }
-}
-.global-brand.at-topbar .brand-logo { display: flex; gap: 2px; }
-.global-brand.at-topbar .brand-char {
-  font-size: 20px; font-weight: 800; letter-spacing: 0;
-  background: linear-gradient(135deg, #CCCCCC, #FFFFFF, #CCCCCC);
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: gradientShift 5s ease infinite;
-  font-family: var(--font-main);
-}
-
-/* 竖屏：logo 永远在上方 */
-@media (max-aspect-ratio: 1/1) {
-  .global-brand.at-menu {
-    top: 22vh;
-    bottom: auto;
-    transform: translate(-50%, 0);
-  }
-  .global-brand.at-menu .brand-char { font-size: 72px; }
-}
-
-/* ─── 竖屏：logo 在上，卡片在下 ─── */
+/* ─── 竖屏 ─── */
 @media (max-aspect-ratio: 1/1) {
   .menu-mascot { display: none !important; }
-  .menu-screen {
-    justify-content: flex-start;
-    padding-top: 34vh;
+
+  .menu-header { top: 20px; left: 20px; }
+  .menu-logo .brand-char { font-size: 72px; }
+
+  .menu-bottom {
+    padding: 0 16px 14px;
   }
-  .menu-actions {
-    width: 88vw;
-    max-width: 340px;
+
+  .menu-links-row {
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+    width: 100%;
   }
-  /* 竖屏：Row2 撑满宽度 */
-  .menu-card-row-fit .menu-card {
-    flex: 1 1 0;
-    min-width: 0;
+
+  .menu-chart-card {
+    width: calc(100vw - 32px);
+    height: 27vh;
+    max-width: 500px;
+    order: -1;
+    margin: 0 0 10px 0;
   }
-  /* 竖屏：卡片整体缩小 */
-  .menu-actions { gap: 16px; }
-  .menu-card-row { gap: 16px; }
-  .menu-card-col { gap: 16px; }
-  .menu-card { gap: 12px; padding: 20px 24px; }
-  .menu-card-icon { font-size: 36px; }
-  .menu-card-label { font-size: 20px; letter-spacing: 3px; }
-  .menu-card-primary { padding: 36px 24px; gap: 16px; }
-  .menu-card-primary .menu-card-icon { font-size: 60px; }
-  .menu-card-primary .menu-card-label { font-size: 28px; letter-spacing: 8px; }
-  /* 竖屏：个人卡片上下布局 */
-  .menu-card-profile {
-    flex-direction: column;
-    gap: 10px;
-    padding: 16px 24px;
-  }
-  .menu-card-profile .menu-card-rks {
-    align-items: center;
-  }
+  .menu-chart-label { font-size: 44px; letter-spacing: 8px; }
+
+  /* 组扁平化 → 4 文字 + 3 分隔线平级，space-evenly 均匀分布 */
+  .menu-link-group { display: contents; }
+  .menu-link-sep-mid { display: inline; }
+
+  .menu-link { font-size: 18px; padding-bottom: 8px; letter-spacing: 2px; }
+  .menu-link-sep,
+  .menu-link-sep-mid { font-size: 16px; padding: 0 10px 8px 10px; }
 }
 
-/* ─── 横屏：logo 左 30%，卡片右 70% ─── */
+/* ─── 横屏 ─── */
 @media (min-aspect-ratio: 1/1) {
-  .menu-screen {
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-  }
+  .menu-screen { justify-content: center; }
 
-  .global-brand.at-menu {
-    left: 20%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    flex-direction: column;
-    gap: 10px;
-    z-index: 1;
-  }
-
-  .global-brand.at-menu .brand-logo {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .global-brand.at-menu .brand-char {
-    font-size: 140px;
-    line-height: 0.76;
-    animation: none;
-  }
-
-  .global-brand.at-menu .brand-char:nth-child(1) { margin-left: -60px; margin-top: -14px; }
-  .global-brand.at-menu .brand-char:nth-child(2) { margin-left: 48px; margin-top: 10px; }
-  .global-brand.at-menu .brand-char:nth-child(3) { margin-left: -36px; margin-top: -14px; }
-  .global-brand.at-menu .brand-char:nth-child(4) { margin-left: 44px; margin-top: 14px; }
-  .global-brand.at-menu .brand-char:nth-child(5) { margin-left: -48px; margin-top: -10px; }
+  .menu-header { top: 32px; left: 44px; }
+  .menu-credit-bar { font-size: 15px; }
 
   .menu-mascot {
     inset: 0;
     align-items: center;
     justify-content: flex-start;
-    padding-left: 12vw;
-    z-index: 2;
+    padding-left: 8vw;
   }
   .menu-mascot img {
-    max-height: 88vh;
-    max-width: 46vw;
+    max-height: 85vh;
+    max-width: 40vw;
     object-position: center;
-    opacity: 1;
   }
 
-  .menu-actions {
-    position: absolute;
-    left: 63%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 50%;
-    max-width: 620px;
+  .menu-bottom {
+    padding: 0 44px 36px;
   }
 
-  /* 横屏：Row2 横向布局 + 撑满宽度 */
-  .menu-card-h {
-    flex-direction: row;
-    gap: 16px;
-    padding: 20px 28px;
-  }
-  .menu-card-h .menu-card-icon { font-size: 30px; }
-  .menu-card-h .menu-card-label { font-size: 18px; }
+  .menu-links-row { justify-content: center; }
 
-  .menu-card-row-fit .menu-card {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-}
+  .menu-link-group { flex: 1; justify-content: space-evenly; display: flex; }
+  .menu-link-sep-mid { display: none; }
 
-/* ─── 关闭立绘：横屏字母位置调整 ─── */
-@media (min-aspect-ratio: 1/1) {
-  .app-root.no-mascot .global-brand.at-menu {
-    left: 28%;
+  .menu-chart-card {
+    width: 30vw;
+    height: 27vh;
+    max-width: 480px;
+    flex-shrink: 0;
+    margin: 0 16px;
   }
-  .app-root.no-mascot .menu-actions {
-    left: 63%;
-  }
+  .menu-chart-label { font-size: 48px; }
+
+  .menu-link { font-size: 34px; padding-bottom: 14px; letter-spacing: 4px; }
+  .menu-link-sep { font-size: 30px; padding: 0 18px 14px 18px; }
 }
 
 .menu-help-box {
@@ -5818,7 +5728,55 @@ body::after {
   line-height: 1;
 }
 
-/* 隐藏主菜单上 global-brand 里的 RKS（在 MainMenu 组件里显示） */
+/* ─── 全局 Brand（顶栏 / 旧 menu logo） ─── */
+.global-brand {
+  position: fixed;
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+.global-brand .brand-rks { pointer-events: auto; }
+
+/* 子页顶栏 */
+.global-brand.at-topbar {
+  top: 0; left: 0; right: 0;
+  height: 48px;
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: rgba(10,10,25,0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  gap: 0;
+  animation: topbarClipIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes topbarClipIn {
+  from { clip-path: inset(0 50% 0 50%); opacity: 0; }
+  to   { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+.global-brand.at-topbar .brand-logo { display: flex; gap: 2px; }
+.global-brand.at-topbar .brand-char {
+  font-size: 20px; font-weight: 800; letter-spacing: 0;
+  background: linear-gradient(135deg, #CCCCCC, #FFFFFF, #CCCCCC);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 5s ease infinite;
+  font-family: var(--font-main);
+}
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 主菜单已自带 logo，隐藏 App.tsx 的 global-brand */
+.global-brand.at-menu {
+  display: none !important;
+}
 .global-brand.at-menu .brand-rks {
   display: none !important;
 }

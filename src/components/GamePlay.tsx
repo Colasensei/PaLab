@@ -32,6 +32,7 @@ interface GamePlayProps {
   judgeLineThickness?: number;
   correctHitSound?: boolean;
   showAccuracyBar?: boolean;
+  showFPS?: boolean;
 }
 
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
@@ -346,9 +347,10 @@ const AccuracyBar: React.FC<{ lastOffset: number }> = ({ lastOffset }) => {
 };
 
 export const GamePlay: React.FC<GamePlayProps> = ({
-  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false,
+  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const noteCanvasRef = useRef<HTMLCanvasElement>(null);
   const gameStartRef = useRef<number>(0);
   const [effects, setEffects] = useState<JEffect[]>([]);
   const effectIdRef = useRef(0);
@@ -459,7 +461,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   // 引擎倒计时结束时恢复音频
   const handleEngineResume = useCallback(() => {
-    if (hasSong) audioManager.play(1);
+    if (hasSong) audioManager.resume();
   }, [hasSong]);
 
   const { state, start, setPaused: engineSetPaused, handlePress, handleRelease } = useGameEngine({
@@ -571,15 +573,36 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const pauseStartRef = useRef(0);
   const totalPausedMsRef = useRef(0);
   const devTimeThrottleRef = useRef(0);
+
+  // FPS 计数器
+  const [fps, setFps] = useState(0);
+  useEffect(() => {
+    if (!showFPS) return;
+    let raf = 0;
+    let last = performance.now();
+    let frames = 0;
+    const loop = () => {
+      frames++;
+      const now = performance.now();
+      if (now - last >= 1000) { setFps(frames); frames = 0; last = now; }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [showFPS]);
+
+  // 进度条
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
+  const pauseRewindRef2 = useRef(state.pauseRewind);
+  pauseRewindRef2.current = state.pauseRewind;
   useEffect(() => {
     let running = true;
     let raf = 0;
     const tick = () => {
       if (!running) return;
       raf = requestAnimationFrame(tick);
-      if (pausedRef.current) {
+      if (pausedRef.current || pauseRewindRef2.current > 0) {
         if (!pauseStartRef.current) pauseStartRef.current = performance.now();
         return;
       }
@@ -635,8 +658,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       }
     });
   }, [state.results, perfHitEffect, perfMaxParticles, effectiveConfig.autoPlay]);
-
-  // 霸王下让轨道跟着音符亮一下，autoplay 不亮（
   const prevResultCountRef = useRef(0);
   useEffect(() => {
     if (!isOverlord()) return;
@@ -774,6 +795,127 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const trackWidth = Math.max(trackMinW, Math.min(trackMaxW, Math.floor((window.innerWidth - hMargin) / config.trackCount)));
   const totalWidth = config.trackCount * trackWidth;
 
+  // Canvas 音符渲染 — 只用 ref 读运行时状态，不重建 rAF
+  const canvasStateRef = useRef(state);
+  canvasStateRef.current = state;
+  const canvasFailedRef = useRef(failedNoteId);
+  canvasFailedRef.current = failedNoteId;
+
+  useEffect(() => {
+    const canvas = noteCanvasRef.current;
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const ctx = canvas.getContext('2d')!;
+
+    let raf = 0;
+    const loop = () => {
+      const w = totalWidth + 10;
+      const h = gameHeight;
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      ctx.clearRect(0, 0, w, h);
+
+      const s = canvasStateRef.current;
+      const now = s.currentTime;
+      const eff = fallDuration / config.speedMultiplier;
+      const jy = JUDGMENT_LINE_Y;
+      const fid = canvasFailedRef.current;
+
+      for (const note of s.activeNotes) {
+        const result = s.results.get(note.id);
+        const isBadOrMiss = result && (result.judgment.type === 'bad' || result.judgment.type === 'miss');
+        const isHolding = note.type === 'hold' && s.activeHolds.has(note.id);
+        const isHoldDone = note.type === 'hold' && result && !isBadOrMiss && !s.activeHolds.has(note.id);
+        const isRed = !!isBadOrMiss || (note.id === fid && !result);
+        const isFailed = note.id === fid && !result;
+
+        const startY = jy - ((note.startTime - now) / eff) * (jy - 50);
+        if (note.type === 'tap') {
+          if (result && !isBadOrMiss) continue;
+          const noteW = trackWidth - notePadX;
+          const nx = note.track * trackWidth + trackWidth / 2 - noteW / 2;
+          const ny = startY;
+          const nh = tapHeight;
+          if (ny + nh < -noteClipTop || ny > h + noteClipTop) continue;
+
+          ctx.globalAlpha = isRed ? 0.7 : 1;
+          ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : config.noteColor;
+          if (note.isDouble && showDoubleGlow && !isRed) {
+            ctx.shadowColor = doubleGlowColor;
+            ctx.shadowBlur = doubleGlowSize / 2;
+          }
+          ctx.fillRect(nx, ny, noteW, nh);
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(nx, ny, noteW, nh);
+
+        } else {
+          const endY = jy - ((note.endTime - now) / eff) * (jy - 50);
+          const noteW = trackWidth - notePadX;
+          const nx = note.track * trackWidth + trackWidth / 2 - noteW / 2;
+
+          let ny: number, nh: number;
+          if (isHolding) {
+            // 按住：头部已过判定线（下方隐藏），只画尾部→判定线这一段
+            // 尾部随下落逐渐靠近判定线 → 长条逐渐变短，落完整个消失
+            ny = endY;
+            nh = jy - endY;
+            if (nh <= 0) continue;
+          } else {
+            ny = Math.min(startY, endY);
+            nh = Math.abs(endY - startY);
+            if (nh < holdMinH) nh = holdMinH;
+          }
+          if (ny + nh < -noteClipTop || ny > h + noteClipTop) continue;
+
+          ctx.globalAlpha = isRed ? 0.7 : isHoldDone ? 0.4 : 1;
+          ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : isHoldDone ? config.holdNoteColor + '66' : config.holdNoteColor;
+          ctx.fillRect(nx, ny, noteW, nh);
+          ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(nx, ny, noteW, nh);
+
+          if (isHolding) {
+            const dur = note.endTime - note.startTime;
+            const elapsed = s.currentTime - note.startTime;
+            const prog = dur > 0 ? Math.min(1, Math.max(0, elapsed / dur)) : 0;
+            const rr = holdRingR;
+            const cx = nx + noteW / 2;
+            const cy = jy;
+            ctx.beginPath();
+            ctx.arc(cx, cy, rr + 4, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+            ctx.lineWidth = holdRingW;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
+            ctx.strokeStyle = holdRingColor;
+            ctx.shadowColor = holdRingColor;
+            ctx.shadowBlur = 4;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, trackWidth, notePadX, tapHeight, holdMinH, holdRingR, holdRingW, holdRingColor,
+      doubleGlowSize, doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop]);
+
   const getNoteY = (noteTime: number): number => {
     const timeUntil = noteTime - state.currentTime;
     const eff = fallDuration / config.speedMultiplier;
@@ -846,6 +988,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       {/* HUD */}
       <div className="hud-left">
         <button className="btn btn-small btn-pause" onClick={handlePause}>{lang === 'zh' ? '暂停' : 'Pause'}</button>
+        {showFPS && <span className="fps-counter">{fps}<em>FPS</em></span>}
         {effectiveConfig.autoPlay && !isOverlord() && <span className="autoplay-badge">{invincibleMode ? 'INVINCIBLE' : 'AUTO'}</span>}
       </div>
       <div className="hud-center">
@@ -897,13 +1040,20 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         <AudioViz active={state.isPlaying} />
       )}
 
-      {/* 游戏区域 — 触摸/鼠标事件仅在此区域内生效 */}
+      {/* 游戏区域 */}
       <div
         ref={containerRef}
         className="game-area"
         onContextMenu={e => e.preventDefault()}
         style={{ width: totalWidth + 10, height: gameHeight, marginTop: gameTopCssVal, touchAction: 'none' }}
       >
+        {/* Canvas 音符渲染层 */}
+        <canvas
+          ref={noteCanvasRef}
+          className="note-canvas"
+          style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none' }}
+        />
+
         {/* 轨道线 */}
         <div className="tracks" style={{ left: 0, right: 0 }}>
           {Array.from({ length: config.trackCount }).map((_, i) => (
@@ -919,119 +1069,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
         <div className="judgment-line" style={{ top: JUDGMENT_LINE_Y, width: totalWidth, height: judgeLineThickness, background: config.judgeLineColor, borderRadius: Math.ceil(judgeLineThickness / 2), left: 0 }} />
 
-        {/* 音符，同轨按时间排好防重叠 */}
-        {[...state.activeNotes]
-          .sort((a, b) => a.startTime - b.startTime)
-          .map(note => {
-          const startY = getNoteY(note.startTime);
-          const result = state.results.get(note.id);
-          const isBadOrMiss = result && (result.judgment.type === 'bad' || result.judgment.type === 'miss');
-          const isHolding = note.type === 'hold' && state.activeHolds.has(note.id);
-          if (note.type === 'tap' && result && !isBadOrMiss) return null;
-          // 没按的 hold 别急着删，让它掉出屏幕再说（
-
-          const endY = note.type === 'hold' ? getNoteY(note.endTime) : startY + tapHeight;
-          const noteTop = note.type === 'hold' ? Math.min(startY, endY) : startY;
-          const noteBottom = note.type === 'hold' ? Math.max(startY, endY) : startY + tapHeight;
-          if (noteBottom < -noteClipTop || noteTop > gameHeight + noteClipTop) return null;
-
-          // 按住时判线下不渲染，被吃掉了（
-          const fullH = note.type === 'hold' ? Math.max(holdMinH, Math.abs(endY - startY)) : tapHeight;
-          let nh: number;
-          if (isHolding) {
-            nh = JUDGMENT_LINE_Y - noteTop;
-            if (nh <= 0) return null;
-          } else {
-            nh = fullH;
-          }
-          const isRed = !!isBadOrMiss || (note.id === failedNoteId && !result);
-          const isHoldCompleted = note.type === 'hold' && result && !isBadOrMiss && !state.activeHolds.has(note.id);
-          const isMarkedFailed = note.id === failedNoteId && !result;
-          const bg = (isMarkedFailed ? '#FF2222'
-            : isRed ? '#FF3333'
-            : isHoldCompleted ? `${config.holdNoteColor}66`
-            : note.type === 'hold' ? config.holdNoteColor
-            : config.noteColor);
-
-          // 自定义贴图（非失败状态）
-          const skin = isRed || isMarkedFailed ? null
-            : note.type === 'hold' ? noteHoldSkin
-            : noteTapSkin;
-
-          const noteLeft = note.track * trackWidth + trackWidth / 2;
-
-          const noteStyle: React.CSSProperties = {
-            left: noteLeft, top: noteTop, width: trackWidth - notePadX, height: nh,
-            backgroundColor: skin ? 'transparent' : bg,
-            backgroundImage: skin ? `url(${skin})` : undefined,
-            backgroundSize: skin ? (note.type === 'hold' ? '100% 100%' : 'contain') : undefined,
-            backgroundRepeat: skin ? 'no-repeat' : undefined,
-            backgroundPosition: skin ? 'center' : undefined,
-            borderRadius: note.type === 'hold' ? '6px 6px 14px 14px' : '6px',
-            outline: skin ? 'none' : undefined,
-            boxShadow: skin ? 'none'
-              : note.isDouble && showDoubleGlow && !isRed
-              ? `0 0 ${doubleGlowSize / 2}px ${doubleGlowColor}`  // 单层 shadow，移动端扛得住
-              : isMarkedFailed ? '0 0 16px 6px rgba(255,30,30,0.8)'
-              : isRed ? '0 0 10px 3px rgba(255,50,50,0.6)'
-              : isHolding ? `0 0 14px 4px ${config.holdNoteColor}88`
-              : `0 0 8px 2px ${config.noteColor}44`,
-            opacity: isMarkedFailed ? 1 : isRed ? 0.7 : 1,
-          };
-
-          return (
-            <React.Fragment key={note.id}>
-              <div
-                className={`note ${note.type} ${note.isDouble && showDoubleGlow ? 'double' : ''} ${isRed && !isMarkedFailed ? 'note-red' : ''} ${isHolding ? 'note-held' : ''} ${isHoldCompleted ? 'note-completed' : ''}`}
-                style={noteStyle}
-              />              {/* Hold 进度环 */}
-              {isHolding && (() => {
-                const dur = note.endTime - note.startTime;
-                const elapsed = state.currentTime - note.startTime;
-                const prog = dur > 0 ? Math.min(1, Math.max(0, elapsed / dur)) : 0;
-                const r = holdRingR;
-                const cx = r + 4;
-                const circ = 2 * Math.PI * r;
-                const threshold = getDevOverride('h_releaseRatio');
-                const thresholdPos = circ * threshold;
-                const thresholdLen = circ * 0.04; // 约 4% 的小弧段
-                return (
-                  <svg
-                    style={{
-                      position: 'absolute',
-                      left: noteLeft - r - 4,
-                      top: JUDGMENT_LINE_Y - r - 4,
-                      width: (r + 4) * 2,
-                      height: (r + 4) * 2,
-                      zIndex: 6,
-                      pointerEvents: 'none',
-                      transform: 'rotate(-90deg)',
-                    }}
-                  >
-                    {/* 底圈灰的 */}
-                    <circle cx={cx} cy={cx} r={r} fill="none"
-                      stroke="rgba(255,255,255,0.12)" strokeWidth={holdRingW} />
-                    {/* 金的进度 */}
-                    <circle cx={cx} cy={cx} r={r} fill="none"
-                      stroke={holdRingColor} strokeWidth={holdRingW}
-                      strokeDasharray={`${circ * prog} ${circ}`}
-                      strokeLinecap="round"
-                      style={{ filter: `drop-shadow(0 0 4px ${holdRingColor})` }} />
-                    {/* 78% 阈值白线，可调（ */}
-                    <circle cx={cx} cy={cx} r={r} fill="none"
-                      stroke="rgba(255,255,255,0.7)" strokeWidth={holdRingW + 1.5}
-                      strokeDasharray={`${thresholdLen} ${circ - thresholdLen}`}
-                      strokeDashoffset={-(thresholdPos - thresholdLen / 2)}
-                      strokeLinecap="round"
-                      style={{ filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.5))' }} />
-                  </svg>
-                );
-              })()}
-            </React.Fragment>
-          );
-        })}
-
-        {/* 圆圈特效 — 快速扩散 */}
+        {/* 圆圈特效 */}
         {effects.filter(e => e.type === 'good' || e.type === 'perfect').map(eff => {
           const age = performance.now() - eff.time;
           const p = Math.min(age / (effMaxAge * 0.5), 1);

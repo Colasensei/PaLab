@@ -4,6 +4,7 @@ import { loadCharts, saveCharts } from '@/utils';
 import { HighScoreRecord } from '@/types';
 import JSZip from 'jszip';
 import { generateBlurredBg } from '@/utils/blurImage';
+import { PREVIEW_VOLUME, PREVIEW_LOW_VOLUME, setPreviewVolume } from '@/utils/previewPlayer';
 
 export interface ChartPackage {
   fileName: string;
@@ -24,6 +25,7 @@ export interface ChartPackage {
 interface Props {
   onPlay: (pkg: ChartPackage, speed: number, autoPlay: boolean, target: 'none' | 'fc' | 'ap', mirror: boolean, correctHitSound: boolean) => void;
   onSettings: () => void;
+  onPreview: (url: string | null) => void;
   lang: Lang;
   highScores: Record<string, { score: number; rating: string; rks: number; acc: number }>;
   uiBlur: boolean;
@@ -43,7 +45,7 @@ const getDiffStyle = (diff: string): { bg: string; fg: string } => {
 /** 跨挂载记住上次选中的歌曲索引 */
 let lastSelectedIdx = -1;
 
-export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, lang, highScores, uiBlur }) => {
+export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, lang, highScores, uiBlur }) => {
   const [charts, setCharts] = useState<ChartPackage[]>([]);
   const [dbLoaded, setDbLoaded] = useState(false);
   const [selected, setSelected] = useState<number>(lastSelectedIdx);
@@ -59,6 +61,12 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, lang, highSc
       }
     });
   }, []);
+
+  // 选曲预览：挂载 & 选中变化 → 上报 App 播放对应歌曲预览
+  useEffect(() => {
+    const pkg = selected >= 0 && selected < charts.length ? charts[selected] : null;
+    onPreview(pkg?.songUrl ?? null);
+  }, [selected, charts, onPreview]);
   const [speed, setSpeed] = useState(5.0);
   const [autoPlay, setAutoPlay] = useState(false);
   const [target, setTarget] = useState<'none' | 'fc' | 'ap'>('none');
@@ -211,6 +219,12 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, lang, highSc
   const [showHistory, setShowHistory] = useState(false);
   const [showDiffInfo, setShowDiffInfo] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
+
+  // 难度/历史弹窗开合 → 音量降档 / 恢复
+  useEffect(() => {
+    if (showDiffInfo || showHistory) setPreviewVolume(PREVIEW_LOW_VOLUME);
+    else setPreviewVolume(PREVIEW_VOLUME);
+  }, [showDiffInfo, showHistory]);
   useEffect(() => {
     if (!showHistory) return;
     const onK = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowHistory(false); };

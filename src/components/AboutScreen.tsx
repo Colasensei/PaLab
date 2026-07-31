@@ -9,6 +9,29 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 5.4（正式版）', date: '2026-07-31',
+    items: [
+      '音符渲染全面迁移至 Canvas（Tap/Hold 直接绘制，告别 DOM div）',
+      '主菜单界面重做（Logo 左上、个人信息、谱面库卡片、文字导航）',
+      '谱面库选曲音乐预览（离库自动降音量、切换歌曲渐入、退出停止）',
+      '长条按住渲染修复（头部锁定判定线、尾部渐短、落完消失）',
+      '音符改为四方直角样式',
+      '延迟校准预览修复（音符在拍点到达判定线）',
+      '主菜单「更新」有新版时显示黄色提示',
+    ],
+  },
+  {
+    ver: 'Alpha 5.3（正式版）', date: '2026-07-30',
+    items: [
+      '主界面卡片式 UI 大改 + 曲绘轮播背景',
+      '暂停/恢复系统完善（3-2-1 倒计时恢复）',
+      '竖屏立绘常关（showMascot 设置）',
+      'Android 全屏沉浸式隐藏状态栏',
+      'FPS 显示开关',
+      '去除 Hold 动画',
+    ],
+  },
+  {
     ver: 'Alpha 5.2（正式版）', date: '2026-07-29',
     items: [
       '修复 import.meta.env 生产构建兼容性',
@@ -156,8 +179,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 5.2</div>
-      <div className="about-ver about-ver-sub">v0.5.3</div>
+      <div className="about-ver">Alpha 5.4</div>
+      <div className="about-ver about-ver-sub">v0.5.4</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>

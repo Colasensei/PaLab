@@ -214,7 +214,7 @@ export const HelpScreen: React.FC<Props> = ({ lang, onBack }) => {
               </div>
 
               <p style={{ textAlign: 'center', color: '#555', padding: '20px 0', fontSize: 12 }}>
-                Palab Alpha 4.4 — 感谢您的游玩
+                Palab Alpha 5.4 — 感谢您的游玩
               </p>
             </>
           ) : (
@@ -300,7 +300,7 @@ export const HelpScreen: React.FC<Props> = ({ lang, onBack }) => {
                 <p>Settings → Personalize: customize note skins (Tap = contained, Hold = stretched). All assets stored locally and applied next game.</p>
               </div>
               <p style={{ textAlign: 'center', color: '#555', padding: '20px 0', fontSize: 12 }}>
-                Palab Alpha 4.4 — Thanks for playing
+                Palab Alpha 5.4 — Thanks for playing
               </p>
             </>
           )}

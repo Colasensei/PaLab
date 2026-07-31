@@ -22,12 +22,13 @@ interface MainMenuProps {
   account: AccountInfo | null;
   onSaveAccount: (info: AccountInfo) => void;
   showMascot: boolean;
+  hasUpdate: boolean;
 }
 
 export const MainMenu: React.FC<MainMenuProps> = ({
   onChartLibrary, onCreateChart, onSettings, onAbout, onRecords, onHelp, onUpdate, onDev, rks, lang, devMode, onToggleDev,
   account, onSaveAccount,
-  showMascot,
+  showMascot, hasUpdate,
 }) => {
   const [devClicks, setDevClicks] = useState(0);
   const [showDonate, setShowDonate] = useState(false);
@@ -44,85 +45,86 @@ export const MainMenu: React.FC<MainMenuProps> = ({
     onAbout();
   }, [handleDevClick, onAbout]);
 
+  const updateClass = hasUpdate ? ' menu-link-update' : '';
+
   return (
     <div className="screen menu-screen">
       <div className="bg-particles">
         {Array.from({ length: 10 }).map((_, i) => <div key={i} className="bg-particle" />)}
       </div>
 
-      {/* 看板娘立绘 */}
+      {/* 左上区域 */}
+      <div className="menu-header">
+        {/* 个人信息 */}
+        <div className="menu-profile" onClick={onRecords}>
+          <div className="menu-profile-avatar">
+            {account?.avatarUrl ? (
+              <img src={account.avatarUrl} alt={account?.name ?? ''} />
+            ) : (
+              <span>?</span>
+            )}
+          </div>
+          <div className="menu-profile-info">
+            <span className="menu-profile-name">{account?.name ?? (lang === 'zh' ? '未登录' : 'Guest')}</span>
+            <span className="menu-profile-rks">RKS {rks < 0 ? '--' : rks.toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* LOGO — Palab 整体 */}
+        <div className="menu-logo">
+          <span className="brand-char">P</span><span className="brand-char">alab</span>
+        </div>
+
+        {/* by + 捐赠 */}
+        <div className="menu-credit-bar">
+          <span className="menu-credit-item" onClick={handleAuthorClick}>by ColaSensei</span>
+          <span className="menu-credit-dot">·</span>
+          <span className="menu-credit-item" onClick={() => setShowDonate(true)}>
+            {lang === 'zh' ? '捐赠感谢' : 'Donate'}
+          </span>
+        </div>
+      </div>
+
+      {/* 看板娘 */}
       {showMascot && (
       <div className="menu-mascot">
         <img src={getAssetUrl('14.png', '/14.png')} alt="" />
       </div>
       )}
 
-      <div className="menu-actions">
-        {/* Row 1 */}
-        <div className="menu-card-row">
-          <button className="menu-card menu-card-primary" onClick={onChartLibrary}>
-            <div className="menu-card-cover-wrap">
-              <img
-                className={`menu-card-cover${switching ? ' anim' : ''}${switching ? (slot===0 ? ' out' : ' in') : ''}`}
+      {/* 底部区域 */}
+      <div className="menu-bottom">
+        <div className="menu-links-row">
+          <div className="menu-link-group">
+            <span className="menu-link" onClick={onCreateChart}>{lang === 'zh' ? '制作' : 'Create'}</span>
+            <span className="menu-link-sep">|</span>
+            <span className="menu-link" onClick={onSettings}>{t('settings', lang)}</span>
+          </div>
+
+          {/* 谱面库卡片 */}
+          <button className="menu-chart-card" onClick={onChartLibrary}>
+            <div className="menu-chart-cover-wrap">
+              <img className={`menu-chart-cover${switching ? ' anim' : ''}${switching ? (slot===0 ? ' out' : ' in') : ''}`}
                 src={urlA ?? ''} alt=""
-                style={{ transform: switching ? undefined : (slot===0 ? 'translateY(0)' : 'translateY(-100%)') }}
-              />
-              <img
-                className={`menu-card-cover${switching ? ' anim' : ''}${switching ? (slot===1 ? ' out' : ' in') : ''}`}
+                style={{ transform: switching ? undefined : (slot===0 ? 'translateY(0)' : 'translateY(-100%)') }} />
+              <img className={`menu-chart-cover${switching ? ' anim' : ''}${switching ? (slot===1 ? ' out' : ' in') : ''}`}
                 src={urlB ?? ''} alt=""
-                style={{ transform: switching ? undefined : (slot===1 ? 'translateY(0)' : 'translateY(-100%)') }}
-              />
+                style={{ transform: switching ? undefined : (slot===1 ? 'translateY(0)' : 'translateY(-100%)') }} />
             </div>
-            <span className="menu-card-label">{lang === 'zh' ? '谱面库' : 'Charts'}</span>
+            <span className="menu-chart-label">{lang === 'zh' ? '谱面库' : 'Charts'}</span>
           </button>
-          <div className="menu-card-col">
-            <button className="menu-card menu-card-secondary" onClick={onCreateChart}>
-              <span className="menu-card-icon">✎</span>
-              <span className="menu-card-label">{lang === 'zh' ? '制作' : 'Create'}</span>
-            </button>
-            <button className="menu-card" onClick={onSettings}>
-              <span className="menu-card-icon">⚙</span>
-              <span className="menu-card-label">{t('settings', lang)}</span>
-            </button>
+
+          <span className="menu-link-sep menu-link-sep-mid">|</span>
+
+          <div className="menu-link-group">
+            <span className={`menu-link${updateClass}`} onClick={onUpdate}>{lang === 'zh' ? '更新' : 'Update'}</span>
+            <span className="menu-link-sep">|</span>
+            <span className="menu-link" onClick={onHelp}>{t('help', lang)}</span>
           </div>
         </div>
-
-        {/* Row 2 */}
-        <div className="menu-card-row menu-card-row-fit">
-          <button className="menu-card menu-card-h" onClick={onUpdate}>
-            <span className="menu-card-icon">↻</span>
-            <span className="menu-card-label">{lang === 'zh' ? '更新' : 'Update'}</span>
-          </button>
-          <button className="menu-card menu-card-h" onClick={onHelp}>
-            <span className="menu-card-icon">?</span>
-            <span className="menu-card-label">{t('help', lang)}</span>
-          </button>
-          <button className="menu-card menu-card-profile" onClick={onRecords}>
-            <div className="menu-card-avatar">
-              {account?.avatarUrl ? (
-                <img src={account.avatarUrl} alt={account?.name ?? ''} />
-              ) : (
-                <span>?</span>
-              )}
-            </div>
-            <div className="menu-card-rks">
-              <span className="menu-card-rks-val">{rks < 0 ? '--' : rks.toFixed(2)}</span>
-              <span className="menu-card-rks-label">RKS</span>
-            </div>
-          </button>
-        </div>
-
-        {devMode && <div className="menu-dev-badge" onClick={onDev}>DEV MODE</div>}
       </div>
 
-      {/* 底部信息栏 */}
-      <div className="menu-credit-bar">
-        <span className="menu-credit-item" onClick={handleAuthorClick}>by ColaSensei</span>
-        <span className="menu-credit-dot">·</span>
-        <span className="menu-credit-item" onClick={() => setShowDonate(true)}>
-          {lang === 'zh' ? '捐赠感谢' : 'Donate'}
-        </span>
-      </div>
+      {devMode && <div className="menu-dev-badge" onClick={onDev}>DEV MODE</div>}
 
       {showDonate && <DonateModal lang={lang} onClose={() => setShowDonate(false)} />}
     </div>

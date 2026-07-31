@@ -196,6 +196,7 @@ export interface AppSettings {
   showAccuracyBar: boolean;
   /** 主界面显示看板娘立绘 */
   showMascot: boolean;
+  showFPS: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -214,6 +215,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   judgeLineThickness: 3,
   showAccuracyBar: false,
   showMascot: true,
+  showFPS: false,
 };
 
 // ============ 账号信息 ============

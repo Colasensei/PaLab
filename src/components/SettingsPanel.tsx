@@ -25,6 +25,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [judgeLineThickness, setJudgeLineThickness] = useState(settings.judgeLineThickness ?? 3);
   const [showAccuracyBar, setShowAccuracyBar] = useState(settings.showAccuracyBar ?? false);
   const [showMascot, setShowMascot] = useState(settings.showMascot ?? true);
+  const [showFPS, setShowFPS] = useState(settings.showFPS ?? false);
   const [musicVol, setMusicVol] = useState(settings.musicVolume ?? 50);
   const [hitVol, setHitVol] = useState(Math.round(getHitVolume() * 100));
   const [sub, setSub] = useState<Sub>('main');
@@ -35,7 +36,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     noteColor: '#35BFFF', holdNoteColor: '#35BFFF',
     bgColor: '#0a0a14', judgeLineColor: '#999999',
     language: currentLang, showACC, devMode, showWaveform, uiBlur, noPageLoading,
-    noteScale, musicVolume: musicVol, judgeLineThickness, showAccuracyBar, showMascot,
+    noteScale, musicVolume: musicVol, judgeLineThickness, showAccuracyBar, showMascot, showFPS,
     ...o,
   });
 
@@ -92,6 +93,9 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '显示立绘' : 'Show Mascot'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={showMascot} onChange={e => setShowMascot(e.target.checked)} /><span className="toggle-slider" /></label>
+          </div>
+          <div className="st-row"><span className="st-label">{lang === 'zh' ? '显示帧数' : 'Show FPS'}</span>
+            <label className="toggle-switch"><input type="checkbox" checked={showFPS} onChange={e => setShowFPS(e.target.checked)} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '开发者模式' : 'Developer Mode'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={devMode} onChange={e => {
@@ -244,10 +248,11 @@ const PersonalizePanel: React.FC<{ lang: Lang; onBack: () => void }> = ({ lang, 
 const FALL_MS = 500; // 6x 流速 = 3000/6
 const CALIB_BPM = 100;
 const BEAT_MS = 60000 / CALIB_BPM;
+const CALIB_START_DELAY = 500; // 与试听节拍声的起始延迟保持一致
 
 const NoteDropPreview: React.FC<{ offset: number; playing: boolean }> = ({ offset, playing }) => {
   const boxRef = useRef<HTMLDivElement>(null);
-  const notesRef = useRef<{ id: number; t: number; track: number }[]>([]);
+  const notesRef = useRef<{ id: number; beat: number; track: number }[]>([]);
   const idRef = useRef(0);
   const lastBeatRef = useRef(0);
   const rafRef = useRef(0);
@@ -257,15 +262,19 @@ const NoteDropPreview: React.FC<{ offset: number; playing: boolean }> = ({ offse
     if (!playing) { notesRef.current = []; setTick(0); return; }
     idRef.current = 0;
     notesRef.current = [];
-    lastBeatRef.current = performance.now();
+    // 第一个节拍（音符到判定线）在 startDelay 时
+    lastBeatRef.current = performance.now() + CALIB_START_DELAY - BEAT_MS;
 
     const loop = () => {
       const now = performance.now();
-      if (now - lastBeatRef.current >= BEAT_MS) {
-        lastBeatRef.current += BEAT_MS;
-        notesRef.current.push({ id: idRef.current++, t: now, track: 0 });
+      // 音符在拍点前 FALL_MS 生成（从顶部开始），拍点时到达判定线
+      const nextBeat = lastBeatRef.current + BEAT_MS;
+      if (now >= nextBeat - FALL_MS) {
+        lastBeatRef.current = nextBeat;
+        notesRef.current.push({ id: idRef.current++, beat: nextBeat, track: 0 });
       }
-      notesRef.current = notesRef.current.filter(n => now - n.t < FALL_MS + 1000);
+      // 保留：拍点前 FALL_MS(顶部) ~ 拍点后 1000ms
+      notesRef.current = notesRef.current.filter(n => now - n.beat > -FALL_MS - 200 && now - n.beat < FALL_MS + 1000);
       setTick(t => t + 1); // 触发重渲染
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -282,11 +291,14 @@ const NoteDropPreview: React.FC<{ offset: number; playing: boolean }> = ({ offse
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 3, height: 2, background: 'rgba(255,255,255,0.25)' }} />
       {notesRef.current.map(n => {
         const h = boxRef.current?.clientHeight ?? 300;
-        const elapsed = performance.now() - n.t;
-        const rawY = (elapsed / FALL_MS) * h;
+        const elapsed = performance.now() - n.beat;
+        // 音符在拍点(n.beat)时正好到判定线：elapsed=0 → y=h；顶部 y=0 在拍前 FALL_MS
+        const rawY = ((FALL_MS + elapsed) / FALL_MS) * h;
         const shift = (offset / FALL_MS) * h;
-        const y = Math.min(rawY + shift, h);
-        if (y >= h) return null;
+        const y = rawY + shift;
+        // 过线后淡出
+        const alpha = y > h ? Math.max(0, 1 - (y - h) / 40) : 1;
+        if (y < -12 || y > h + 40) return null;
         return (
           <div key={n.id} style={{
             position: 'absolute',
@@ -294,7 +306,7 @@ const NoteDropPreview: React.FC<{ offset: number; playing: boolean }> = ({ offse
             width: 32,
             height: 10, borderRadius: 3,
             background: '#35BFFF',
-            top: y, opacity: y > h - 4 ? 0 : 1,
+            top: y, opacity: alpha,
           }} />
         );
       })}
@@ -327,9 +339,8 @@ const LatencyPanel: React.FC<{ lang: Lang; offset: number; onSave: (o: number) =
     if (!playing) {
       const ctx = new AudioContext();
       ctxRef.current = ctx;
-      let count = 0;
       // 先来 4 下预备拍，再开始正式节拍
-      const startDelay = 500;
+      const startDelay = CALIB_START_DELAY;
       const beatMs = BEAT_MS;
       setTimeout(() => { if (ctxRef.current) tick(ctxRef.current); }, startDelay);
       setTimeout(() => { if (ctxRef.current) tick(ctxRef.current); }, startDelay + beatMs);

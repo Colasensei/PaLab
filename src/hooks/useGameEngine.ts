@@ -414,7 +414,7 @@ export function useGameEngine({
         rafRef.current = requestAnimationFrame(loop);
         return;
       }
-      if (frameCountRef.current % devRef.current.stateThrottleFrames === 0) {
+      if (frameCountRef.current % Math.max(1, devRef.current.stateThrottleFrames) === 0) {
         // 过期的 hold 该删删了
         const nowPerf = performance.now();
         const holdBuf = devRef.current.holdCompleteBuffer;
