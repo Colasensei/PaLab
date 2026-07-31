@@ -382,12 +382,13 @@ export function useGameEngine({
         } else break;
       }
 
-      // hold 自动收尾
+      // hold 自动收尾（autoPlay 视为始终按住：pressedTracks 为空，否则 hold 永不收尾，
+      // 导致 autoPlay 下前几个 hold 不出分不记连击，直到游戏结束才被硬补 perfect）
       holdActiveRef.current.forEach((_info, noteId) => {
         const note = notes.find(n => n.id === noteId);
         if (!note) return;
         const track = note.track;
-        const isPressed = pressedTracksRef.current.has(track);
+        const isPressed = autoPlayRef.current || pressedTracksRef.current.has(track);
         if (shouldAutoEndHold(note, judgeNow, isPressed)) {
           results.set(note.id, { note, judgment: { type: 'perfect', offset: 0, time: note.endTime }, score: noteScore });
           holdActiveRef.current.delete(noteId);
