@@ -8172,19 +8172,21 @@ body::after {
   border: 1px solid rgba(255,255,255,0.35); display: flex; align-items: center; justify-content: center;
 }
 .mp-mode {
-  background: none; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.5);
+  background: none; border: 1px solid rgba(255,255,255,0.4); color: #fff;
   border-radius: 8px; padding: 6px 10px; font-size: 11px; letter-spacing: 1px; cursor: pointer; font-family: var(--font-main);
 }
-.mp-mode.on { color: #fff; border-color: rgba(255,255,255,0.55); }
+.mp-mode.on { border-color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.1); }
 
 /* 主菜单谱面库卡片：长按提示 */
 .menu-chart-hint {
+  position: relative;
+  z-index: 2;
   display: block;
-  margin-top: 2px;
-  font-size: 10px;
+  margin-top: 4px;
+  font-size: 11px;
   letter-spacing: 2px;
-  color: rgba(255,255,255,0.45);
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  color: rgba(255,255,255,0.75);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 1px 6px rgba(0,0,0,0.7);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -11,6 +11,7 @@ import { t } from '@/utils/lang';
 import JSZip from 'jszip';
 import { saveZipBlob } from '@/utils/zipSave';
 import { playPreview, setPreviewVolume, stopPreview, PREVIEW_VOLUME, PREVIEW_LOW_VOLUME } from '@/utils/previewPlayer';
+import { openMusicPlayer, stopMusicPlayback, setMusicVolume } from '@/utils/musicPlayer';
 import { ChartPackage } from '@/components/ChartLibrary';
 import {
   MainMenu, ChartLibrary, ChartEditor,
@@ -358,6 +359,20 @@ const App: React.FC = () => {
   const previewState = useRef<{ url: string | null; playing: boolean }>({ url: null, playing: false });
   // ═══ 音乐播放器（主菜单长按谱面库卡片）═══
   const [musicPlayerOpen, setMusicPlayerOpen] = useState(false);
+  const handleOpenMusicPlayer = useCallback(() => {
+    openMusicPlayer();
+    setMusicPlayerOpen(true);
+  }, []);
+
+  // 离开主界面 → 停止音乐播放（关卡片不停止，只有手动离开才停）
+  useEffect(() => {
+    if (screen !== 'menu') stopMusicPlayback();
+  }, [screen]);
+
+  // 音乐播放器音量跟随设置
+  useEffect(() => {
+    setMusicVolume(settings.musicVolume);
+  }, [settings.musicVolume]);
   const handlePreview = useCallback((url: string | null) => {
     // 同一首不重启
     if (previewState.current.url === url && previewState.current.playing) return;
@@ -849,7 +864,7 @@ const App: React.FC = () => {
   const renderScreen = (s: AppScreen) => {
     switch (s) {
       case 'menu':
-        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} onOpenMusicPlayer={() => setMusicPlayerOpen(true)} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={false} hasUpdate={pendingUpdate !== null} />;
+        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} onOpenMusicPlayer={handleOpenMusicPlayer} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={false} hasUpdate={pendingUpdate !== null} />;
       case 'chart-library':
         return <ChartLibrary key={chartListKey} onPlay={handleChartPlay} onSettings={goToSettings} onPreview={handlePreview} lang={lang} highScores={chartScores} uiBlur={settings.uiBlur} />;
       case 'settings':
@@ -908,7 +923,7 @@ const App: React.FC = () => {
 
       {/* 音乐播放器（主菜单长按谱面库卡片） */}
       {musicPlayerOpen && (
-        <MusicPlayer lang={lang} uiBlur={settings.uiBlur} musicVolume={settings.musicVolume} onClose={() => setMusicPlayerOpen(false)} />
+        <MusicPlayer lang={lang} uiBlur={settings.uiBlur} onClose={() => setMusicPlayerOpen(false)} />
       )}
 
       {/* ── 全局 Brand (字母+RKS) — 主页居中，子页移到顶栏 ── */}

@@ -3,6 +3,7 @@ import { t, Lang } from '@/utils/lang';
 import { AccountInfo } from '@/types';
 import { getDevOverride } from '@/utils/devOverrides';
 import { getAssetUrl } from '@/utils/assetStore';
+import { subscribeMusicPlayer, getMusicPlayerState } from '@/utils/musicPlayer';
 import { DonateModal } from './DonateModal';
 import { useScrollingCover } from './ScrollingCover';
 
@@ -34,6 +35,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   const [devClicks, setDevClicks] = useState(0);
   const [showDonate, setShowDonate] = useState(false);
   const { urlA, urlB, switching, slot } = useScrollingCover();
+
+  // 订阅音乐播放器：后台播放时提示字显示「正在播放：音乐名」
+  const [, forceMusic] = useState(0);
+  useEffect(() => subscribeMusicPlayer(() => forceMusic(x => x + 1)), []);
+  const music = getMusicPlayerState();
+  const musicHint = (music.playing && music.index >= 0 && music.tracks[music.index])
+    ? (lang === 'zh' ? `正在播放：${music.tracks[music.index].title}` : `Now playing: ${music.tracks[music.index].title}`)
+    : t('music.longpress', lang);
 
   // 主菜单背景图：横屏 43.jpg / 竖屏 916.jpg；加载失败回退原网格背景
   const [bgLoaded, setBgLoaded] = useState(false);
@@ -160,7 +169,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 style={{ transform: switching ? undefined : (slot===1 ? 'translateY(0)' : 'translateY(-100%)') }} />
             </div>
             <span className="menu-chart-label">{lang === 'zh' ? '谱面库' : 'Charts'}</span>
-            <span className="menu-chart-hint">{t('music.longpress', lang)}</span>
+            <span className="menu-chart-hint" title={musicHint}>{musicHint}</span>
           </button>
 
           <span className="menu-link-sep menu-link-sep-mid">|</span>
