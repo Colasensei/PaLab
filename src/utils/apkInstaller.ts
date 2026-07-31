@@ -3,12 +3,19 @@
  * Android 端：下载完成后直接拉起系统安装器
  * 其它平台：回退为浏览器下载
  */
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 
 export interface InstallResult {
   success: boolean;
   error?: string;
 }
+
+interface ApkInstallerNative {
+  install(options: { base64: string; fileName: string }): Promise<InstallResult>;
+}
+
+/** 自定义原生插件代理（必须用 registerPlugin 注册，才会挂到 Capacitor.Plugins 上） */
+const ApkInstaller = registerPlugin<ApkInstallerNative>('ApkInstaller');
 
 /** 检测是否为原生（Capacitor）环境 */
 export function isNative(): boolean {
@@ -38,10 +45,7 @@ export async function installApk(blob: Blob, fileName: string): Promise<InstallR
   if (isNative()) {
     try {
       const base64 = await blobToBase64(blob);
-      const res: InstallResult = await (Capacitor as any).Plugins.ApkInstaller.install({
-        base64,
-        fileName,
-      });
+      const res = await ApkInstaller.install({ base64, fileName });
       return res || { success: true };
     } catch (e: any) {
       return { success: false, error: e?.message || 'install failed' };
