@@ -471,5 +471,5 @@ export function useGameEngine({
     return () => cancelAnimationFrame(rafRef.current);
   }, [state.isPlaying, state.paused, state.resumeKey, notes, duration, windows, onFinish, getCurrentTime, onPlayHitSound, noteScore]);
 
-  return { state, start, setPaused, handlePress, handleRelease };
+  return { state, start, setPaused, handlePress, handleRelease, resultsRef, holdActiveRef };
 }

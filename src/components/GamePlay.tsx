@@ -548,7 +548,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     else audioManager.resume();
   }, [hasSong, leadInMs, beginSong]);
 
-  const { state, start, setPaused: engineSetPaused, handlePress, handleRelease } = useGameEngine({
+  const { state, start, setPaused: engineSetPaused, handlePress, handleRelease, resultsRef: engineResultsRef, holdActiveRef: engineHoldsRef } = useGameEngine({
     config: effectiveConfig, notes, duration, onFinish: (r) => { stopHitKeepAlive(); onFinish(r); }, getCurrentTime, onPlayHitSound: playHitSound, latencyOffset, correctHitSound, onResume: handleEngineResume, getLeadFrozen: () => leadInActiveRef.current,
   });
 
@@ -928,8 +928,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       const eff = fallDuration / config.speedMultiplier;
       const jy = JUDGMENT_LINE_Y;
       const fid = canvasFailedRef.current;
-      const results = s.results;
-      const activeHolds = s.activeHolds;
+      // 用引擎【实时】判定结果（resultsRef / holdActiveRef），而非滞后的 React state：
+      // 判定瞬间 ref 即更新，音符下一帧立即消失，与特效（React commit 后触发）同步，
+      // 避免「特效已播但 tap 音符延后过线才消失」。
+      const results = engineResultsRef.current;
+      const activeHolds = engineHoldsRef.current;
 
       for (const note of s.activeNotes) {
         const result = results.get(note.id);
@@ -1027,7 +1030,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     return () => cancelAnimationFrame(raf);
   }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, trackWidth, notePadX, tapHeight, holdMinH, holdRingR, holdRingW, holdRingColor,
       doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop,
-      getCurrentTime]);
+      getCurrentTime, engineResultsRef, engineHoldsRef]);
 
   const getNoteY = (noteTime: number): number => {
     const timeUntil = noteTime - state.currentTime;
