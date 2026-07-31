@@ -3,17 +3,14 @@ import { Lang } from '@/utils/lang';
 
 interface Props {
   lang: Lang;
-  onBack: () => void;
 }
 
-export const HelpScreen: React.FC<Props> = ({ lang, onBack }) => {
+export const HelpScreen: React.FC<Props> = ({ lang }) => {
   return (
     <div className="screen help-screen">
       <div className="help-container">
         <div className="help-topbar">
-          <button className="help-back" onClick={onBack}>🡠 {lang === 'zh' ? '返回' : 'Back'}</button>
           <span className="help-title">{lang === 'zh' ? '游戏指南' : 'Game Guide'}</span>
-          <span style={{ width: 60 }} />
         </div>
 
         <div className="help-scroll">
@@ -214,7 +211,7 @@ export const HelpScreen: React.FC<Props> = ({ lang, onBack }) => {
               </div>
 
               <p style={{ textAlign: 'center', color: '#555', padding: '20px 0', fontSize: 12 }}>
-                Palab Alpha 5.4 — 感谢您的游玩
+                Palab Alpha 5.5 — 感谢您的游玩
               </p>
             </>
           ) : (
@@ -300,7 +297,7 @@ export const HelpScreen: React.FC<Props> = ({ lang, onBack }) => {
                 <p>Settings → Personalize: customize note skins (Tap = contained, Hold = stretched). All assets stored locally and applied next game.</p>
               </div>
               <p style={{ textAlign: 'center', color: '#555', padding: '20px 0', fontSize: 12 }}>
-                Palab Alpha 5.4 — Thanks for playing
+                Palab Alpha 5.5 — Thanks for playing
               </p>
             </>
           )}

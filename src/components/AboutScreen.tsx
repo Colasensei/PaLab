@@ -9,6 +9,17 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 5.5（正式版）', date: '2026-07-31',
+    items: [
+      '主菜单新增背景图（横屏 43.jpg / 竖屏 916.jpg，缺失自动回退原背景）',
+      '主菜单底部导航文字纯白 + 黑色阴影',
+      '谱面库卡片不再压暗、文字与卡片加阴影',
+      '移除检查更新/制作谱面/手动制作/帮助页面的重复返回键',
+      '修复制作/更新/帮助界面切换动画（与设置界面统一）',
+      '模糊背景上叠加压暗层提升可读性',
+    ],
+  },
+  {
     ver: 'Alpha 5.4（正式版）', date: '2026-07-31',
     items: [
       '音符渲染全面迁移至 Canvas（Tap/Hold 直接绘制，告别 DOM div）',
@@ -179,8 +190,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 5.4</div>
-      <div className="about-ver about-ver-sub">v0.5.4</div>
+      <div className="about-ver">Alpha 5.5</div>
+      <div className="about-ver about-ver-sub">v0.5.5</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>

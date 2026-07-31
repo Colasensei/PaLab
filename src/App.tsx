@@ -129,7 +129,7 @@ const DEFAULT_CONFIG: GameConfig = {
 const FULLSCREEN_PAGES: AppScreen[] = ['loading', 'page-loading', 'gameplay', 'results', 'about', 'manual-record', 'manual-analyze', 'visual-editor', 'editor-setup'];
 
 /** 独立页面：直接替换栈、不堆叠、但保留顶栏和返回键 */
-const FLAT_PAGES: AppScreen[] = ['chart-library', 'dev', 'chart-mode-select', 'manual-config', 'editor-setup', 'visual-editor'];
+const FLAT_PAGES: AppScreen[] = ['chart-library', 'dev', 'manual-config', 'editor-setup', 'visual-editor'];
 
 /** 需要页面加载动画的页面 */
 const PAGE_LOAD_TARGETS: AppScreen[] = ['chart-library', 'config'];
@@ -321,11 +321,11 @@ const App: React.FC = () => {
     if (screenStack.length <= 1) return;
     // 从全屏页返回也直接替换
     if (FULLSCREEN_PAGES.includes(screen)) {
-      // 手动录制/分析返回模式选择
+      // 手动录制/分析返回模式选择（菜单作为模糊背景层）
       if (screen === 'manual-record' || screen === 'manual-analyze') {
         audioManager.stop();
         setScreen('chart-mode-select');
-        setScreenStack(['chart-mode-select']);
+        setScreenStack(['menu', 'chart-mode-select']);
         return;
       }
       const prev = screenStack.length > 1 ? screenStack[screenStack.length - 2] : 'menu';
@@ -544,11 +544,12 @@ const App: React.FC = () => {
 
   const goToModeSelect = useCallback(() => navigateTo('chart-mode-select'), [navigateTo]);
 
-  /** 手动录制返回：回到模式选择 */
+  /** 手动录制返回：回到模式选择（菜单作为模糊背景层） */
   const handleManualRecordBack = useCallback(() => {
     audioManager.stop();
-    navigateTo('chart-mode-select');
-  }, [navigateTo]);
+    setScreen('chart-mode-select');
+    setScreenStack(['menu', 'chart-mode-select']);
+  }, []);
 
   const handleStart = useCallback(() => {
     // 来自编辑器试玩：不重新生成谱面，用编辑器已有的音符
@@ -842,9 +843,9 @@ const App: React.FC = () => {
       case 'config':
         return <ConfigPanel onConfirm={handleConfigConfirm} onBack={navigateBack} lang={lang} devMode={devMode} />;
       case 'chart-mode-select':
-        return <ChartModeSelect onAuto={goToAutoConfig} onManual={goToManualConfig} onEditor={goToEditorSetup} onBack={navigateBack} lang={lang} />;
+        return <ChartModeSelect onAuto={goToAutoConfig} onManual={goToManualConfig} onEditor={goToEditorSetup} lang={lang} />;
       case 'manual-config':
-        return <ManualConfig onConfirm={handleManualConfirm} onBack={navigateBack} lang={lang} />;
+        return <ManualConfig onConfirm={handleManualConfirm} lang={lang} />;
       case 'manual-record':
         return manualConfig ? <ManualRecord config={manualConfig} duration={manualDuration} onComplete={handleManualRecordComplete} onBack={handleManualRecordBack} lang={lang} latencyOffset={settings.latencyOffset} /> : null;
       case 'manual-analyze':
@@ -872,9 +873,9 @@ const App: React.FC = () => {
       case 'about':
         return <AboutScreen lang={lang} onClose={() => { setScreen('menu'); setScreenStack(['menu']); }} onShowEULA={() => { localStorage.removeItem('palab_eula'); setEulaAccepted(false); setScreen('menu'); setScreenStack(['menu']); }} />;
       case 'help':
-        return <HelpScreen lang={lang} onBack={navigateBack} />;
+        return <HelpScreen lang={lang} />;
       case 'update':
-        return <UpdateScreen lang={lang} onBack={navigateBack} pendingUpdate={pendingUpdate} devMode={devMode} />;
+        return <UpdateScreen lang={lang} pendingUpdate={pendingUpdate} devMode={devMode} />;
       case 'dev':
         return <DevPanel lang={lang} settings={settings} onSave={(s) => { setSettings(s); saveSettings(s); }} onBack={navigateBack} />;
       default:

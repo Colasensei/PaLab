@@ -5,11 +5,10 @@ interface Props {
   onAuto: () => void;
   onManual: () => void;
   onEditor: () => void;
-  onBack: () => void;
   lang: Lang;
 }
 
-export const ChartModeSelect: React.FC<Props> = ({ onAuto, onManual, onEditor, onBack, lang }) => {
+export const ChartModeSelect: React.FC<Props> = ({ onAuto, onManual, onEditor, lang }) => {
   return (
     <div className="screen" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 32 }}>
       <h2 className="cms-title">{lang === 'zh' ? '制作谱面' : 'Create Chart'}</h2>
@@ -34,8 +33,6 @@ export const ChartModeSelect: React.FC<Props> = ({ onAuto, onManual, onEditor, o
           <span className="cms-btn-desc">{lang === 'zh' ? '可视化编辑谱面，精确放置每个音符' : 'Visual chart editor, place notes precisely'}</span>
         </button>
       </div>
-
-      <button className="cms-back" onClick={onBack}>{lang === 'zh' ? '返回' : 'Back'}</button>
     </div>
   );
 };

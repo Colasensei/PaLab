@@ -4,12 +4,11 @@ import { checkUpdate, getLocalVersion, UpdateInfo } from '@/utils/updateChecker'
 
 interface Props {
   lang: Lang;
-  onBack: () => void;
   pendingUpdate?: UpdateInfo | null;
   devMode?: boolean;
 }
 
-export const UpdateScreen: React.FC<Props> = ({ lang, onBack, pendingUpdate, devMode = false }) => {
+export const UpdateScreen: React.FC<Props> = ({ lang, pendingUpdate, devMode = false }) => {
   const [info, setInfo] = useState<UpdateInfo | null>(pendingUpdate ?? null);
   const [checking, setChecking] = useState(!pendingUpdate);
   const [errMsg, setErrMsg] = useState('');
@@ -73,11 +72,7 @@ export const UpdateScreen: React.FC<Props> = ({ lang, onBack, pendingUpdate, dev
     <div className="screen update-screen">
       <div className="update-container">
         <div className="update-topbar">
-          <button className="update-back" onClick={onBack}>
-            &#x1F860; {lang === 'zh' ? '返回' : 'Back'}
-          </button>
           <span className="update-title">{lang === 'zh' ? '检查更新' : 'Check for Updates'}</span>
-          <span style={{ width: 60 }} />
         </div>
 
         <div className="update-body">

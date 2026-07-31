@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { t, Lang } from '@/utils/lang';
 import { AccountInfo } from '@/types';
 import { getDevOverride } from '@/utils/devOverrides';
@@ -34,6 +34,17 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   const [showDonate, setShowDonate] = useState(false);
   const { urlA, urlB, switching, slot } = useScrollingCover();
 
+  // 主菜单背景图：横屏 43.jpg / 竖屏 916.jpg；加载失败回退原网格背景
+  const [bgLoaded, setBgLoaded] = useState(false);
+  const [bgLandscape, setBgLandscape] = useState(window.innerWidth > window.innerHeight);
+  useEffect(() => {
+    const onResize = () => setBgLandscape(window.innerWidth > window.innerHeight);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const bgName = bgLandscape ? '43.jpg' : '916.jpg';
+  const bgSrc = getAssetUrl(bgName, '/' + bgName);
+
   const handleDevClick = useCallback(() => {
     const next = devClicks + 1;
     setDevClicks(next);
@@ -49,6 +60,16 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
   return (
     <div className="screen menu-screen">
+      {/* 背景图（横屏 43.jpg / 竖屏 916.jpg）— 加载成功才显示，覆盖网格背景 */}
+      <img
+        key={bgSrc}
+        className={`menu-bg-img${bgLoaded ? ' loaded' : ''}`}
+        src={bgSrc}
+        alt=""
+        onLoad={() => setBgLoaded(true)}
+        onError={() => setBgLoaded(false)}
+      />
+
       <div className="bg-particles">
         {Array.from({ length: 10 }).map((_, i) => <div key={i} className="bg-particle" />)}
       </div>

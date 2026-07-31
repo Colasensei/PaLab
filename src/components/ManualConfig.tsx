@@ -5,13 +5,12 @@ import { analyzeAudio } from '@/utils';
 
 interface Props {
   onConfirm: (config: GameConfig) => void;
-  onBack: () => void;
   lang: Lang;
 }
 
 const TRACK_COUNTS: TrackCount[] = [2, 4, 6, 8];
 
-export const ManualConfig: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
+export const ManualConfig: React.FC<Props> = ({ onConfirm, lang }) => {
   const [bpm, setBpm] = useState('120');
   const [trackCount, setTrackCount] = useState<TrackCount>(4);
   const [songFile, setSongFile] = useState<File | null>(null);
@@ -126,8 +125,7 @@ export const ManualConfig: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
         </p>
 
         <div className="mc-actions">
-          <button className="btn btn-outline" onClick={onBack}>{lang === 'zh' ? '返回' : 'Back'}</button>
-          <button className="cp-submit" style={{ width: 'auto', flex: 1, marginTop: 0 }} onClick={handleSubmit} disabled={!songFile}>
+          <button className="cp-submit" style={{ width: '100%', marginTop: 0 }} onClick={handleSubmit} disabled={!songFile}>
             {lang === 'zh' ? '开始录入' : 'Start Recording'}
           </button>
         </div>
