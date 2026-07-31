@@ -9,6 +9,16 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 5.6（正式版）', date: '2026-07-31',
+    items: [
+      'Android 端注册为游戏（isGame + 游戏分类）',
+      'Android 返回键改为统一导航返回（不再直接退出游戏）',
+      '修复竖屏谱面库卡片未占满整行（4 个按钮窜位）',
+      '双押音符黄边更明显（显式黄色描边 + 发光增强）',
+      'Android 打击音效延迟优化（resume 完成后调度）',
+    ],
+  },
+  {
     ver: 'Alpha 5.5（正式版）', date: '2026-07-31',
     items: [
       '主菜单新增背景图（横屏 43.jpg / 竖屏 916.jpg，缺失自动回退原背景）',
@@ -190,8 +200,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 5.5</div>
-      <div className="about-ver about-ver-sub">v0.5.5</div>
+      <div className="about-ver">Alpha 5.6</div>
+      <div className="about-ver about-ver-sub">v0.5.6</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
