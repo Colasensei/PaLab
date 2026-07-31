@@ -7327,6 +7327,27 @@ body::after {
   margin-top: 16px;
 }
 
+/* OSU 谱面选择按钮 */
+.osu-choice-btn {
+  display: block;
+  width: 100%;
+  margin: 4px 0;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text-primary);
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-main);
+  letter-spacing: 0.5px;
+}
+.osu-choice-btn:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.35);
+}
+
 /* ─── 关于页面双栏 ─── */
 .about-layout {
   display: flex;

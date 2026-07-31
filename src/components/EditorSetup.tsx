@@ -3,6 +3,7 @@ import { Lang } from '@/utils/lang';
 import { analyzeAudio } from '@/utils';
 import { Note } from '@/types';
 import JSZip from 'jszip';
+import { parseOsuBeatmap, extractOsuLabel } from '@/utils/osuParser';
 
 interface EditorConfig {
   bpm: number;
@@ -31,6 +32,10 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
   const [importingZip, setImportingZip] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
+  const osuInputRef = useRef<HTMLInputElement>(null);
+  const osuZipRef = useRef<JSZip | null>(null);
+  const [importingOsu, setImportingOsu] = useState(false);
+  const [osuChoices, setOsuChoices] = useState<{ path: string; label: string }[] | null>(null);
   const pendingRef = useRef<{ file: File; url: string; rd: { bpm: number } | null } | null>(null);
   const existingNotesRef = useRef<Note[] | undefined>(undefined);
 
@@ -142,6 +147,80 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
     if (zipInputRef.current) zipInputRef.current.value = '';
   };
 
+  // osu! 谱面包导入 (.osz)
+  const handleOsuImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportingOsu(true);
+    try {
+      const zip = await JSZip.loadAsync(file);
+      osuZipRef.current = zip;
+      // 收集所有 .osu 谱面文件
+      const osuFiles: { path: string }[] = [];
+      zip.forEach((relPath, entry) => {
+        if (!entry.dir && /\.osu$/i.test(relPath)) osuFiles.push({ path: relPath });
+      });
+      if (osuFiles.length === 0) {
+        alert(lang === 'zh' ? '谱面包中未找到 .osu 谱面文件' : 'No .osu file found in the pack');
+        setImportingOsu(false);
+        if (osuInputRef.current) osuInputRef.current.value = '';
+        return;
+      }
+      // 预解析出标题/难度，用于选择列表
+      const labeled = await Promise.all(osuFiles.map(async f => {
+        try {
+          const text = await zip.file(f.path)!.async('string');
+          return { path: f.path, label: extractOsuLabel(text) };
+        } catch { return { path: f.path, label: f.path }; }
+      }));
+      if (labeled.length === 1) {
+        await finishOsuImport(labeled[0].path);
+      } else {
+        setOsuChoices(labeled);
+      }
+    } catch {
+      alert(lang === 'zh' ? 'OSU 谱面包解析失败' : 'Failed to parse osu! pack');
+    }
+    setImportingOsu(false);
+    if (osuInputRef.current) osuInputRef.current.value = '';
+  };
+
+  const finishOsuImport = async (path: string) => {
+    const zip = osuZipRef.current;
+    setOsuChoices(null);
+    if (!zip) return;
+    try {
+      const text = await zip.file(path)!.async('string');
+      const parsed = parseOsuBeatmap(text);
+      if (parsed.notes.length === 0) {
+        alert(lang === 'zh' ? '该谱面没有音符' : 'This beatmap has no notes');
+        return;
+      }
+      const audioEntry = findAudioInZip(zip, parsed.audioFilename);
+      if (!audioEntry) {
+        alert(lang === 'zh' ? '谱面包中未找到音频文件' : 'No audio file found in the pack');
+        return;
+      }
+      const blob = await audioEntry.async('blob');
+      const url = URL.createObjectURL(blob);
+      if (songUrl) URL.revokeObjectURL(songUrl);
+      const display = parsed.title ? `${parsed.title}${parsed.version ? ` [${parsed.version}]` : ''}` : path;
+      // 自动解析并进入编辑器
+      onConfirm({
+        bpm: parsed.bpm,
+        trackCount: 4,
+        songUrl: url,
+        songFileName: display,
+        existingNotes: parsed.notes,
+      });
+    } catch (err) {
+      const msg = (err as Error).message;
+      if (msg === 'not_mania') alert(lang === 'zh' ? '不是 mania 谱面（Mode 必须为 3）' : 'Not a mania beatmap (Mode must be 3)');
+      else if (msg === 'not_4k') alert(lang === 'zh' ? '仅支持 4K 谱面（CircleSize 必须为 4）' : 'Only 4K beatmaps are supported');
+      else alert(lang === 'zh' ? '导入失败：' + msg : 'Import failed: ' + msg);
+    }
+  };
+
   return (
     <div className="screen config-screen">
       <div className="glass-panel config-panel">
@@ -161,16 +240,26 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
         </div>
 
         <div className="cp-section">
-          <span className="cp-label">{lang === 'zh' ? '导入 Zip 谱面包' : 'Import Zip Package'}</span>
-          <div className="cp-file-row">
-            <input ref={zipInputRef} type="file" accept=".zip" onChange={handleZipImport} className="file-input" id="es-zip-file" disabled={importingZip} />
-            <label htmlFor="es-zip-file" className={`cp-file-btn cp-file-btn-compact${importingZip ? ' cp-file-btn-loading' : ''}`}>
-              {importingZip ? (
-                <><span className="cp-btn-spinner" />{lang === 'zh' ? '导入中...' : 'Importing...'}</>
-              ) : (lang === 'zh' ? '选择 .zip 文件' : 'Select .zip file')}
-            </label>
+          <span className="cp-label">{lang === 'zh' ? '导入谱面包' : 'Import Package'}</span>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div className="cp-file-row" style={{ flex: 1, minWidth: 0 }}>
+              <input ref={zipInputRef} type="file" accept=".zip" onChange={handleZipImport} className="file-input" id="es-zip-file" disabled={importingZip} />
+              <label htmlFor="es-zip-file" className={`cp-file-btn cp-file-btn-compact${importingZip ? ' cp-file-btn-loading' : ''}`}>
+                {importingZip ? (
+                  <><span className="cp-btn-spinner" />{lang === 'zh' ? '导入中...' : 'Importing...'}</>
+                ) : (lang === 'zh' ? '导入 Zip 谱面包' : 'Import Zip')}
+              </label>
+            </div>
+            <div className="cp-file-row" style={{ flex: 1, minWidth: 0 }}>
+              <input ref={osuInputRef} type="file" accept=".osz,.zip" onChange={handleOsuImport} className="file-input" id="es-osu-file" disabled={importingOsu} />
+              <label htmlFor="es-osu-file" className={`cp-file-btn cp-file-btn-compact${importingOsu ? ' cp-file-btn-loading' : ''}`}>
+                {importingOsu ? (
+                  <><span className="cp-btn-spinner" />{lang === 'zh' ? '导入中...' : 'Importing...'}</>
+                ) : (lang === 'zh' ? '导入 OSU 谱面包' : 'Import osu! pack')}
+              </label>
+            </div>
           </div>
-          <p className="cp-hint">{lang === 'zh' ? '导入已有的谱面包进行编辑' : 'Import existing chart package to edit'}</p>
+          <p className="cp-hint">{lang === 'zh' ? '导入已有的谱面包或 osu! (.osz) 谱面包进行编辑' : 'Import existing chart package or osu! (.osz) beatmap pack'}</p>
         </div>
 
         <div className="cp-section">
@@ -223,6 +312,43 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
           </div>
         </div>
       )}
+
+      {/* OSU 多谱面选择 */}
+      {osuChoices && (
+        <div className="cp-disclaimer-overlay" onClick={() => setOsuChoices(null)}>
+          <div className="cp-disclaimer" onClick={e => e.stopPropagation()}>
+            <div className="cp-disclaimer-title">{lang === 'zh' ? '选择要导入的谱面' : 'Select a beatmap'}</div>
+            <div className="cp-disclaimer-body" style={{ maxHeight: '50vh', overflowY: 'auto' }}>
+              {osuChoices.map(c => (
+                <button key={c.path} className="osu-choice-btn" onClick={() => finishOsuImport(c.path)}>{c.label}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+/** 在 osu! 谱面包里定位音频文件（精确 → 按文件名 → 任意音频扩展名兜底） */
+function findAudioInZip(zip: JSZip, audioFilename: string): JSZip.JSZipObject | null {
+  if (audioFilename) {
+    const exact = zip.file(audioFilename);
+    if (exact) return exact;
+    const base = audioFilename.split(/[\\/]/).pop() || audioFilename;
+    let byBase: JSZip.JSZipObject | null = null;
+    zip.forEach((relPath, file) => {
+      if (!byBase && !file.dir && (relPath.split(/[\\/]/).pop() || '') === base) byBase = file;
+    });
+    if (byBase) return byBase;
+  }
+  const exts = ['mp3', 'ogg', 'wav', 'm4a', 'aac', 'flac', 'wma', 'opus'];
+  let fallback: JSZip.JSZipObject | null = null;
+  zip.forEach((relPath, file) => {
+    if (!fallback && !file.dir) {
+      const ext = (relPath.split('.').pop() || '').toLowerCase();
+      if (exts.includes(ext)) fallback = file;
+    }
+  });
+  return fallback;
+}
