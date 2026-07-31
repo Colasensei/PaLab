@@ -4254,10 +4254,10 @@ body::after {
   }
 
   .menu-chart-card {
-    width: calc(100vw - 32px);
-    height: 27vh;
-    max-width: 500px;
     order: -1;
+    width: 100%;
+    max-width: none;
+    height: 27vh;
     margin: 0 0 10px 0;
   }
   .menu-chart-label { font-size: 44px; letter-spacing: 8px; }

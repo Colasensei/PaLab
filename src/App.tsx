@@ -20,6 +20,7 @@ import {
   VisualEditor, EditorSetup, UpdateScreen,
 } from '@/components';
 import { checkUpdate, getLocalVersion, UpdateInfo } from '@/utils/updateChecker';
+import { App as CapacitorApp } from '@capacitor/app';
 import '@/styles/global.css';
 
 const STORAGE_KEY = 'palab_history';
@@ -380,6 +381,16 @@ const App: React.FC = () => {
       setPreviewVolume(PREVIEW_LOW_VOLUME);
     }
   }, [screen]);
+
+  // Android 返回键 → 统一导航返回（无返回动作时忽略，不再直接退出）
+  useEffect(() => {
+    if (typeof (window as any).Capacitor === 'undefined') return;
+    let handle: { remove: () => void } | null = null;
+    CapacitorApp.addListener('backButton', () => {
+      navigateBack();
+    }).then(h => { handle = h; });
+    return () => { handle?.remove(); };
+  }, [navigateBack]);
 
   // 第一次来先看 EULA（
   const [eulaAccepted, setEulaAccepted] = useState(() => {
