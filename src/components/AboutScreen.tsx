@@ -9,6 +9,17 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 5.9（正式版）', date: '2026-08-01',
+    items: [
+      '判定系统重构为 Phigros 式：判定窗口统一（Perfect ≤80ms / Good ≤160ms / Bad 提前 ≤280ms），Miss 完全自动判定——音符进入可判窗口后没被点击，一过 Good 窗口上界立即自动判 Miss 并移除',
+      '判定始终选择离判定线最近的音符（Tap/Hold 一视同仁），修复同轨道 Tap 紧跟 Hold 时按不住',
+      '修复 AutoPlay 下音符整个越过判定线才消失（碰线即消失，与判定特效同步）',
+      '修复 AutoPlay 下长条不出分不记连击（长条到点自动 Perfect 收尾）',
+      '修复暂停 3 秒倒计时内音符继续下落、恢复后音符跳变',
+      '修复长条按住时进度环被判定环遮挡（进度环提升到特效最上层）',
+    ],
+  },
+  {
     ver: 'Alpha 5.8（正式版）', date: '2026-08-01',
     items: [
       '修复电脑端音符下落一顿一顿（canvas 改用平滑显示时钟驱动）',
@@ -226,8 +237,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 5.8</div>
-      <div className="about-ver about-ver-sub">v0.5.8</div>
+      <div className="about-ver">Alpha 5.9</div>
+      <div className="about-ver about-ver-sub">v0.5.9</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
