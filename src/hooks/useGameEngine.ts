@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Note, GameConfig, NoteResult, TimingWindows, GameResults,
 } from '@/types';
@@ -49,7 +49,7 @@ interface UseGameEngineOptions {
 
 export function useGameEngine({
   config,
-  notes,
+  notes: notesIn,
   duration,
   onFinish,
   getCurrentTime,
@@ -59,6 +59,13 @@ export function useGameEngine({
   onResume,
   getLeadFrozen = () => false,
 }: UseGameEngineOptions) {
+  // 防御性排序：noteIndexRef 的顺序推进 / handlePress 从 noteIndexRef 起点查找
+  // 都依赖 notes 按 startTime 有序。若谱面（如编辑器/导入的 chart.json）出现逆序，
+  // 特定 hold 会因起点错位而「按不住」。排序对已有序谱面无副作用。
+  const notes = useMemo(
+    () => [...notesIn].sort((a, b) => a.startTime - b.startTime || a.id - b.id),
+    [notesIn],
+  );
   const rafRef = useRef<number>(0);
   const frameCountRef = useRef(0);
   const resultsRef = useRef<Map<number, NoteResult>>(new Map());
