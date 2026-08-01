@@ -89,6 +89,8 @@ export function useGameEngine({
   const correctSoundDoublesRef = useRef<Set<number>>(new Set());
   const getLeadFrozenRef = useRef(getLeadFrozen);
   getLeadFrozenRef.current = getLeadFrozen;
+  // 临时诊断：记录已输出的 hold 判定异常，避免刷屏（定位「特定 hold 按不住」用，确认后移除）
+  const holdDiagRef = useRef<Set<number>>(new Set());
   // 渲染窗口起始索引：避免 notes.filter 全量遍历，高密度谱面 O(n)→O(窗口)
   const renderStartIdxRef = useRef(0);
   const devRef = useRef({
@@ -234,8 +236,18 @@ export function useGameEngine({
         if (results.has(note.id)) continue;
         if (holdActiveRef.current.has(note.id)) continue;
         const offset = now - note.startTime;
-        if (offset > windows.timeA + devRef.current.pressOffset) continue;
-        if (offset < -windows.timeC) continue;
+        if (offset > windows.timeA + devRef.current.pressOffset) {
+          if (!holdDiagRef.current.has(note.id)) { holdDiagRef.current.add(note.id);
+            console.warn('[HOLD-TOOLATE]', JSON.stringify({ id: note.id, track, start: Math.round(note.startTime), now: Math.round(now), offset: Math.round(offset), winA: windows.timeA, pressOffset: devRef.current.pressOffset }));
+          }
+          continue;
+        }
+        if (offset < -windows.timeC) {
+          if (!holdDiagRef.current.has(note.id)) { holdDiagRef.current.add(note.id);
+            console.warn('[HOLD-TOOEARLY]', JSON.stringify({ id: note.id, track, start: Math.round(note.startTime), now: Math.round(now), offset: Math.round(offset), winC: windows.timeC }));
+          }
+          continue;
+        }
         holdActiveRef.current.set(note.id, { pressTime: now });
         // 立刻刷状态，别等下一帧（
         updateScoreState(Array.from(resultsRef.current.values()));
@@ -376,6 +388,9 @@ export function useGameEngine({
         if (holdActiveRef.current.has(note.id)) { noteIndexRef.current++; continue; }
         if (results.has(note.id)) { noteIndexRef.current++; continue; }
         if (isNoteMissed(note, judgeNow, windows)) {
+          if (note.type === 'hold' && !holdDiagRef.current.has(note.id)) { holdDiagRef.current.add(note.id);
+            console.warn('[HOLD-MISS]', JSON.stringify({ id: note.id, track: note.track, start: Math.round(note.startTime), end: Math.round(note.endTime), judgeNow: Math.round(judgeNow), winA: windows.timeA, missThreshold: devRef.current.missThreshold }));
+          }
           results.set(note.id, { note, judgment: { type: 'miss', offset: Infinity, time: note.startTime }, score: 0 });
           updateScoreState(Array.from(results.values()));
           noteIndexRef.current++;
