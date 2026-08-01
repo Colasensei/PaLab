@@ -384,6 +384,15 @@ export function useGameEngine({
           if (offset > windows.timeA + devRef.current.pressOffset) continue; // 太晚
           if (offset < -windows.timeC) continue; // 太早
           holdActiveRef.current.set(note.id, { pressTime: judgeNow });
+          // 衔接激活也要播打击音效（双押去重，与 handlePress/autoPlay 一致）
+          if (note.isDouble && note.doubleGroupId !== null) {
+            if (!doubleSoundRef.current.has(note.doubleGroupId)) {
+              doubleSoundRef.current.add(note.doubleGroupId);
+              onPlayHitSound?.();
+            }
+          } else {
+            onPlayHitSound?.();
+          }
           break; // 每轨道一次只衔接一个
         }
       });
