@@ -218,21 +218,29 @@ export function useGameEngine({
       if (best) {
         const judgment = judgeNote(best.note, now, null, windows);
         const jType = judgment.type;
-        results.set(best.note.id, { note: best.note, judgment, score: getJudgmentMultiplier(jType) * noteScore });
-        updateScoreState(Array.from(results.values()));
-        // bad/miss 菜了就别响了（
-        if (jType === 'bad' || jType === 'miss') {
-          return { hit: true, playSound: false, judgmentType: jType };
-        }
-        let playSound = true;
-        if (best.note.isDouble && best.note.doubleGroupId !== null) {
-          if (!doubleSoundRef.current.has(best.note.doubleGroupId)) {
-            doubleSoundRef.current.add(best.note.doubleGroupId);
-          } else {
-            playSound = false;
+        // 太晚的 tap（offset>0 超出判定被判 miss）不该抢占：跳过它继续找 hold。
+        // 否则同轨道紧跟的 hold（如 tap 在 hold 前 ~234ms，仍在 tap 窗口 +360ms 内）
+        // 会被这个误判的 tap miss 抢占 → hold「按不住」却看着 tap miss 流下去。
+        // 该太晚 tap 随后由 miss 检测 isNoteMissed 判 miss。
+        if (jType === 'miss') {
+          best = null;
+        } else {
+          results.set(best.note.id, { note: best.note, judgment, score: getJudgmentMultiplier(jType) * noteScore });
+          updateScoreState(Array.from(results.values()));
+          // bad 菜了就别响了（else 里 miss 已在上方排除）
+          if (jType === 'bad') {
+            return { hit: true, playSound: false, judgmentType: jType };
           }
+          let playSound = true;
+          if (best.note.isDouble && best.note.doubleGroupId !== null) {
+            if (!doubleSoundRef.current.has(best.note.doubleGroupId)) {
+              doubleSoundRef.current.add(best.note.doubleGroupId);
+            } else {
+              playSound = false;
+            }
+          }
+          return { hit: true, playSound, judgmentType: jType };
         }
-        return { hit: true, playSound, judgmentType: jType };
       }
 
       // 看看这轨有没有能接的 hold
