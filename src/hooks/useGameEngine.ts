@@ -201,13 +201,17 @@ export function useGameEngine({
       const now = getTimeRef.current();
       const results = resultsRef.current;
 
-      // 找这条轨上离 now 最近的没判的 tap
+      // 找这条轨上离判定线最近（|offset| 最小）的没判音符（tap 和 hold 同等对待），
+      // 而不是 tap 优先或 hold 优先——始终判定离判定线最近的那个。
+      // 这天然解决「同轨道 tap 紧跟 hold 时，玩家按 hold 却选中了更远的 tap」的问题：
+      // 按 hold 114 时 tap 116 的 offset(+234) > hold 114 的 offset(0)，会选中 hold。
       let best: { note: Note; offset: number } | null = null;
       for (let i = noteIndexRef.current; i < notes.length; i++) {
         const note = notes[i];
         if (note.track !== track) continue;
-        if (note.type !== 'tap') continue;
+        if (note.type !== 'tap' && note.type !== 'hold') continue;
         if (results.has(note.id)) continue;
+        if (note.type === 'hold' && holdActiveRef.current.has(note.id)) continue;
         const offset = now - note.startTime;
         if (offset > windows.timeA + devRef.current.pressOffset) continue;
         if (offset < -windows.timeC) continue;
@@ -216,21 +220,9 @@ export function useGameEngine({
         }
       }
       if (best) {
-        const judgment = judgeNote(best.note, now, null, windows);
-        const jType = judgment.type;
-        // 太晚的 tap（offset>0 超出判定被判 miss）不该抢占：跳过它继续找 hold。
-        // 否则同轨道紧跟的 hold（如 tap 在 hold 前 ~234ms，仍在 tap 窗口 +360ms 内）
-        // 会被这个误判的 tap miss 抢占 → hold「按不住」却看着 tap miss 流下去。
-        // 该太晚 tap 随后由 miss 检测 isNoteMissed 判 miss。
-        if (jType === 'miss') {
-          best = null;
-        } else {
-          results.set(best.note.id, { note: best.note, judgment, score: getJudgmentMultiplier(jType) * noteScore });
-          updateScoreState(Array.from(results.values()));
-          // bad 菜了就别响了（else 里 miss 已在上方排除）
-          if (jType === 'bad') {
-            return { hit: true, playSound: false, judgmentType: jType };
-          }
+        if (best.note.type === 'hold') {
+          holdActiveRef.current.set(best.note.id, { pressTime: now });
+          updateScoreState(Array.from(resultsRef.current.values()));
           let playSound = true;
           if (best.note.isDouble && best.note.doubleGroupId !== null) {
             if (!doubleSoundRef.current.has(best.note.doubleGroupId)) {
@@ -239,42 +231,25 @@ export function useGameEngine({
               playSound = false;
             }
           }
-          return { hit: true, playSound, judgmentType: jType };
+          return { hit: true, playSound, judgmentType: 'hold' };
         }
-      }
-
-      // 看看这轨有没有能接的 hold
-      for (let i = noteIndexRef.current; i < notes.length; i++) {
-        const note = notes[i];
-        if (note.track !== track) continue;
-        if (note.type !== 'hold') continue;
-        if (results.has(note.id)) continue;
-        if (holdActiveRef.current.has(note.id)) continue;
-        const offset = now - note.startTime;
-        if (offset > windows.timeA + devRef.current.pressOffset) {
-          if (!holdDiagRef.current.has(note.id)) { holdDiagRef.current.add(note.id);
-            console.warn('[HOLD-TOOLATE]', JSON.stringify({ id: note.id, track, start: Math.round(note.startTime), now: Math.round(now), offset: Math.round(offset), winA: windows.timeA, pressOffset: devRef.current.pressOffset }));
-          }
-          continue;
+        const judgment = judgeNote(best.note, now, null, windows);
+        const jType = judgment.type;
+        results.set(best.note.id, { note: best.note, judgment, score: getJudgmentMultiplier(jType) * noteScore });
+        updateScoreState(Array.from(results.values()));
+        // bad/miss 菜了就别响了（
+        if (jType === 'bad' || jType === 'miss') {
+          return { hit: true, playSound: false, judgmentType: jType };
         }
-        if (offset < -windows.timeC) {
-          if (!holdDiagRef.current.has(note.id)) { holdDiagRef.current.add(note.id);
-            console.warn('[HOLD-TOOEARLY]', JSON.stringify({ id: note.id, track, start: Math.round(note.startTime), now: Math.round(now), offset: Math.round(offset), winC: windows.timeC }));
-          }
-          continue;
-        }
-        holdActiveRef.current.set(note.id, { pressTime: now });
-        // 立刻刷状态，别等下一帧（
-        updateScoreState(Array.from(resultsRef.current.values()));
         let playSound = true;
-        if (note.isDouble && note.doubleGroupId !== null) {
-          if (!doubleSoundRef.current.has(note.doubleGroupId)) {
-            doubleSoundRef.current.add(note.doubleGroupId);
+        if (best.note.isDouble && best.note.doubleGroupId !== null) {
+          if (!doubleSoundRef.current.has(best.note.doubleGroupId)) {
+            doubleSoundRef.current.add(best.note.doubleGroupId);
           } else {
             playSound = false;
           }
         }
-        return { hit: true, playSound, judgmentType: 'hold' };
+        return { hit: true, playSound, judgmentType: jType };
       }
 
       return { hit: false, playSound: false, judgmentType: '' };
