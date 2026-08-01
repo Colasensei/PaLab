@@ -360,6 +360,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const noteCanvasRef = useRef<HTMLCanvasElement>(null);
+  // Hold 进度环 — 独立特效 canvas 层（zIndex 9，判定环之上）。
+  // 进度环也是特效，不该画在音符层(z3)里被判定环(z8)挡住。
+  const holdRingCanvasRef = useRef<HTMLCanvasElement>(null);
   const gameStartRef = useRef<number>(0);
   const [effects, setEffects] = useState<JEffect[]>([]);
   const effectIdRef = useRef(0);
@@ -1015,29 +1018,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             ctx.lineWidth = 2;
             ctx.strokeRect(nx, ny, noteW, nh);
           }
-
-          if (isHolding) {
-            const dur = note.endTime - note.startTime;
-            const elapsed = s.currentTime - note.startTime;
-            const prog = dur > 0 ? Math.min(1, Math.max(0, elapsed / dur)) : 0;
-            const rr = holdRingR;
-            const cx = nx + noteW / 2;
-            const cy = jy;
-            ctx.beginPath();
-            ctx.arc(cx, cy, rr + 4, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(cx, cy, rr, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-            ctx.lineWidth = holdRingW;
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
-            ctx.strokeStyle = holdRingColor;
-            ctx.lineWidth = holdRingW;
-            ctx.stroke();
-          }
+          // Hold 进度环已移入独立特效层（hold-ring-canvas，zIndex 9，判定环之上）
         }
       }
       ctx.globalAlpha = 1;
@@ -1045,8 +1026,65 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, trackWidth, notePadX, tapHeight, holdMinH, holdRingR, holdRingW, holdRingColor,
+  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, trackWidth, notePadX, tapHeight, holdMinH,
       doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop,
+      getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay]);
+
+  // Hold 进度环 — 独立特效 canvas 层。与音符/判定共用 getCurrentTime() 时钟、
+  // engine 实时 hold 状态（engineHoldsRef）；画在所有特效之上（zIndex 9）。
+  useEffect(() => {
+    const canvas = holdRingCanvasRef.current;
+    if (!canvas) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const ctx = canvas.getContext('2d')!;
+    let raf = 0;
+    const loop = () => {
+      const w = totalWidth + 10;
+      const h = gameHeight;
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      ctx.clearRect(0, 0, w, h);
+      const now = getCurrentTime();
+      const results = engineResultsRef.current;
+      const activeHolds = engineHoldsRef.current;
+      const s = canvasStateRef.current;
+      for (const note of s.activeNotes) {
+        if (note.type !== 'hold') continue;
+        if (results.has(note.id)) continue; // 已判完不画
+        // 与主 canvas 的 isHolding 一致：激活 或 autoplay 到线即视为按住
+        const isHolding = activeHolds.has(note.id) || (effectiveConfig.autoPlay && now >= note.startTime);
+        if (!isHolding) continue;
+        const dur = note.endTime - note.startTime;
+        const elapsed = now - note.startTime;
+        const prog = dur > 0 ? Math.min(1, Math.max(0, elapsed / dur)) : 0;
+        const rr = holdRingR;
+        const cx = note.track * trackWidth + trackWidth / 2;
+        const cy = JUDGMENT_LINE_Y;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rr + 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = holdRingW;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
+        ctx.strokeStyle = holdRingColor;
+        ctx.lineWidth = holdRingW;
+        ctx.stroke();
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, trackWidth, holdRingR, holdRingW, holdRingColor,
       getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay]);
 
   const getNoteY = (noteTime: number): number => {
@@ -1187,6 +1225,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           ref={noteCanvasRef}
           className="note-canvas"
           style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none' }}
+        />
+
+        {/* Hold 进度环特效层 — 置顶（zIndex 9），盖在判定环(z8)/判定线(z5)之上 */}
+        <canvas
+          ref={holdRingCanvasRef}
+          className="hold-ring-canvas"
+          style={{ position: 'absolute', inset: 0, zIndex: 9, pointerEvents: 'none' }}
         />
 
         {/* 轨道线 */}
