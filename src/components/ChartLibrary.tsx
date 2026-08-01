@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Lang } from '@/utils/lang';
 import { loadCharts, saveCharts } from '@/utils';
 import { HighScoreRecord } from '@/types';
@@ -76,17 +76,17 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   const [sortBy, setSortBy] = useState<'name' | 'difficulty' | 'rks' | 'score'>('name');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // 列表选择框：绝对定位高亮条，随选中项平滑滑动
-  const selBoxRef = useRef<HTMLDivElement>(null);
+  // 列表选择框：绝对定位高亮条，随选中项平滑滑动。
+  // 关键：用 useEffect（paint 后）测量 + React state 驱动 transform。若用
+  // useLayoutEffect 在绘制前同步改样式，浏览器同一帧只看到最终位置，transition
+  // 不会跨帧播放 → 选择框直接跳变（“闪”）。paint 后改值才能让浏览器从旧位置
+  // 平滑过渡到新位置。
+  const [selPos, setSelPos] = useState<{ top: number; height: number } | null>(null);
   const selectedItemRef = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const box = selBoxRef.current;
+  useEffect(() => {
     const el = selectedItemRef.current;
-    if (!box) return;
-    if (!el || selected < 0 || selected >= charts.length) { box.style.opacity = '0'; return; }
-    box.style.top = `${el.offsetTop}px`;
-    box.style.height = `${el.offsetHeight}px`;
-    box.style.opacity = '1';
+    if (!el || selected < 0 || selected >= charts.length) { setSelPos(null); return; }
+    setSelPos({ top: el.offsetTop, height: el.offsetHeight });
   }, [selected, charts, sortBy, landscape]);
 
   // 右键菜单
@@ -285,8 +285,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
         </div>
       ) : (
         <div className="cl-scroll-list">
-          {/* 滑动选择框 */}
-          <div ref={selBoxRef} className="cl2-selection" />
+          {/* 滑动选择框 — transform 驱动，平滑移动 */}
+          <div className="cl2-selection" style={selPos ? { transform: `translateY(${selPos.top}px)`, height: selPos.height, opacity: 1 } : { opacity: 0 }} />
           {sortedCharts.map((c) => {
             const chs = highScores[c.fileName];
             const realIdx = charts.indexOf(c);
