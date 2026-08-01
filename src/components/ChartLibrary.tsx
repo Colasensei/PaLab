@@ -322,7 +322,9 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                   position: 'relative', zIndex: 1,
                   transform: isSwiped ? 'translateX(-64px)' : 'translateX(0)',
                   transition: 'transform 0.2s ease',
-                  background: isSwiped ? '#141414' : realIdx === selected ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  // 选中高亮只由滑动选择框 .cl2-selection 负责；item 自身不再加背景，
+                  // 否则点击瞬间 item 自身先“闪”出背景框，再叠加选择框平移，出现两个选框
+                  background: isSwiped ? '#141414' : 'transparent',
                   borderRadius: isSwiped ? '10px 0 0 10px' : 10,
                 }}
               >
