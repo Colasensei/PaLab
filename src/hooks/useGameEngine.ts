@@ -105,7 +105,6 @@ export function useGameEngine({
     timeA: getDevOverride('j_timeA'),
     timeC: getDevOverride('j_timeC'),
     earlyTolerance: getDevOverride('j_earlyTolerance'),
-    pressOffset: getDevOverride('j_pressOffset'),
     lookahead: getDevOverride('p_noteLookahead'),
     lookbehind: getDevOverride('p_noteLookbehind'),
     gameEndEarly: getDevOverride('p_gameEndEarly'),
@@ -212,7 +211,10 @@ export function useGameEngine({
         if (results.has(note.id)) continue;
         if (note.type === 'hold' && holdActiveRef.current.has(note.id)) continue;
         const offset = now - note.startTime;
-        if (offset > windows.timeA + devRef.current.pressOffset) continue;
+        // 可判窗口 = bad/good/perfect = [-timeC, timeA]：提前超过 timeC 或晚超过 timeA
+        // 都不再判定（后者直接走自动 miss）。不加 pressOffset 的晚按宽容——否则判定
+        // 窗口与 miss 窗口不一致，出现「能判却不判」的悬挂区间。
+        if (offset > windows.timeA) continue;
         if (offset < -windows.timeC) continue;
         if (!best || Math.abs(offset) < Math.abs(best.offset)) {
           best = { note, offset };
@@ -371,17 +373,16 @@ export function useGameEngine({
         correctSoundIdxRef.current = csIdx;
       }
 
-      // Miss 检测：音符一旦超过可判窗口上界（timeA + pressOffset，即 handlePress
-      // 不再接受的范围）就【立即】判 miss 并从候选移除，不允许再判定。
-      // 不再用 missThreshold(300) 额外宽容——否则音符在 360~460ms 间「悬挂」：
-      // 既不能被 handlePress 判定（>360），又还没被 miss（<460）。
+      // Miss 检测：miss 完全自动判定，与点击无关——音符进入可判窗口
+      // ([-timeC, timeA]) 后没被点击，一过 good 窗口上界（timeA）就立即判 miss 并移除。
+      // 传入 0 作为 miss 阈值（isNoteMissed = currentTime > startTime + timeA）。
       while (noteIndexRef.current < notes.length) {
         const note = notes[noteIndexRef.current];
         if (holdActiveRef.current.has(note.id)) { noteIndexRef.current++; continue; }
         if (results.has(note.id)) { noteIndexRef.current++; continue; }
-        if (isNoteMissed(note, judgeNow, windows, devRef.current.pressOffset)) {
+        if (isNoteMissed(note, judgeNow, windows, 0)) {
           if (note.type === 'hold' && !holdDiagRef.current.has(note.id)) { holdDiagRef.current.add(note.id);
-            console.warn('[HOLD-MISS]', JSON.stringify({ id: note.id, track: note.track, start: Math.round(note.startTime), end: Math.round(note.endTime), judgeNow: Math.round(judgeNow), winA: windows.timeA, pressOffset: devRef.current.pressOffset }));
+            console.warn('[HOLD-MISS]', JSON.stringify({ id: note.id, track: note.track, start: Math.round(note.startTime), end: Math.round(note.endTime), judgeNow: Math.round(judgeNow), winA: windows.timeA }));
           }
           results.set(note.id, { note, judgment: { type: 'miss', offset: Infinity, time: note.startTime }, score: 0 });
           updateScoreState(Array.from(results.values()));
