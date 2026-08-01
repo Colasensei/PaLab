@@ -6159,7 +6159,8 @@ body::after {
   align-items: center;
 }
 .cl2-item:hover { background: rgba(255,255,255,0.03); }
-.cl2-item.active { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.08); }
+/* 选中高亮由滑动选择框 .cl2-selection 负责，item 自身不再着色 */
+.cl2-item.active { background: transparent; border-color: transparent; }
 .cl2-item-cover {
   width: 44px; height: 44px; border-radius: 8px;
   background: rgba(255,255,255,0.03); flex-shrink: 0;
@@ -6196,7 +6197,26 @@ body::after {
 
 /* ─── 滚动列表 ─── */
 .cl-scroll { display: flex; flex-direction: column; height: 100%; overflow: hidden; padding: 16px 16px 0; }
-.cl-scroll-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.cl-scroll-list { position: relative; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* 选中选择框 — 平滑滑到选中项（top/height 由 JS 测量驱动） */
+.cl2-selection {
+  position: absolute; left: 0; right: 0; top: 0; height: 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: top 0.28s cubic-bezier(0.22,0.61,0.36,1), height 0.28s cubic-bezier(0.22,0.61,0.36,1), opacity 0.2s ease;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* 详情面板切换过渡（切换谱面时整体淡入上移） */
+@keyframes cl2DetailIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cl2-detail-in { animation: cl2DetailIn 0.32s ease-out; }
 
 .cl-wheel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
 .cl-wheel-header .btn { background: transparent !important; border: 1px solid rgba(255,255,255,0.12); color: #ccc; box-shadow: none; padding: 5px 12px; font-size: 11px; }

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Lang } from '@/utils/lang';
 import { loadCharts, saveCharts } from '@/utils';
 import { HighScoreRecord } from '@/types';
@@ -75,6 +75,19 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   const [landscape, setLandscape] = useState(window.innerWidth > window.innerHeight);
   const [sortBy, setSortBy] = useState<'name' | 'difficulty' | 'rks' | 'score'>('name');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // 列表选择框：绝对定位高亮条，随选中项平滑滑动
+  const selBoxRef = useRef<HTMLDivElement>(null);
+  const selectedItemRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const box = selBoxRef.current;
+    const el = selectedItemRef.current;
+    if (!box) return;
+    if (!el || selected < 0 || selected >= charts.length) { box.style.opacity = '0'; return; }
+    box.style.top = `${el.offsetTop}px`;
+    box.style.height = `${el.offsetHeight}px`;
+    box.style.opacity = '1';
+  }, [selected, charts, sortBy, landscape]);
 
   // 右键菜单
   const [ctxMenu, setCtxMenu] = useState<{ idx: number; x: number; y: number } | null>(null);
@@ -272,13 +285,15 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
         </div>
       ) : (
         <div className="cl-scroll-list">
+          {/* 滑动选择框 */}
+          <div ref={selBoxRef} className="cl2-selection" />
           {sortedCharts.map((c) => {
             const chs = highScores[c.fileName];
             const realIdx = charts.indexOf(c);
             const ds = getDiffStyle(c.difficulty);
             const isSwiped = swipedIdx === realIdx;
             return (
-            <div key={c.fileName} style={{ position: 'relative', overflow: 'hidden', borderRadius: 10, marginBottom: 2 }}>
+            <div key={c.fileName} ref={realIdx === selected ? selectedItemRef : null} style={{ position: 'relative', overflow: 'hidden', borderRadius: 10, marginBottom: 2 }}>
               {/* iOS 滑动删除背景 */}
               {isSwiped && (
               <div style={{
@@ -375,7 +390,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     : 'clamp(120px, 32vw, 200px)';
 
   const detailPanel = sel ? (
-    <div style={{
+    <div key={sel.fileName} className="cl2-detail-in" style={{
       display: 'flex', flexDirection: 'column',
       height: '100%',
       overflowY: 'auto',
