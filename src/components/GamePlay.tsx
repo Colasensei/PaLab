@@ -369,6 +369,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   pausedRef.current = paused;
   const pauseTimeRef = useRef<number>(0);
   const totalPauseRef = useRef<number>(0);
+  // 暂停时的冻结播放位置（canvas 时钟暂停时返回它）
+  const pausedFrozenMsRef = useRef<number>(0);
   // 歌曲真正开始播放的 performance.now()（前摇结束后 / 无前摇直接开播时设置）。
   // 判定与视觉共用这个 perf 外推时钟，绕开 audio.currentTime 的读取延迟/粒度问题。
   const songStartPerfRef = useRef<number>(0);
@@ -468,8 +470,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       // 且与用 perf 的视觉时钟错位。前摇/未开始（songStartPerfRef=0）时保持 0。
       if (!songStartPerfRef.current) return 0;
       if (pausedRef.current) {
-        // 暂停：冻结在暂停开始时刻
-        return Math.max(0, pauseTimeRef.current - songStartPerfRef.current - totalPauseRef.current);
+        // 暂停/恢复倒计时中：冻结在暂停位置（倒计时期间音符不得继续下落）
+        return Math.max(0, pausedFrozenMsRef.current);
       }
       return Math.max(0, performance.now() - songStartPerfRef.current - totalPauseRef.current);
     }
@@ -543,6 +545,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   // 引擎倒计时结束时恢复音频（前摇期间暂停后恢复 → 重跑前摇）
   const handleEngineResume = useCallback(() => {
+    // 引擎 3 秒倒计时结束，真正恢复：解除 canvas 暂停冻结（音符继续下落）
+    setPaused(false);
     if (!hasSong) return;
     if (leadInMs > 0 && !songStartedRef.current) beginSong();
     else audioManager.resume();
@@ -828,15 +832,21 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     // 前摇期间暂停：取消待播的歌曲，避免暂停时突然出声
     if (leadInTimerRef.current) { clearTimeout(leadInTimerRef.current); leadInTimerRef.current = null; }
     audioManager.pause();
+    // 记录暂停冻结位置（canvas 时钟暂停期间返回它）
+    pausedFrozenMsRef.current = (hasSong && songStartPerfRef.current)
+      ? Math.max(0, performance.now() - songStartPerfRef.current - totalPauseRef.current)
+      : 0;
     engineSetPaused(true);
     setPaused(true);
     pauseTimeRef.current = performance.now();
-  }, [engineSetPaused]);
+  }, [engineSetPaused, hasSong]);
 
   const doResume = useCallback(() => {
     totalPauseRef.current += performance.now() - pauseTimeRef.current;
+    // 触发引擎 3 秒倒计时。注意：不在此清除 pausedRef / setPaused(false)——
+    // 倒计时期间 canvas 时钟必须保持冻结（否则音符在倒计时里继续下落），
+    // 等引擎倒计时结束经 onResume（handleEngineResume）才解除冻结。
     engineSetPaused(false);
-    setPaused(false);
   }, [engineSetPaused]);
 
   const handlePause = useCallback(() => {
