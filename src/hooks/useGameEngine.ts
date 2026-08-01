@@ -104,7 +104,6 @@ export function useGameEngine({
     timeB: getDevOverride('j_timeB'),
     timeA: getDevOverride('j_timeA'),
     timeC: getDevOverride('j_timeC'),
-    missThreshold: getDevOverride('j_missThreshold'),
     earlyTolerance: getDevOverride('j_earlyTolerance'),
     pressOffset: getDevOverride('j_pressOffset'),
     lookahead: getDevOverride('p_noteLookahead'),
@@ -372,14 +371,17 @@ export function useGameEngine({
         correctSoundIdxRef.current = csIdx;
       }
 
-      // Miss 检测
+      // Miss 检测：音符一旦超过可判窗口上界（timeA + pressOffset，即 handlePress
+      // 不再接受的范围）就【立即】判 miss 并从候选移除，不允许再判定。
+      // 不再用 missThreshold(300) 额外宽容——否则音符在 360~460ms 间「悬挂」：
+      // 既不能被 handlePress 判定（>360），又还没被 miss（<460）。
       while (noteIndexRef.current < notes.length) {
         const note = notes[noteIndexRef.current];
         if (holdActiveRef.current.has(note.id)) { noteIndexRef.current++; continue; }
         if (results.has(note.id)) { noteIndexRef.current++; continue; }
-        if (isNoteMissed(note, judgeNow, windows)) {
+        if (isNoteMissed(note, judgeNow, windows, devRef.current.pressOffset)) {
           if (note.type === 'hold' && !holdDiagRef.current.has(note.id)) { holdDiagRef.current.add(note.id);
-            console.warn('[HOLD-MISS]', JSON.stringify({ id: note.id, track: note.track, start: Math.round(note.startTime), end: Math.round(note.endTime), judgeNow: Math.round(judgeNow), winA: windows.timeA, missThreshold: devRef.current.missThreshold }));
+            console.warn('[HOLD-MISS]', JSON.stringify({ id: note.id, track: note.track, start: Math.round(note.startTime), end: Math.round(note.endTime), judgeNow: Math.round(judgeNow), winA: windows.timeA, pressOffset: devRef.current.pressOffset }));
           }
           results.set(note.id, { note, judgment: { type: 'miss', offset: Infinity, time: note.startTime }, score: 0 });
           updateScoreState(Array.from(results.values()));

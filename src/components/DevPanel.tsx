@@ -123,8 +123,7 @@ export const DevPanel: React.FC<Props> = ({ lang, settings, onSave, onBack }) =>
         <NumInput lang={lang} label="Perfect 窗口" tip={L('偏差≤此值 = Perfect', 'Offset ≤ this = Perfect')} defKey="j_timeB" value={ov.j_timeB} min={10} max={200} onChange={v => set('j_timeB', v)} />
         <NumInput lang={lang} label="Good 窗口" tip={L('偏差≤此值 = Good', 'Offset ≤ this = Good')} defKey="j_timeA" value={ov.j_timeA} min={20} max={400} onChange={v => set('j_timeA', v)} />
         <NumInput lang={lang} label="Bad 提前窗口" tip={L('提前超过此值 = Miss', 'Earlier than this = Miss')} defKey="j_timeC" value={ov.j_timeC} min={50} max={600} onChange={v => set('j_timeC', v)} />
-        <NumInput lang={lang} label="Miss 延迟阈值" tip={L('timeA+此值 未按=自动Miss', 'timeA+this = auto Miss')} defKey="j_missThreshold" value={ov.j_missThreshold} min={50} max={1000} onChange={v => set('j_missThreshold', v)} />
-        <NumInput lang={lang} label="按下检测延迟上限" tip={L('按下检测的延迟上限偏移(ms)', 'Press detection latency bound')} defKey="j_pressOffset" value={ov.j_pressOffset} min={50} max={500} onChange={v => set('j_pressOffset', v)} />
+        <NumInput lang={lang} label="按下检测延迟上限" tip={L('按下检测的延迟上限偏移(ms)；超过该值未按 = 立即 Miss', 'Press detection latency bound; past this = instant Miss')} defKey="j_pressOffset" value={ov.j_pressOffset} min={50} max={500} onChange={v => set('j_pressOffset', v)} />
         <NumInput lang={lang} label="提前按容差" tip={L('触发判定前的最小提前量(ms)', 'Min early tolerance before judgment')} defKey="j_earlyTolerance" value={ov.j_earlyTolerance} min={0} max={200} onChange={v => set('j_earlyTolerance', v)} />
 
         <h3 className="dp-sec-title" style={{ marginTop: 36 }}>{L('Hold 判定', 'Hold Judgment')}</h3>
