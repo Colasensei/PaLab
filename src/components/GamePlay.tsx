@@ -545,7 +545,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   // 引擎倒计时结束时恢复音频（前摇期间暂停后恢复 → 重跑前摇）
   const handleEngineResume = useCallback(() => {
-    // 引擎 3 秒倒计时结束，真正恢复：解除 canvas 暂停冻结（音符继续下落）
+    // 引擎 3 秒倒计时结束，真正恢复：把【暂停时长 + 倒计时时长】统一计入
+    // totalPause，使 getCurrentTime 从暂停位置无缝继续（否则会多走一个
+    // 倒计时时长 → 音符跳变到错误位置）。随后解除 canvas 暂停冻结。
+    totalPauseRef.current += performance.now() - pauseTimeRef.current;
     setPaused(false);
     if (!hasSong) return;
     if (leadInMs > 0 && !songStartedRef.current) beginSong();
@@ -842,10 +845,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [engineSetPaused, hasSong]);
 
   const doResume = useCallback(() => {
-    totalPauseRef.current += performance.now() - pauseTimeRef.current;
-    // 触发引擎 3 秒倒计时。注意：不在此清除 pausedRef / setPaused(false)——
-    // 倒计时期间 canvas 时钟必须保持冻结（否则音符在倒计时里继续下落），
-    // 等引擎倒计时结束经 onResume（handleEngineResume）才解除冻结。
+    // 不在此累加 totalPause：若只扣到 doResume 时刻，恢复后时钟会多走一个
+    // 倒计时时长（3s）→ 音符跳变。暂停+倒计时总时长统一在倒计时结束
+    // （handleEngineResume）时扣除，使时钟从暂停位置无缝继续。
     engineSetPaused(false);
   }, [engineSetPaused]);
 
