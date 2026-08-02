@@ -482,7 +482,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       }
       return Math.max(0, performance.now() - songStartPerfRef.current - totalPauseRef.current);
     }
-    // 无歌时用性能时钟，前摇期间（leadInMs 内）保持 0
+    // 无歌时用性能时钟，前摇期间（leadInMs 内）保持 0；暂停/倒计时中冻结在暂停位置
+    if (pausedRef.current) {
+      return Math.max(0, pausedFrozenMsRef.current);
+    }
     return Math.max(0, performance.now() - gameStartRef.current - leadInMsRef.current - totalPauseRef.current);
   }, [hasSong]);
 
@@ -842,10 +845,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     // 前摇期间暂停：取消待播的歌曲，避免暂停时突然出声
     if (leadInTimerRef.current) { clearTimeout(leadInTimerRef.current); leadInTimerRef.current = null; }
     audioManager.pause();
-    // 记录暂停冻结位置（canvas 时钟暂停期间返回它）
-    pausedFrozenMsRef.current = (hasSong && songStartPerfRef.current)
+    // 记录暂停冻结位置（canvas 时钟暂停期间返回它）；无歌也用对应性能时钟的当前值
+    pausedFrozenMsRef.current = hasSong && songStartPerfRef.current
       ? Math.max(0, performance.now() - songStartPerfRef.current - totalPauseRef.current)
-      : 0;
+      : Math.max(0, performance.now() - gameStartRef.current - leadInMsRef.current - totalPauseRef.current);
     engineSetPaused(true);
     setPaused(true);
     pauseTimeRef.current = performance.now();
