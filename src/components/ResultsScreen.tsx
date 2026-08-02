@@ -128,7 +128,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   const leftPanel = (
     <>
       {/* 评级大字 — 评级色发光 */}
-      <div className="result-rating" style={{ color: ratingColor, textShadow: `0 0 18px ${ratingColor}aa, 0 0 44px ${ratingColor}55, 0 0 80px ${ratingColor}33` }}>{phigrosRating}</div>
+      <div className="result-rating" style={{ color: ratingColor, textShadow: `0 0 20px ${ratingColor}dd, 0 0 48px ${ratingColor}88, 0 0 96px ${ratingColor}44` }}>{phigrosRating}</div>
       <div className="result-rating-label" style={{ color: ratingColor }}>{phigrosLabel}</div>
       {/* 分 */}
       <div className="result-score">{results.score.toLocaleString()}</div>
@@ -238,7 +238,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
     <div className="rp-data-right">
       {/* 评级 + 分数 — 横排 */}
       <div className="rp-rating-block">
-        <div className="rp-rating-big" style={{ color: ratingColor }}>{phigrosRating}</div>
+        <div className="rp-rating-big" style={{ color: ratingColor, textShadow: `0 0 20px ${ratingColor}dd, 0 0 48px ${ratingColor}88, 0 0 96px ${ratingColor}44` }}>{phigrosRating}</div>
         <div className="rp-rating-score">
           <div className="rp-score-big">{results.score.toLocaleString()}</div>
           <div className="rp-score-lbl">{t('score', lang)}</div>
@@ -305,7 +305,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   const portraitBottom = (
     <div className="rp-portrait-bottom">
       <div className="rp-portrait-rating">
-        <div className="rp-rating-big" style={{ color: ratingColor }}>{phigrosRating}</div>
+        <div className="rp-rating-big" style={{ color: ratingColor, textShadow: `0 0 18px ${ratingColor}dd, 0 0 44px ${ratingColor}88, 0 0 84px ${ratingColor}44` }}>{phigrosRating}</div>
         <div className="rp-score-big">{results.score.toLocaleString()}</div>
       </div>
       <div className="rp-portrait-data">
