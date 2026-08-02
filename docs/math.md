@@ -262,7 +262,7 @@ $$\text{beatInterval} = \frac{60,000}{\text{BPM}} \ \text{ms}$$
 ## 11. AutoPlay 与试玩
 
 - **AutoPlay**：所有音符自动 Perfect，不计入 RKS/记录。
-- **试玩模式**（有歌曲 URL 的谱面）：同 AutoPlay 逻辑，不计分。
+- **试玩模式**（有歌曲 URL 的谱面）：真人试玩会记录分数（写入历史/最佳/RKS）。
 - **无敌模式**（dev override invincibleMode）：不计分。
 
 PP 计算时 `autoPlay === true` → PP = 0。

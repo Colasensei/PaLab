@@ -1001,10 +1001,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
           let ny: number, nh: number;
           if (isHolding) {
-            // 按住：头部已过判定线（下方隐藏），只画尾部→判定线这一段
-            // 尾部随下落逐渐靠近判定线 → 长条逐渐变短，落完整个消失
+            // 按住：头部锁定在判定线，只画尾部→判定线这一段；尾部随推进逐渐靠近判定线
+            // 脑裂轨道方向相反（判定线在顶部），用绝对值保证长条从尾部延伸到判定线
             ny = endY;
-            nh = noteJy - endY;
+            nh = Math.abs(endY - noteJy);
             if (nh <= 0) continue;
           } else {
             ny = Math.min(startY, endY);

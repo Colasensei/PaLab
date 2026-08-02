@@ -197,11 +197,6 @@ export const SongPanel: React.FC<SongPanelProps> = ({
 
         {/* ── START，永远全宽 ── */}
         <div className="sp-start-row">
-          {isTrial && (
-            <p className="sp-trial-notice">
-              {lang === 'zh' ? '本次试玩不计入任何成绩' : 'Trial play — scores will not be recorded'}
-            </p>
-          )}
           <button className="sp-start-btn" onClick={onStart}
             style={{
               background: '#fff',
