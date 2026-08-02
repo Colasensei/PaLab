@@ -2710,7 +2710,7 @@ body::after {
   font-weight: 500;
 }
 
-/* 判定线 — 加粗发光 */
+/* 判定线 — 加粗发光；脑裂切换时 top 平滑上移/下移 */
 .judgment-line {
   position: absolute;
   left: 0;
@@ -2718,6 +2718,7 @@ body::after {
   background: currentColor;
   border-radius: 1px;
   z-index: 5;
+  transition: top 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), background 0.3s ease;
 }
 
 @keyframes judgeFlash {

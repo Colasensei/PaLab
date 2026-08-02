@@ -1001,9 +1001,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
           let ny: number, nh: number;
           if (isHolding) {
-            // 按住：头部锁定在判定线，只画尾部→判定线这一段；尾部随推进逐渐靠近判定线
-            // 脑裂轨道方向相反（判定线在顶部），用绝对值保证长条从尾部延伸到判定线
-            ny = endY;
+            // 按住：头部锁定在判定线，画“尾部→判定线”这一段，随推进逐渐收拢。
+            // 正常轨道判定线在底部、尾部在上方(ny=endY)；脑裂轨道判定线在顶部、
+            // 尾部在下方(ny=判定线)。统一取上端 min(endY,noteJy)，高度为两者差。
+            ny = Math.min(endY, noteJy);
             nh = Math.abs(endY - noteJy);
             if (nh <= 0) continue;
           } else {

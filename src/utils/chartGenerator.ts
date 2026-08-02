@@ -78,14 +78,14 @@ export function generateChart(config: GameConfig, durationMs: number | null, ena
   // 脑裂段：16+ 定数且开启开关时可能生成（4~8 小节、通常两个轨道）
   const splits = generateSplits(config, durationMs ?? 120_000);
 
-  // 脑裂开始/结束前后各留 2 拍空白：方向切换瞬间不要有音符
+  // 脑裂开始/结束前后各 2 拍留白（含段内起始 2 拍与收尾前 2 拍）：方向切换瞬间不要有音符
   if (splits.length > 0) {
     const beatMs = 60000 / Math.max(30, config.bpm);
     const buffer = beatMs * 2;
     notes = notes.filter(n =>
       !splits.some(s =>
-        (n.startTime >= s.startTime - buffer && n.startTime < s.startTime) ||
-        (n.startTime > s.endTime && n.startTime <= s.endTime + buffer)
+        (n.startTime >= s.startTime - buffer && n.startTime <= s.startTime + buffer) ||
+        (n.startTime >= s.endTime - buffer && n.startTime <= s.endTime + buffer)
       )
     );
   }
