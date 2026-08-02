@@ -73,6 +73,10 @@ export interface GameConfig {
   snapToBeat?: boolean;
   /** 是否生成 hold 长条（默认 true） */
   enableHolds?: boolean;
+  /** 脑裂段（部分轨道反转）：编辑器/自动生成产生，游玩时视觉反转 */
+  splits?: BrainSplitSection[];
+  /** 自动生成时是否可能产生脑裂（16+ 定数且开启） */
+  enableSplit?: boolean;
   /** 编辑器元数据（OSU 导入预填） */
   chartTitle?: string;
   chartArtist?: string;
@@ -98,6 +102,23 @@ export interface Note {
   isDouble: boolean;
   /** 双押组ID (同组双押共享) */
   doubleGroupId: number | null;
+}
+
+// ============ 脑裂（部分轨道反转） ============
+
+/**
+ * 脑裂段：某轨道在 [startTime, endTime) 内判定线移到顶部、音符从底部反向上升。
+ * 纯视觉反转，判定/判分照常（判定基于时间）。
+ * endTime = -1 表示进行中（编辑器里尚未结束）
+ */
+export interface BrainSplitSection {
+  id: number;
+  /** 起始轨道 (0-based) */
+  track: number;
+  /** 脑裂开始时间 (ms from song start) */
+  startTime: number;
+  /** 脑裂结束时间 (ms)，-1 = 进行中未结束 */
+  endTime: number;
 }
 
 // ============ 判定 ============

@@ -27,6 +27,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onConfirm, onBack, lan
   const [trackCount, setTrackCount] = useState<TrackCount>(4);
   const [chartConstant, setChartConstant] = useState(8.0);
   const [enableHolds, setEnableHolds] = useState(true);
+  const [enableSplit, setEnableSplit] = useState(true);
   const [advanced, setAdvanced] = useState(false);
   const [songFile, setSongFile] = useState<File | null>(null);
   const [songName, setSongName] = useState<string>('');
@@ -113,6 +114,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onConfirm, onBack, lan
       noteColor: '#35BFFF', holdNoteColor: '#35BFFF', bgColor: '#0a0a14', judgeLineColor: '#999999',
       songUrl, songFileName: songName || null, autoPlay: false,
       enableHolds,
+      enableSplit,
       rhythmData: rhythmData ?? undefined,
     });
   };
@@ -178,6 +180,17 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onConfirm, onBack, lan
             </label>
           </div>
           <p className="cp-hint">{t('hold.notes.tip', lang)}</p>
+        </div>
+
+        <div className="cp-section">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span className="cp-label">{lang === 'zh' ? '脑裂（16+ 定数）' : 'Brain split (16+ const)'}</span>
+            <label className="toggle-switch">
+              <input type="checkbox" checked={enableSplit} onChange={e => setEnableSplit(e.target.checked)} />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
+          <p className="cp-hint">{lang === 'zh' ? '16 以上定数时可能生成一段 2~4 小节的部分轨道反转（大幅提升难度）' : 'At 16+ const, may insert a 2~4 bar partial track reverse (big difficulty boost)'}</p>
         </div>
 
         <div className="cp-section">

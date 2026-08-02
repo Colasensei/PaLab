@@ -1,4 +1,4 @@
-import { GameConfig, Note, NoteType } from '@/types';
+import { GameConfig, Note, NoteType, BrainSplitSection } from '@/types';
 import { alignToBeat, constantToNps } from './manualAnalyzer';
 
 /**
@@ -63,18 +63,44 @@ function getDifficultyParams(
   };
 }
 
-export function generateChart(config: GameConfig, durationMs: number | null, enableHolds: boolean = true): Note[] {
+export function generateChart(config: GameConfig, durationMs: number | null, enableHolds: boolean = true): { notes: Note[]; splits: BrainSplitSection[] } {
   const strengthAt = config.rhythmData && config.rhythmData.onsets.length > 0
     ? buildStrengthAt(config.rhythmData)
     : null;
 
-  const notes = generateTicks(config, durationMs ?? 120_000, enableHolds, strengthAt);
+  let notes = generateTicks(config, durationMs ?? 120_000, enableHolds, strengthAt);
 
   // 节拍对齐，吸到半拍网格上（
   if (config.snapToBeat) {
-    return alignToBeat(notes, config.bpm);
+    notes = alignToBeat(notes, config.bpm);
   }
-  return notes;
+
+  // 脑裂段：16+ 定数且开启开关时可能生成（2~4 小节、随机 1~2 轨道）
+  const splits = generateSplits(config, durationMs ?? 120_000);
+  return { notes, splits };
+}
+
+/** 自动生成脑裂段：定数 ≥16 + enableSplit 开关，约 55% 概率插入一段 2~4 小节脑裂 */
+function generateSplits(config: GameConfig, durationMs: number): BrainSplitSection[] {
+  if (!config.enableSplit || config.chartConstant < 16 || durationMs <= 4000) return [];
+  if (Math.random() > 0.55) return [];
+  const beatMs = 60000 / Math.max(30, config.bpm);
+  const [beatsPerMeasure] = config.timeSignature.split('/').map(Number);
+  const measureMs = beatMs * Math.max(2, beatsPerMeasure);
+  const nMeasures = 2 + Math.floor(Math.random() * 3); // 2~4 小节
+  const len = nMeasures * measureMs;
+  const maxStart = Math.max(3000, durationMs - len - 3000);
+  const start = 3000 + Math.random() * Math.max(1, maxStart - 3000);
+  const tk = Math.max(2, config.trackCount as number);
+  // 随机 1~2 个不重复轨道
+  const tracks = Array.from({ length: tk }, (_, i) => i)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 1 + (Math.random() < 0.5 ? 1 : 0));
+  return tracks.map((t, i) => ({
+    id: i, track: t,
+    startTime: Math.round(start),
+    endTime: Math.round(start + len),
+  }));
 }
 
 /**

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   GameConfig, Note, GameResults, AppScreen, HighScoreRecord,
   AppSettings, DEFAULT_SETTINGS, constantToDifficulty, getDiffColor,
-  AccountInfo, TrackCount,
+  AccountInfo, TrackCount, BrainSplitSection,
 } from '@/types';
 import { generateChart, audioManager, loadCharts, ensureDoubleGroups } from '@/utils';
 import { estimateDifficulty } from '@/utils/manualAnalyzer';
@@ -480,7 +480,7 @@ const App: React.FC = () => {
   }, [navigateTo]);
 
   // 编辑器 → 保存：进入元数据编辑界面
-  const handleEditorSave = useCallback((notes: Note[]) => {
+  const handleEditorSave = useCallback((notes: Note[], splits: BrainSplitSection[] = []) => {
     if (!editorConfig) return;
     setEditorNotes(notes);
     // 提前加载歌，防止 ChartEditor 里 blob URL 挂（
@@ -494,7 +494,7 @@ const App: React.FC = () => {
     }
     // 用手动分析同款多因素难度算法（用音频时长）
     const durMs = duration > 0 ? duration : (notes.length > 1 ? (notes[notes.length - 1].endTime || notes[notes.length - 1].startTime) - notes[0].startTime : 60000);
-    const chartConstant = estimateDifficulty(notes, Math.max(1000, durMs), editorConfig.trackCount);
+    const chartConstant = estimateDifficulty(notes, Math.max(1000, durMs), editorConfig.trackCount, splits);
     const cfg: GameConfig = {
       bpm: editorConfig.bpm, timeSignature: '4/4', trackCount: editorConfig.trackCount as TrackCount,
       chartConstant, timingWindows: { timeA: 160, timeB: 80, timeC: 280 },
@@ -507,6 +507,7 @@ const App: React.FC = () => {
       coverUrl: editorConfig.coverUrl,
       coverFileName: editorConfig.coverFileName,
       autoPlay: false,
+      splits: splits.length > 0 ? splits : undefined,
     };
     setConfig(cfg);
     setNotes(ensureDoubleGroups(notes));
@@ -520,13 +521,13 @@ const App: React.FC = () => {
   }, [editorConfig]);
 
   // 编辑器试玩：进 SongPanel，不重新生成谱（
-  const handleEditorTrial = useCallback(async (notes: Note[]) => {
+  const handleEditorTrial = useCallback(async (notes: Note[], splits: BrainSplitSection[] = []) => {
     if (!editorConfig) return;
     setEditorNotes(notes);
     const durMs = duration > 0 ? duration : (notes.length > 1 ? (notes[notes.length - 1].endTime || notes[notes.length - 1].startTime) - notes[0].startTime : 60000);
     const cfg: GameConfig = {
       bpm: editorConfig.bpm, timeSignature: '4/4', trackCount: editorConfig.trackCount as TrackCount,
-      chartConstant: estimateDifficulty(notes, Math.max(1000, durMs), editorConfig.trackCount), timingWindows: { timeA: 160, timeB: 80, timeC: 280 },
+      chartConstant: estimateDifficulty(notes, Math.max(1000, durMs), editorConfig.trackCount, splits), timingWindows: { timeA: 160, timeB: 80, timeC: 280 },
       speedMultiplier: 5.0, noteColor: '#35BFFF', holdNoteColor: '#35BFFF',
       bgColor: '#0a0a14', judgeLineColor: '#999999',
       songUrl: editorConfig.songUrl, songFileName: editorConfig.songFileName,
@@ -536,6 +537,7 @@ const App: React.FC = () => {
       coverUrl: editorConfig.coverUrl,
       coverFileName: editorConfig.coverFileName,
       autoPlay: false,
+      splits: splits.length > 0 ? splits : undefined,
     };
     setConfig(cfg);
     setNotes(ensureDoubleGroups(notes));
@@ -593,8 +595,9 @@ const App: React.FC = () => {
   const handleStart = useCallback(() => {
     // 来自编辑器试玩：不重新生成谱面，用编辑器已有的音符
     if (!fromEditor) {
-      const generatedNotes = generateChart(config, config.songUrl ? duration : null, config.enableHolds ?? true);
-      setNotes(ensureDoubleGroups(generatedNotes));
+      const generated = generateChart(config, config.songUrl ? duration : null, config.enableHolds ?? true);
+      setNotes(ensureDoubleGroups(generated.notes));
+      if (generated.splits.length > 0) setConfig(prev => ({ ...prev, splits: generated.splits }));
     }
     chartGeneratedRef.current = true;
     // 设置加载任务：如果之前没有预加载过音频，则在加载画面期间加载
@@ -707,8 +710,9 @@ const App: React.FC = () => {
       loadingTaskRef.current = config.songUrl ? async () => { const d = await audioManager.load(config.songUrl!); setDuration(d); } : undefined;
       navigateTo('loading');
     } else {
-      const generatedNotes = generateChart(config, config.songUrl ? duration : null, config.enableHolds ?? true);
-      setNotes(ensureDoubleGroups(generatedNotes));
+      const generated = generateChart(config, config.songUrl ? duration : null, config.enableHolds ?? true);
+      setNotes(ensureDoubleGroups(generated.notes));
+      if (generated.splits.length > 0) setConfig(prev => ({ ...prev, splits: generated.splits }));
       loadingTaskRef.current = undefined;
       navigateTo('loading');
     }
@@ -783,6 +787,7 @@ const App: React.FC = () => {
         bgColor: settings.bgColor,
         judgeLineColor: settings.judgeLineColor,
         autoPlay,
+        splits: infoConfig.splits || undefined,
       };
       setConfig(cfg);
       setNotes(ensureDoubleGroups(parsedNotes));
@@ -790,10 +795,11 @@ const App: React.FC = () => {
       setGameTarget(target);
       setGameMirror(mirror);
       setGameCorrectHitSound(correctHitSound);
-      // 镜像 flip（
+      // 镜像 flip（含脑裂段轨道）
       if (mirror) {
         const tk = infoConfig.trackCount || 4;
         for (const n of parsedNotes) { n.track = tk - 1 - n.track; }
+        if (cfg.splits) { for (const s of cfg.splits) { s.track = tk - 1 - s.track; } }
       }
       setChartSource({ fileName: pkg.fileName, title: pkg.title, artist: pkg.artist, author: pkg.author, difficulty: pkg.difficulty, chartConstant: pkg.chartConstant, trackCount: infoConfig.trackCount || 4, coverUrl: pkg.coverUrl, illustrationUrl: pkg.illustrationUrl });
       const dur = await audioManager.load(pkg.songUrl);

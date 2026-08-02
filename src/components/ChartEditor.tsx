@@ -88,7 +88,7 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
         difficulty: diffLabel,
         chartConstant: chartConst,
         description,
-        config: { bpm: config.bpm, trackCount: config.trackCount, chartConstant: chartConst, speed: config.speedMultiplier },
+        config: { bpm: config.bpm, trackCount: config.trackCount, chartConstant: chartConst, speed: config.speedMultiplier, splits: config.splits },
       };
       zip.file('info.json', JSON.stringify(info, null, 2));
       zip.file('chart.json', JSON.stringify(notes));

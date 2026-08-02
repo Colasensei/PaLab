@@ -1,17 +1,20 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Lang } from '@/utils/lang';
 import { getDevOverride } from '@/utils/devOverrides';
-import { Note } from '@/types';
+import { Note, BrainSplitSection } from '@/types';
+import { normalizeSplits } from '@/utils/brainSplit';
 
 interface EditorConfig { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; }
-interface Props { config: EditorConfig; onBack: () => void; onSave: (notes: Note[]) => void; onTrial: (notes: Note[]) => void; lang: Lang; latencyOffset: number; }
+interface Props { config: EditorConfig; onBack: () => void; onSave: (notes: Note[], splits: BrainSplitSection[]) => void; onTrial: (notes: Note[], splits: BrainSplitSection[]) => void; lang: Lang; latencyOffset: number; }
 type AlignMode = 'none' | 'beat' | 'half' | 'quarter';
 interface PlacedNote { id: number; track: number; startBeat: number; endBeat: number; startTime: number; endTime: number; }
 
 // 模块级存着，别让浮点往返误差坑了（
 let _savedPlacedNotes: PlacedNote[] = [];
+let _savedSplits: BrainSplitSection[] = [];
 let _savedSettings: { align: string; speed: number; invertScroll: boolean } = { align: 'beat', speed: 5.0, invertScroll: true };
 export function getSavedPlacedNotes() { return _savedPlacedNotes; }
+export function getSavedSplits() { return _savedSplits; }
 export function getSavedEditorSettings() { return _savedSettings; }
 
 export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, onSave, onTrial, lang, latencyOffset }) => {
@@ -30,6 +33,10 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
   const [selected, setSelected] = useState<{ track: number; beat: number } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [boxRect, setBoxRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // 脑裂（部分轨道反转）段 + 效果面板
+  const [splits, setSplits] = useState<BrainSplitSection[]>([]);
+  const [showEffect, setShowEffect] = useState(false);
+  const [effectTracks, setEffectTracks] = useState<Set<number>>(new Set());
 
   const audioRef = useRef<HTMLAudioElement>(null!);
   const gameAreaRef = useRef<HTMLDivElement>(null);
@@ -56,13 +63,15 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
 
   useEffect(() => {
     // 优先用模块级存的原始节拍
-    if (_savedPlacedNotes.length > 0) {
+    if (_savedPlacedNotes.length > 0 || _savedSplits.length > 0) {
       noteIdRef.current = 0;
       setNotes(_savedPlacedNotes.map(n => ({ ...n, id: ++noteIdRef.current })));
+      setSplits(_savedSplits);
       setAlign(_savedSettings.align as AlignMode);
       setSpeed(_savedSettings.speed);
       setInvertScroll(_savedSettings.invertScroll);
       _savedPlacedNotes = [];
+      _savedSplits = [];
       return;
     }
     if (initialConfig.existingNotes && initialConfig.existingNotes.length > 0) {
@@ -336,6 +345,22 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
   const onNoteTS = useCallback((id: number) => { longPressRef.current = setTimeout(() => delNote(id), 600); }, [delNote]);
   const onNoteTE = useCallback(() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }, []);
 
+  // 脑裂：在当前判定线（播放头）位置 开始/结束 所选轨道的脑裂
+  const toggleSplit = useCallback((tracks: number[]) => {
+    const t = Math.round(currentTime * 1000);
+    setSplits(prev => {
+      const next = prev.map(s => ({ ...s }));
+      for (const track of tracks) {
+        const ongoing = next.find(s => s.track === track && s.endTime < 0);
+        if (ongoing) ongoing.endTime = t;
+        else next.push({ id: next.length ? Math.max(...next.map(s => s.id)) + 1 : 0, track, startTime: t, endTime: -1 });
+      }
+      return next;
+    });
+    setEffectTracks(new Set());
+    setShowEffect(false);
+  }, [currentTime]);
+
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -375,6 +400,27 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
                   style={{ position: 'absolute', left: n.track * trackWidth + trackWidth / 2, top, width: trackWidth - notePadX, height: h, backgroundColor: isHold ? '#FF8844' : '#35BFFF', borderRadius: isHold ? '4px 4px 12px 12px' : 6, opacity: n.id === hoveredNote || sel ? 1 : 0.85, cursor: 'grab', zIndex: 2, boxShadow: sel ? '0 0 0 2px #fff, 0 0 14px rgba(53,191,255,0.7)' : n.id === hoveredNote ? '0 0 12px rgba(53,191,255,0.6)' : 'none', transform: 'translateX(-50%)', transition: 'box-shadow 0.1s, opacity 0.1s', touchAction: 'none' }} />
               );
             })}
+            {/* 脑裂段标记（部分轨道反转） */}
+            {splits.map(s => {
+              const yStart = timeToY(s.startTime / 1000);
+              const yEnd = s.endTime >= 0 ? timeToY(s.endTime / 1000) : timeToY(currentTime);
+              const top = Math.min(yStart, yEnd);
+              const h = Math.max(2, Math.abs(yEnd - yStart));
+              const active = s.endTime < 0;
+              return (
+                <div key={s.id} style={{
+                  position: 'absolute', left: s.track * trackWidth, top, width: trackWidth, height: h,
+                  background: active ? 'rgba(255,120,120,0.12)' : 'rgba(255,120,120,0.06)',
+                  borderTop: '1px dashed rgba(255,120,120,0.55)',
+                  borderBottom: s.endTime >= 0 ? '1px dashed rgba(255,120,120,0.55)' : 'none',
+                  pointerEvents: 'none', zIndex: 0,
+                }}>
+                  <span style={{ position: 'absolute', left: 4, top: 0, fontSize: 9, color: 'rgba(255,120,120,0.95)', letterSpacing: 1, lineHeight: 1.4 }}>
+                    SPLIT{active ? ' ▸' : ''}
+                  </span>
+                </div>
+              );
+            })}
             {/* 框选矩形 */}
             {boxRect && (
               <div style={{ position: 'absolute', left: boxRect.x, top: boxRect.y, width: boxRect.w, height: boxRect.h, border: '1px solid rgba(53,191,255,0.6)', background: 'rgba(53,191,255,0.08)', pointerEvents: 'none', zIndex: 10 }} />
@@ -386,9 +432,15 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
           <div className="ve-panel-sec"><label className="ve-label">{lang === 'zh' ? '流速' : 'Speed'}</label><input type="range" className="ve-range" min={1} max={12} step={0.5} value={speed} onChange={e => setSpeed(parseFloat(e.target.value))} /><span className="ve-val">{speed.toFixed(1)}x</span></div>
           <div className="ve-panel-sec"><label className="ve-label">{lang === 'zh' ? '对齐' : 'Snap'}</label><div className="ve-align-row">{(['none','quarter','half','beat'] as AlignMode[]).map(m => (<button key={m} className={`ve-align-btn${align===m?' active':''}`} onClick={()=>setAlign(m)}>{m==='none'?(lang==='zh'?'无':'Off'):m==='quarter'?'1/4':m==='half'?'1/2':'1/1'}</button>))}</div></div>
           <div className="ve-panel-sec"><label className="ve-check-label"><input type="checkbox" checked={invertScroll} onChange={e => setInvertScroll(e.target.checked)} /><span>{lang === 'zh' ? '反转鼠标滚轮' : 'Invert Scroll'}</span></label></div>
+          <div className="ve-panel-sec">
+            <button className="ve-btn ve-btn-effect" onClick={() => { setEffectTracks(new Set()); setShowEffect(true); }}>{lang === 'zh' ? '新增效果' : 'Effects'}</button>
+            {splits.some(s => s.endTime < 0) && (
+              <span style={{ display: 'block', fontSize: 9, color: '#FF7878', marginTop: 4, letterSpacing: 1 }}>{lang === 'zh' ? '脑裂进行中 ▸ 移判定线后点效果结束' : 'SPLIT ON ▸ move line then end'}</span>
+            )}
+          </div>
           <div className="ve-panel-sec ve-panel-actions">
-            <button className="ve-btn ve-btn-save" onClick={() => { _savedPlacedNotes = [...notes]; _savedSettings = { align, speed, invertScroll }; onSave(toNotes()); }}>{lang === 'zh' ? '保存并离开' : 'Save & Exit'}</button>
-            <button className="ve-btn ve-btn-trial" onClick={() => { _savedPlacedNotes = [...notes]; _savedSettings = { align, speed, invertScroll }; onTrial(toNotes()); }}>{lang === 'zh' ? '试玩' : 'Trial'}</button>
+            <button className="ve-btn ve-btn-save" onClick={() => { _savedPlacedNotes = [...notes]; _savedSplits = [...splits]; _savedSettings = { align, speed, invertScroll }; onSave(toNotes(), normalizeSplits(splits)); }}>{lang === 'zh' ? '保存并离开' : 'Save & Exit'}</button>
+            <button className="ve-btn ve-btn-trial" onClick={() => { _savedPlacedNotes = [...notes]; _savedSplits = [...splits]; _savedSettings = { align, speed, invertScroll }; onTrial(toNotes(), normalizeSplits(splits)); }}>{lang === 'zh' ? '试玩' : 'Trial'}</button>
             <button className="ve-btn ve-btn-reset" onClick={() => setShowReset(true)}>{lang === 'zh' ? '重置' : 'Reset'}</button>
             <button className="ve-btn ve-btn-back" onClick={() => setShowExit(true)}>{lang === 'zh' ? '返回（不保存）' : 'Back (Discard)'}</button>
           </div>
@@ -401,6 +453,39 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
       </div>
       {showReset && (<div className="ve-overlay" onClick={() => setShowReset(false)}><div className="ve-dialog" onClick={e => e.stopPropagation()}><p>{lang === 'zh' ? '确定要清除所有音符吗？此操作不可撤销。' : 'Clear all notes? This cannot be undone.'}</p><div className="ve-dialog-actions"><button className="ve-btn ve-btn-reset" onClick={() => setShowReset(false)}>{lang === 'zh' ? '取消' : 'Cancel'}</button><button className="ve-btn ve-btn-save" onClick={() => { setNotes([]); noteIdRef.current = 0; setShowReset(false); }}>{lang === 'zh' ? '确定' : 'Confirm'}</button></div></div></div>)}
       {showExit && (<div className="ve-overlay" onClick={() => setShowExit(false)}><div className="ve-dialog" onClick={e => e.stopPropagation()}><p>{lang === 'zh' ? (notes.length > 0 ? `你有 ${notes.length} 个未保存的音符，确定要离开吗？` : '确定要离开编辑器吗？') : (notes.length > 0 ? `You have ${notes.length} unsaved notes. Leave?` : 'Leave the editor?')}</p><div className="ve-dialog-actions"><button className="ve-btn ve-btn-reset" onClick={() => setShowExit(false)}>{lang === 'zh' ? '取消' : 'Cancel'}</button><button className="ve-btn ve-btn-save" onClick={onBack}>{lang === 'zh' ? '离开' : 'Leave'}</button></div></div></div>)}
+      {/* 新增效果面板 — 脑裂（部分轨道反转） */}
+      {showEffect && (
+        <div className="ve-overlay" onClick={() => setShowEffect(false)}>
+          <div className="ve-dialog" onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#eee', letterSpacing: 1, marginBottom: 10 }}>{lang === 'zh' ? '新增效果' : 'Add Effect'}</div>
+            <div style={{ padding: '8px 10px', border: '1px solid rgba(255,120,120,0.25)', borderRadius: 8, background: 'rgba(255,120,120,0.06)', marginBottom: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#FF7878', letterSpacing: 1 }}>脑裂 SPLIT</span>
+              <span style={{ fontSize: 10, color: '#888', marginTop: 2, display: 'block' }}>{lang === 'zh' ? '部分轨道反转：判定线移顶、音符反向上升' : 'Partial track reverse'}</span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginBottom: 12 }}>
+              {Array.from({ length: trackCount }, (_, i) => {
+                const ongoing = splits.some(s => s.track === i && s.endTime < 0);
+                return (
+                  <label key={i} className="ve-check-label">
+                    <input type="checkbox" checked={effectTracks.has(i)} onChange={e => {
+                      setEffectTracks(prev => { const n = new Set(prev); if (e.target.checked) n.add(i); else n.delete(i); return n; });
+                    }} />
+                    <span>{lang === 'zh' ? '轨道' : 'Track'} {i + 1}{ongoing ? ` · ${lang === 'zh' ? '进行中' : 'ON'}` : ''}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="ve-dialog-actions">
+              <button className="ve-btn ve-btn-reset" onClick={() => setShowEffect(false)}>{lang === 'zh' ? '取消' : 'Cancel'}</button>
+              <button className="ve-btn ve-btn-save" disabled={effectTracks.size === 0} onClick={() => toggleSplit([...effectTracks])}>
+                {splits.some(s => s.endTime < 0 && effectTracks.has(s.track))
+                  ? (lang === 'zh' ? '在当前判定线结束' : 'End at line')
+                  : (lang === 'zh' ? '在当前判定线开始' : 'Start at line')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

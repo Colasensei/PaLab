@@ -9,6 +9,7 @@ import { getDevOverride } from '@/utils/devOverrides';
 import { generateBlurredBg } from '@/utils/blurImage';
 import { getAssetUrl, loadAsset, ASSET_KEYS } from '@/utils/assetStore';
 import { isOverlord } from '@/utils/overlord';
+import { isTrackSplit } from '@/utils/brainSplit';
 
 
 interface GamePlayProps {
@@ -458,6 +459,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   const [gameHeight, setGameHeight] = useState(window.innerHeight - gameTopMargin);
   const JUDGMENT_LINE_Y = gameHeight - judgeLineOffset;
+  // 脑裂轨道判定线 Y（顶部，与底部判定线对称）；splits 为脑裂段
+  const TOP_JUDGE_Y = judgeLineOffset;
+  const splits = config.splits;
 
   useEffect(() => {
     const onResize = () => setGameHeight(window.innerHeight - gameTopMargin);
@@ -960,7 +964,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         const isRed = !!isBadOrMiss || (note.id === fid && !result);
         const isFailed = note.id === fid && !result;
 
-        const startY = jy - ((note.startTime - now) / eff) * (jy - 50);
+        // 脑裂：该轨道判定线在顶部，音符从底部反向上升（纯视觉，判分不变）
+        const isSplit = isTrackSplit(splits, note.track, now);
+        const noteJy = isSplit ? TOP_JUDGE_Y : jy;
+        const originY = isSplit ? h - 50 : 50;
+        const startY = noteJy - ((note.startTime - now) / eff) * (noteJy - originY);
         if (note.type === 'tap') {
           if (result && !isBadOrMiss) continue;
           // autoPlay 到线即消失（不依赖判定帧）
@@ -987,7 +995,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           }
 
         } else {
-          const endY = jy - ((note.endTime - now) / eff) * (jy - 50);
+          const endY = noteJy - ((note.endTime - now) / eff) * (noteJy - originY);
           const noteW = trackWidth - notePadX;
           const nx = note.track * trackWidth + trackWidth / 2 - noteW / 2;
 
@@ -996,7 +1004,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             // 按住：头部已过判定线（下方隐藏），只画尾部→判定线这一段
             // 尾部随下落逐渐靠近判定线 → 长条逐渐变短，落完整个消失
             ny = endY;
-            nh = jy - endY;
+            nh = noteJy - endY;
             if (nh <= 0) continue;
           } else {
             ny = Math.min(startY, endY);
@@ -1026,7 +1034,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, trackWidth, notePadX, tapHeight, holdMinH,
+  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, TOP_JUDGE_Y, splits, trackWidth, notePadX, tapHeight, holdMinH,
       doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop,
       getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay]);
 
@@ -1064,7 +1072,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         const prog = dur > 0 ? Math.min(1, Math.max(0, elapsed / dur)) : 0;
         const rr = holdRingR;
         const cx = note.track * trackWidth + trackWidth / 2;
-        const cy = JUDGMENT_LINE_Y;
+        // 脑裂轨道：进度环画在顶部判定线
+        const cy = isTrackSplit(splits, note.track, now) ? TOP_JUDGE_Y : JUDGMENT_LINE_Y;
         ctx.beginPath();
         ctx.arc(cx, cy, rr + 4, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -1084,7 +1093,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, trackWidth, holdRingR, holdRingW, holdRingColor,
+  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, TOP_JUDGE_Y, splits, trackWidth, holdRingR, holdRingW, holdRingColor,
       getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay]);
 
   const getNoteY = (noteTime: number): number => {
@@ -1247,7 +1256,20 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           ))}
         </div>
 
-        <div className="judgment-line" style={{ top: JUDGMENT_LINE_Y, width: totalWidth, height: judgeLineThickness, background: config.judgeLineColor, borderRadius: Math.ceil(judgeLineThickness / 2), left: 0 }} />
+        {/* 判定线 — 按轨道绘制，脑裂轨道在顶部（红色警示） */}
+        {Array.from({ length: config.trackCount }, (_, i) => {
+          const isSplit = isTrackSplit(splits, i, state.currentTime);
+          return (
+            <div key={i} className="judgment-line" style={{
+              top: isSplit ? TOP_JUDGE_Y : JUDGMENT_LINE_Y,
+              left: i * trackWidth,
+              width: trackWidth,
+              height: judgeLineThickness,
+              background: isSplit ? '#FF7878' : config.judgeLineColor,
+              borderRadius: Math.ceil(judgeLineThickness / 2),
+            }} />
+          );
+        })}
 
         {/* 圆圈特效 */}
         {effects.filter(e => e.type === 'good' || e.type === 'perfect').map(eff => {
@@ -1258,6 +1280,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           const c = JUDGMENT_COLORS[eff.type];
           const outerSize = ringEffInitial + p * ringEffSpread;
           const outerOpacity = Math.max(0, 0.6 - p * ringEffFade);
+          const effY = isTrackSplit(splits, eff.track, state.currentTime) ? TOP_JUDGE_Y : JUDGMENT_LINE_Y;
           return (
             <React.Fragment key={eff.id}>
               {/* 外圈 */}
@@ -1265,7 +1288,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
                 className="judgment-circle-outer"
                 style={{
                   left: eff.track * trackWidth + trackWidth / 2,
-                  top: JUDGMENT_LINE_Y,
+                  top: effY,
                   width: outerSize, height: outerSize,
                   borderColor: c, opacity: outerOpacity,
                   borderWidth: circleOuterW,
@@ -1276,7 +1299,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
                 className="judgment-circle"
                 style={{
                   left: eff.track * trackWidth + trackWidth / 2,
-                  top: JUDGMENT_LINE_Y,
+                  top: effY,
                   width: size, height: size,
                   borderColor: c, opacity,
                   borderWidth: circleInnerW,

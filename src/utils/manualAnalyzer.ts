@@ -7,7 +7,8 @@
  * 3. 难度评定 — 基于物量、密度、Hold 比例等自动计算定数
  */
 
-import { Note, TrackCount, constantToDifficulty } from '@/types';
+import { Note, TrackCount, BrainSplitSection, constantToDifficulty } from '@/types';
+import { getSplitCoverageMs } from './brainSplit';
 
 export interface AnalysisResult {
   notes: Note[];
@@ -163,7 +164,7 @@ export function constantToNps(c: number): number {
  * - Hold 比例：Hold 音符数 / 总音符数
  * - 最大 NPS（峰值密度，爆发加成）
  */
-export function estimateDifficulty(notes: Note[], durationMs: number, trackCount: number): number {
+export function estimateDifficulty(notes: Note[], durationMs: number, trackCount: number, splits?: BrainSplitSection[]): number {
   if (notes.length === 0 || durationMs <= 0) return 1.0;
 
   const durationSec = durationMs / 1000;
@@ -209,7 +210,14 @@ export function estimateDifficulty(notes: Note[], durationMs: number, trackCount
   // 峰值 +0~1.0（极限爆发）
   const peakBonus = Math.max(0, (maxWindowNps - 8) * 0.25);
 
-  let finalScore = baseScore + doubleBonus + holdBonus + peakBonus;
+  // 脑裂加成：脑裂覆盖率 × 大幅加成（上限 +2.0），脑裂显著提升读谱/协调难度
+  let splitBonus = 0;
+  if (splits && splits.length > 0) {
+    const covered = getSplitCoverageMs(splits, durationMs);
+    splitBonus = Math.min(2.0, (covered / Math.max(1, durationMs)) * 4.0);
+  }
+
+  let finalScore = baseScore + doubleBonus + holdBonus + peakBonus + splitBonus;
 
   // 夹一夹别爆了（
   finalScore = Math.max(1.0, Math.min(18.0, finalScore));
@@ -225,6 +233,7 @@ export function analyzeManualNotes(
   durationMs: number,
   trackCount: TrackCount,
   options?: AnalysisOptions,
+  splits?: BrainSplitSection[],
 ): AnalysisResult {
   let notes = [...rawNotes];
 
@@ -244,7 +253,7 @@ export function analyzeManualNotes(
   }
 
   // 4. 定数
-  const chartConstant = estimateDifficulty(notes, durationMs, trackCount as number);
+  const chartConstant = estimateDifficulty(notes, durationMs, trackCount as number, splits);
   const difficulty = constantToDifficulty(chartConstant);
 
   return { notes, chartConstant, difficulty };
