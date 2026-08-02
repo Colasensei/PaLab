@@ -9,6 +9,19 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 6.0（正式版）', date: '2026-08-02',
+    items: [
+      '新增脑裂机制（部分轨道反转）：编辑器「新增效果」可标记起止、游玩时判定线移到顶部音符反向上升（纯视觉，判分不变）',
+      '脑裂大幅影响难度定级（覆盖率加成，最高 +2.0）',
+      '自动生成：16 以上定数且开启开关时可能插入 4~8 小节脑裂（通常两个轨道），脑裂前后各留 2 拍空白',
+      '真人试玩也记录分数（制作/编辑器试玩计入历史、最佳成绩与 RKS），移除「试玩不计分」提示',
+      '结算界面评级字母按评级色发光（横竖屏）',
+      '谱面库列表选择框平滑滑动过渡、详情面板切换淡入上移动画',
+      '修复脑裂长条按住方向、脑裂判定线平滑上移动画',
+      '修复无歌谱面暂停时音符继续下落',
+    ],
+  },
+  {
     ver: 'Alpha 5.9（正式版）', date: '2026-08-01',
     items: [
       '判定系统重构为 Phigros 式：判定窗口统一（Perfect ≤80ms / Good ≤160ms / Bad 提前 ≤280ms），Miss 完全自动判定——音符进入可判窗口后没被点击，一过 Good 窗口上界立即自动判 Miss 并移除',
@@ -237,8 +250,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 5.9</div>
-      <div className="about-ver about-ver-sub">v0.5.9</div>
+      <div className="about-ver">Alpha 6.0</div>
+      <div className="about-ver about-ver-sub">v0.6.0</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
