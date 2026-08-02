@@ -618,8 +618,8 @@ const App: React.FC = () => {
     audioManager.stop();
     setResults(gameResults);
 
-    // 霸王模式是合法游玩，时长照记（
-    if (!isTrial && (!config.autoPlay || isOverlord()) && !getDevOverride('invincibleMode')) {
+    // 霸王模式是合法游玩，时长照记；真人试玩也记（
+    if ((!config.autoPlay || isOverlord()) && !getDevOverride('invincibleMode')) {
       const elapsed = performance.now() - gameStartTimeRef.current;
       if (elapsed > 0 && elapsed < 7200000) { // 忽略异常值（>2小时视为计时错误）
         const prev = parseFloat(localStorage.getItem('palab_playtime') || '0');
@@ -628,8 +628,8 @@ const App: React.FC = () => {
       }
     }
 
-    // AutoPlay/试玩/无敌 统统不给记，霸王说了算（
-    if (isTrial || (config.autoPlay && !isOverlord()) || (getDevOverride('invincibleMode') && !isOverlord()) || (isOverlord() && !overlordRecord())) {
+    // AutoPlay/无敌 不给记，霸王说了算；真人试玩也记录分数（
+    if ((config.autoPlay && !isOverlord()) || (getDevOverride('invincibleMode') && !isOverlord()) || (isOverlord() && !overlordRecord())) {
       setTimeout(() => {
         navigateTo('results');
         setRksChange(null);

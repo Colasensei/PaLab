@@ -127,8 +127,8 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
 
   const leftPanel = (
     <>
-      {/* 评级大字 */}
-      <div className="result-rating" style={{ color: ratingColor }}>{phigrosRating}</div>
+      {/* 评级大字 — 评级色发光 */}
+      <div className="result-rating" style={{ color: ratingColor, textShadow: `0 0 18px ${ratingColor}aa, 0 0 44px ${ratingColor}55, 0 0 80px ${ratingColor}33` }}>{phigrosRating}</div>
       <div className="result-rating-label" style={{ color: ratingColor }}>{phigrosLabel}</div>
       {/* 分 */}
       <div className="result-score">{results.score.toLocaleString()}</div>
@@ -177,9 +177,9 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
           <span className="rsg-lbl">PP</span>
         </div>
         <div className="rsg-item">
-          <span className="rsg-val" style={{ fontSize: 16 }}>{isTrial || results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
+          <span className="rsg-val" style={{ fontSize: 16 }}>{results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
           <span className="rsg-lbl">RKS</span>
-          {!isTrial && !results.autoPlay && rksChange && rksChange.new !== rksChange.old && (
+          {!results.autoPlay && rksChange && rksChange.new !== rksChange.old && (
             <span className={`rks-change ${rksChange.new > rksChange.old ? 'rks-up' : 'rks-down'}`} style={{ fontSize: 9 }}>
               {rksChange.new > rksChange.old ? '↑' : '↓'}{(rksChange.new - rksChange.old).toFixed(2)}
             </span>
@@ -250,8 +250,8 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
         <span className="rp-acc-sep">·</span>
         <span className="rp-pp-inline" style={{ color: ratingColor }}>PP {results.pp.toFixed(2)}</span>
         <span className="rp-acc-sep">·</span>
-        <span className="rp-rks-inline">RKS {isTrial || results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
-        {!isTrial && !results.autoPlay && rksChange && rksChange.new !== rksChange.old && (
+        <span className="rp-rks-inline">RKS {results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
+        {!results.autoPlay && rksChange && rksChange.new !== rksChange.old && (
           <span className={`rks-change ${rksChange.new > rksChange.old ? 'rks-up' : 'rks-down'}`}>
             {rksChange.new > rksChange.old ? '↑' : '↓'}{(rksChange.new - rksChange.old).toFixed(2)}
           </span>
@@ -314,7 +314,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
           <span className="rp-acc-sep">·</span>
           <span className="rp-pp-inline" style={{ color: ratingColor }}>PP {results.pp.toFixed(2)}</span>
           <span className="rp-acc-sep">·</span>
-          <span className="rp-rks-inline">RKS {isTrial || results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
+          <span className="rp-rks-inline">RKS {results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
         </div>
         <div className="rp-pp-row" style={{ display: 'none' }}>
           <div className="rp-pp-item">
@@ -322,9 +322,9 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
             <span className="rp-pp-lbl">PP</span>
           </div>
           <div className="rp-pp-item">
-            <span className="rp-pp-val">{isTrial || results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
+            <span className="rp-pp-val">{results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
             <span className="rp-pp-lbl">RKS</span>
-            {!isTrial && !results.autoPlay && rksChange && rksChange.new !== rksChange.old && (
+            {!results.autoPlay && rksChange && rksChange.new !== rksChange.old && (
               <span className={`rks-change ${rksChange.new > rksChange.old ? 'rks-up' : 'rks-down'}`}>
                 {rksChange.new > rksChange.old ? '↑' : '↓'}{(rksChange.new - rksChange.old).toFixed(2)}
               </span>
