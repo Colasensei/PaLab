@@ -2629,6 +2629,14 @@ body::after {
   opacity: 0.6;
 }
 
+/* 连击：数字在上、COMBO 在下 */
+.hud-combo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+}
+
 .btn-back {
   position: absolute;
   right: 20px;

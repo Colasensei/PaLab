@@ -47,11 +47,17 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
 
   const save = () => onSave(build());
 
+  // 键位修改/恢复默认立即持久化（否则子面板改动要回主面板点保存才生效）
+  const commitBindings = (next: Partial<Record<TrackCount, string[]>>) => {
+    setKeyBindings(next);
+    onSave(build({ keyBindings: next }));
+  };
+
   if (sub === 'repair') return <RepairPanel lang={lang} onBack={() => setSub('main')} />;
   if (sub === 'personalize') return <PersonalizePanel lang={lang} onBack={() => setSub('main')} />;
   if (sub === 'latency') return <LatencyPanel lang={lang} offset={settings.latencyOffset} onSave={o => onSave(build({ latencyOffset: o }))} onBack={() => setSub('main')} />;
   if (sub === 'audio') return <AudioPanel lang={lang} musicVol={musicVol} hitVol={hitVol} onMusic={setMusicVol} onHit={v => { setHitVol(v); setHitVolume(v / 100); }} onBack={() => setSub('main')} />;
-  if (sub === 'keys') return <KeyBindingsPanel lang={lang} bindings={keyBindings} onChange={setKeyBindings} onBack={() => setSub('main')} />;
+  if (sub === 'keys') return <KeyBindingsPanel lang={lang} bindings={keyBindings} onChange={commitBindings} onBack={() => setSub('main')} />;
 
   return (
     <div className="screen settings-screen">

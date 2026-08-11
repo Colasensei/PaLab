@@ -24,7 +24,14 @@ export interface CheckResult {
 }
 
 function getSoftwareId(): string {
-  return typeof (window as any).Capacitor !== 'undefined' ? SW_ANDROID : SW_WINDOWS;
+  // 用 Capacitor.getPlatform() 判断平台：Electron/浏览器也会 bundle @capacitor/core，
+  // 此时 window.Capacitor 存在，但 getPlatform() 返回 'web'（非原生）→ 应走 Windows。
+  // 只有真正的 Android 原生环境 getPlatform() 才返回 'android'。
+  const cap = (window as any).Capacitor;
+  if (cap && typeof cap.getPlatform === 'function') {
+    return cap.getPlatform() === 'android' ? SW_ANDROID : SW_WINDOWS;
+  }
+  return SW_WINDOWS;
 }
 
 export function getLocalVersion(): string {

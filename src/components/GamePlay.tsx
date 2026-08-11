@@ -1184,8 +1184,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       <div className="hud-center">
         {leadInActive ? (
           <span className="combo-count" style={{ ...comboStyle, fontSize: comboFontSize }}>READY?</span>
-        ) : state.combo > 0 && <><span className={`combo-count${comboPulse ? ' combo-pulse' : ''}`} style={{ ...comboStyle, fontSize: comboFontSize }}>
-          {state.combo >= comboKThreshold ? (state.combo / 1000).toFixed(1) + 'k' : state.combo}</span><span className="combo-label"> COMBO</span></>}
+        ) : state.combo > 0 && <div className="hud-combo-wrap"><span className={`combo-count${comboPulse ? ' combo-pulse' : ''}`} style={{ ...comboStyle, fontSize: comboFontSize }}>
+          {state.combo >= comboKThreshold ? (state.combo / 1000).toFixed(1) + 'k' : state.combo}</span><span className="combo-label">COMBO</span></div>}
       </div>
       <div className="hud-right">
         <div className="hud-score" style={{ fontSize: scoreFontSize }}>
