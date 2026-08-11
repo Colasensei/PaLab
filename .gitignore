@@ -28,6 +28,9 @@ Desktop.ini
 .env.local
 .env.*.local
 
+# PalabHub 社区网站（含用户数据/上传谱面，不对外公开）
+PalabHub/
+
 # Android（根目录保 gradlew，子目录有各自的 .gitignore）
 android/app/build/
 android/build/
