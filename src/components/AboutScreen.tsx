@@ -9,6 +9,17 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 6.1（正式版）', date: '2026-08-11',
+    items: [
+      '支持 OSU 谱面包视频导入：视频作为谱面背景，编辑器右栏可导入/移除/模糊/播放声音',
+      '游玩时谱面视频背景：muted 硬件解码 + CSS 模糊，暂停与游戏时钟同步，流畅性能',
+      '编辑器新增「导出并导入至谱面库」：打包后直接写入谱面库，免去手动再导入',
+      '优化移动端打击音效延迟：资源路径兼容 Capacitor、预加载音效池兜底、首次触摸唤醒音频',
+      '设置新增「谱面视频背景」开关：关闭后游玩回退到封面模糊背景',
+      '修复加载界面：无曲绘只有封面时显示封面模糊背景',
+    ],
+  },
+  {
     ver: 'Alpha 6.0（正式版）', date: '2026-08-02',
     items: [
       '新增脑裂机制（部分轨道反转）：编辑器「新增效果」可标记起止、游玩时判定线移到顶部音符反向上升（纯视觉，判分不变）',
@@ -250,8 +261,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 6.0</div>
-      <div className="about-ver about-ver-sub">v0.6.0</div>
+      <div className="about-ver">Alpha 6.1</div>
+      <div className="about-ver about-ver-sub">v0.6.1</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
