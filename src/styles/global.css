@@ -8338,8 +8338,9 @@ body::after {
 .cp-hint { font-size: 11px; color: rgba(255, 255, 255, 0.35); letter-spacing: 1px; }
 .cp-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); flex-shrink: 0; }
 .cp-landscape .cp-toolbar { flex-wrap: nowrap; }
-.cp-input { background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); color: #eee; padding: 8px 12px; font-size: 13px; border-radius: 4px; outline: none; min-width: 140px; flex: 1; }
-.cp-select { min-width: 100px; flex: 0 0 auto; }
+.cp-input { background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); color: #eee; padding: 8px 12px; font-size: 13px; border-radius: 4px; outline: none; min-width: 200px; flex: 1 1 auto; }
+.cp-select { width: 120px; flex: 0 0 120px; min-width: 0; }
+.cp-search { flex-shrink: 0; }
 .cp-sort { display: flex; gap: 4px; flex-shrink: 0; }
 .cp-sort-btn { background: transparent; border: 1px solid rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.55); font-size: 11px; padding: 6px 10px; border-radius: 4px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .cp-sort-btn:hover { color: #eee; border-color: rgba(255, 255, 255, 0.3); }
