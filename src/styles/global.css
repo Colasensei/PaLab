@@ -7349,14 +7349,37 @@ body::after {
   margin-top: 16px;
 }
 
-/* 左侧栏底部配图 */
+/* 左侧栏底部：特别鸣谢圆角矩形 */
+.about-xwhite-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  width: 100%;
+  box-sizing: border-box;
+}
+.about-xwhite-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 3px;
+}
 .about-xwhite {
-  width: 200px;
-  max-width: 70%;
+  width: 180px;
+  max-width: 90%;
   height: auto;
-  opacity: 0.85;
-  margin-top: 4px;
+  opacity: 0.9;
   pointer-events: none;
+}
+.about-xwhite-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  letter-spacing: 2px;
 }
 
 /* OSU 谱面选择按钮 */

@@ -291,7 +291,12 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
         {lang === 'zh' ? '感谢游玩 Palab' : 'Thanks for playing Palab'}
       </p>
 
-      <img className="about-xwhite" src="/xWhite.png" alt="xWhite" />
+      {/* 特别鸣谢圆角矩形 */}
+      <div className="about-xwhite-box">
+        <div className="about-xwhite-title">{lang === 'zh' ? '特别鸣谢' : 'Special Thanks'}</div>
+        <img className="about-xwhite" src="/xWhite.png" alt="xWhite" />
+        <div className="about-xwhite-sub">{lang === 'zh' ? '提供的支持' : 'Support provided'}</div>
+      </div>
     </>
   );
 
