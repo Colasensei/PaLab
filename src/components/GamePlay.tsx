@@ -37,6 +37,8 @@ interface GamePlayProps {
   keyBindings?: Partial<Record<TrackCount, string[]>>;
   /** 游戏内界面缩放（轨道/音符/判定线/准度条，不含HUD） */
   gameUiScale?: number;
+  /** 谱面视频背景开关：关闭时回退到封面模糊背景 */
+  videoBg?: boolean;
 }
 
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
@@ -401,7 +403,7 @@ const AccuracyBar: React.FC<{ lastOffset: number; scale?: number }> = ({ lastOff
 };
 
 export const GamePlay: React.FC<GamePlayProps> = ({
-  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings, gameUiScale = 1,
+  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings, gameUiScale = 1, videoBg = true,
 }) => {
   // 键位：自定义优先，否则默认（useMemo 保证引用稳定，避免 useInput 监听重建）
   const keys = useMemo(() => resolveKeys(keyBindings, config.trackCount), [keyBindings, config.trackCount]);
@@ -1218,7 +1220,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     <div className="screen gameplay-screen" style={{ background: config.bgColor }}
     >
       {/* 背景：谱面视频优先（muted 硬件解码 + CSS 模糊，保证流畅），否则封面模糊图 */}
-      {perfBgCover && config.videoUrl && (
+      {perfBgCover && videoBg && config.videoUrl && (
         <video
           ref={videoBgRef}
           className="gameplay-cover-bg gameplay-video-bg"
@@ -1227,7 +1229,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           style={config.videoBlur === false ? { filter: 'brightness(0.45)' } : undefined}
         />
       )}
-      {perfBgCover && !config.videoUrl && coverUrl && (
+      {perfBgCover && (!videoBg || !config.videoUrl) && coverUrl && (
         <div className="gameplay-cover-bg" style={{
           backgroundImage: `url(${uiBlur ? coverUrl : blurredBg})`,
           filter: uiBlur ? `blur(${bgBlurVal}px) brightness(${bgBrightnessVal})` : 'none',

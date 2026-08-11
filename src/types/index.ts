@@ -248,6 +248,8 @@ export interface AppSettings {
   uiScale: number;
   /** 游戏内界面大小倍率（轨道/音符/判定线/准度条；不含 HUD） */
   gameUiScale: number;
+  /** 谱面背景视频：关闭后游玩回退到封面模糊背景 */
+  videoBg: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -267,6 +269,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showAccuracyBar: false,
   showMascot: true,
   showFPS: false,
+  videoBg: true,
   uiScale: 1,
   gameUiScale: 1,
 };
