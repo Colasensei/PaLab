@@ -17,6 +17,8 @@ export interface ChartPackage {
   coverUrl: string | null;
   illustrationUrl: string | null;
   songUrl: string | null;
+  /** 谱面背景视频（持久化为 dataURL，可选：旧谱面无） */
+  videoUrl?: string | null;
   chartData: string;
   config: string;
   speed?: number;
@@ -189,11 +191,20 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
         const b64 = await illusFile.async('base64');
         illustrationUrl = `data:image/png;base64,${b64}`;
       }
+      // 背景视频（zip 内 video.*）→ dataURL 持久化
+      const videoFile = (() => { let vf: any = null; zip.forEach((p, f) => { if (!vf && !f.dir && /^video\./i.test(p)) vf = f; }); return vf; })();
+      let videoUrl: string | null = null;
+      if (videoFile) {
+        const b64 = await videoFile.async('base64');
+        const vext = (videoFile.name.split('.').pop() || 'mp4').toLowerCase();
+        const vMimeMap: Record<string, string> = { mp4: 'video/mp4', webm: 'video/webm', avi: 'video/x-msvideo', flv: 'video/x-flv', mov: 'video/quicktime' };
+        videoUrl = `data:${vMimeMap[vext] || 'video/mp4'};base64,${b64}`;
+      }
 
       const pkg: ChartPackage = {
         fileName: file.name, title: info.title || 'Unknown', artist: info.artist || '', author: info.author || '',
         difficulty: info.difficulty || 'NM', chartConstant: info.chartConstant || 8.0,
-        description: info.description || '', coverUrl, illustrationUrl, songUrl, chartData: chartJson,
+        description: info.description || '', coverUrl, illustrationUrl, songUrl, videoUrl, chartData: chartJson,
         config: JSON.stringify(info.config || {}),
         speed: info.config?.speed ?? 5.0,
       };

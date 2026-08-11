@@ -16,6 +16,8 @@ interface EditorConfig {
   author?: string;
   coverUrl?: string;
   coverFileName?: string;
+  videoUrl?: string;
+  videoFileName?: string;
 }
 
 interface Props {
@@ -249,6 +251,20 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
           coverFileName = parsed.backgroundFilename;
         }
       }
+      // 背景视频（[Events] Video,0,...）→ dataURL 存进谱面背景
+      let videoUrl: string | undefined;
+      let videoFileName: string | undefined;
+      if (parsed.videoFilename) {
+        const vEntry = findVideoInZip(zip, parsed.videoFilename);
+        if (vEntry) {
+          const vBlob = (await vEntry.async('blob')) as Blob;
+          const ext = (parsed.videoFilename.split('.').pop() || 'mp4').toLowerCase();
+          const mimeMap: Record<string, string> = { mp4: 'video/mp4', avi: 'video/x-msvideo', flv: 'video/x-flv', webm: 'video/webm', mov: 'video/quicktime' };
+          const typed: Blob = vBlob.type ? vBlob : new Blob([vBlob], { type: mimeMap[ext] || 'video/mp4' });
+          videoUrl = URL.createObjectURL(typed);
+          videoFileName = parsed.videoFilename;
+        }
+      }
       pendingImportRef.current = {
         urls,
         commit: () => {
@@ -264,6 +280,8 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
             author: parsed.creator,
             coverUrl,
             coverFileName,
+            videoUrl,
+            videoFileName,
           });
         },
       };
@@ -417,6 +435,18 @@ function findImageInZip(zip: JSZip, filename: string): JSZip.JSZipObject | null 
   let byBase: JSZip.JSZipObject | null = null;
   zip.forEach((relPath, file) => {
     if (!byBase && !file.dir && (relPath.split(/[\\/]/).pop() || '') === base) byBase = file;
+  });
+  return byBase;
+}
+/** 定位背景视频（按文件名或 basename） */
+function findVideoInZip(zip: JSZip, filename: string): JSZip.JSZipObject | null {
+  if (!filename) return null;
+  const exact = zip.file(filename);
+  if (exact) return exact;
+  const base = filename.split(/[\/]/).pop() || filename;
+  let byBase: JSZip.JSZipObject | null = null;
+  zip.forEach((relPath, file) => {
+    if (!byBase && !file.dir && (relPath.split(/[\/]/).pop() || '') === base) byBase = file;
   });
   return byBase;
 }

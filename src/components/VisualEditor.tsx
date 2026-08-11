@@ -4,7 +4,7 @@ import { getDevOverride } from '@/utils/devOverrides';
 import { Note, BrainSplitSection } from '@/types';
 import { normalizeSplits } from '@/utils/brainSplit';
 
-interface EditorConfig { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; }
+interface EditorConfig { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; videoUrl?: string; }
 interface Props { config: EditorConfig; onBack: () => void; onSave: (notes: Note[], splits: BrainSplitSection[]) => void; onTrial: (notes: Note[], splits: BrainSplitSection[]) => void; lang: Lang; latencyOffset: number; }
 type AlignMode = 'none' | 'beat' | 'half' | 'quarter';
 interface PlacedNote { id: number; track: number; startBeat: number; endBeat: number; startTime: number; endTime: number; }
@@ -367,6 +367,9 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
     <div className="screen ve-screen">
       <div className="ve-main">
         <div className="ve-game-wrap" onWheel={onWheel} onTouchStart={onTouchStart} onTouchMove={onTouchMove}>
+          {initialConfig.videoUrl && (
+            <video className="ve-video-bg" src={initialConfig.videoUrl} autoPlay muted loop playsInline preload="metadata" />
+          )}
           <div ref={gameAreaRef} className="ve-game-area" style={{ width: totalWidth }} onPointerDown={onGameAreaDown}>
             {Array.from({ length: trackCount }, (_, i) => (
               <div key={i} style={{ position: 'absolute', left: i * trackWidth, top: 0, bottom: 0, width: trackWidth, borderRight: i < trackCount - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }} />

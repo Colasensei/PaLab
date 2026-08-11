@@ -22,7 +22,8 @@ export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true
   const [staticBg, setStaticBg] = useState<string | null>(null);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
-  const bgImg = chartInfo?.illustrationUrl || coverOverride || null;
+  // 背景：优先曲绘，无曲绘回退封面（模糊背景），再回退封面覆盖参数
+  const bgImg = chartInfo?.illustrationUrl || chartInfo?.coverUrl || coverOverride || null;
   const coverImg = chartInfo?.coverUrl || null;
 
   // 静态模糊：设置禁用模糊时生成一张模糊图片

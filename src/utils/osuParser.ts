@@ -18,6 +18,8 @@ export interface OsuParseResult {
   audioFilename: string;
   /** 背景/曲绘文件名（[Events] 首行 0,0,"bg.jpg"） */
   backgroundFilename: string | null;
+  /** 背景视频文件名（[Events] Video,0,"video.mp4"） */
+  videoFilename: string | null;
   notes: Note[];
 }
 
@@ -78,12 +80,20 @@ export function parseOsuBeatmap(text: string): OsuParseResult {
 
   // 背景/曲绘文件名（[Events] 背景事件 0,0,"bg.jpg",x,y）
   let backgroundFilename: string | null = null;
+  // 背景视频文件名（[Events] Video,0,"video.mp4"）
+  let videoFilename: string | null = null;
   const events = sections['Events'] || [];
   for (const line of events) {
     const t = line.trim();
     if (!t || t.startsWith('//')) continue;
     const m = /^0,0,"([^"]+)"/.exec(t);
     if (m) { backgroundFilename = m[1]; break; }
+  }
+  for (const line of events) {
+    const t = line.trim();
+    if (!t || t.startsWith('//')) continue;
+    const m = /^Video,0,"([^"]+)"/.exec(t);
+    if (m) { videoFilename = m[1]; break; }
   }
 
   // BPM：首个正数（非继承）TimingPoint
@@ -142,6 +152,7 @@ export function parseOsuBeatmap(text: string): OsuParseResult {
     bpm,
     audioFilename,
     backgroundFilename,
+    videoFilename,
     notes: ensureDoubleGroups(notes),
   };
 }

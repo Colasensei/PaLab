@@ -192,7 +192,7 @@ const App: React.FC = () => {
   const [manualDuration, setManualDuration] = useState<number>(0);
 
   // 可视化编辑器流程
-  const [editorConfig, setEditorConfig] = useState<{ bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string } | null>(null);
+  const [editorConfig, setEditorConfig] = useState<{ bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; videoUrl?: string; videoFileName?: string } | null>(null);
   const [editorNotes, setEditorNotes] = useState<Note[]>([]);
   const [fromEditor, setFromEditor] = useState(false);
 
@@ -506,6 +506,7 @@ const App: React.FC = () => {
       chartAuthor: editorConfig.author,
       coverUrl: editorConfig.coverUrl,
       coverFileName: editorConfig.coverFileName,
+      videoUrl: editorConfig.videoUrl,
       autoPlay: false,
       splits: splits.length > 0 ? splits : undefined,
     };
@@ -536,6 +537,7 @@ const App: React.FC = () => {
       chartAuthor: editorConfig.author,
       coverUrl: editorConfig.coverUrl,
       coverFileName: editorConfig.coverFileName,
+      videoUrl: editorConfig.videoUrl,
       autoPlay: false,
       splits: splits.length > 0 ? splits : undefined,
     };
@@ -788,6 +790,7 @@ const App: React.FC = () => {
         judgeLineColor: settings.judgeLineColor,
         autoPlay,
         splits: infoConfig.splits || undefined,
+        videoUrl: pkg.videoUrl || undefined,
       };
       setConfig(cfg);
       setNotes(ensureDoubleGroups(parsedNotes));

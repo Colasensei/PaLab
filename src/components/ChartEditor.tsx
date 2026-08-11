@@ -82,13 +82,20 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
     setExporting(true);
     try {
       const zip = new JSZip();
+      // 背景视频：把 config.videoUrl（编辑器导入时是 ObjectURL）转成 zip 内文件 video.<ext>
+      let videoBlob: Blob | null = null;
+      if (config.videoUrl) {
+        try { videoBlob = await (await fetch(config.videoUrl)).blob(); } catch { videoBlob = null; }
+      }
+      const rawVExt = videoBlob ? (videoBlob.type.split('/')[1] || '').split(';')[0] : '';
+      const videoExt = videoBlob ? (/^[a-z0-9]{2,5}$/i.test(rawVExt) ? rawVExt : 'mp4') : null;
       const info = {
         title: title || config.songFileName || 'Untitled',
         artist, author,
         difficulty: diffLabel,
         chartConstant: chartConst,
         description,
-        config: { bpm: config.bpm, trackCount: config.trackCount, chartConstant: chartConst, speed: config.speedMultiplier, splits: config.splits },
+        config: { bpm: config.bpm, trackCount: config.trackCount, chartConstant: chartConst, speed: config.speedMultiplier, splits: config.splits, videoUrl: videoBlob && videoExt ? `video.${videoExt}` : undefined },
       };
       zip.file('info.json', JSON.stringify(info, null, 2));
       zip.file('chart.json', JSON.stringify(notes));
@@ -107,6 +114,9 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
       if (illusDataUrl) {
         const base64 = illusDataUrl.split(',')[1];
         zip.file('illustration.png', base64, { base64: true });
+      }
+      if (videoBlob && videoExt) {
+        zip.file(`video.${videoExt}`, videoBlob);
       }
 
       const blob = await zip.generateAsync({ type: 'blob' });

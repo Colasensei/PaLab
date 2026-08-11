@@ -568,6 +568,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     // 倒计时时长 → 音符跳变到错误位置）。随后解除 canvas 暂停冻结。
     totalPauseRef.current += performance.now() - pauseTimeRef.current;
     setPaused(false);
+    // 恢复背景视频（暂停时已被 doPause 暂停）
+    videoBgRef.current?.play().catch(() => {});
     if (!hasSong) return;
     if (leadInMs > 0 && !songStartedRef.current) beginSong();
     else audioManager.resume();
@@ -849,10 +851,15 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     return () => clearInterval(iv);
   }, [effects.length]);
 
+  // 谱面背景视频引用（用于暂停/恢复同步）
+  const videoBgRef = useRef<HTMLVideoElement>(null);
+
   const doPause = useCallback(() => {
     // 前摇期间暂停：取消待播的歌曲，避免暂停时突然出声
     if (leadInTimerRef.current) { clearTimeout(leadInTimerRef.current); leadInTimerRef.current = null; }
     audioManager.pause();
+    // 背景视频一并暂停
+    videoBgRef.current?.pause();
     // 记录暂停冻结位置（canvas 时钟暂停期间返回它）；无歌也用对应性能时钟的当前值
     pausedFrozenMsRef.current = hasSong && songStartPerfRef.current
       ? Math.max(0, performance.now() - songStartPerfRef.current - totalPauseRef.current)
@@ -1169,8 +1176,16 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   return (
     <div className="screen gameplay-screen" style={{ background: config.bgColor }}
     >
-      {/* 模糊封面背景 */}
-      {perfBgCover && coverUrl && (
+      {/* 背景：谱面视频优先（muted 硬件解码 + CSS 模糊，保证流畅），否则封面模糊图 */}
+      {perfBgCover && config.videoUrl && (
+        <video
+          ref={videoBgRef}
+          className="gameplay-cover-bg gameplay-video-bg"
+          src={config.videoUrl}
+          autoPlay muted loop playsInline preload="metadata"
+        />
+      )}
+      {perfBgCover && !config.videoUrl && coverUrl && (
         <div className="gameplay-cover-bg" style={{
           backgroundImage: `url(${uiBlur ? coverUrl : blurredBg})`,
           filter: uiBlur ? `blur(${bgBlurVal}px) brightness(${bgBrightnessVal})` : 'none',
