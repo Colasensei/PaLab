@@ -902,7 +902,7 @@ const App: React.FC = () => {
       case 'loading':
         return <LoadingScreen onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={settings.uiBlur} task={loadingTaskRef.current} />;
       case 'gameplay':
-        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={settings.uiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} showFPS={settings.showFPS ?? false} keyBindings={settings.keyBindings} />;
+        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={settings.uiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} showFPS={settings.showFPS ?? false} keyBindings={settings.keyBindings} gameUiScale={settings.gameUiScale} />;
       case 'results':
         return results ? <ResultsScreen results={results} onRestart={handleRestart} onBackToPanel={handleBackToPanel} rks={rks} rksChange={rksChange} lang={lang} isTrial={isTrial} onAdjustParams={handleTrialDiscard} onContinueToEditor={handleTrialContinue} chartInfo={chartSource} /> : null;
       case 'editor':
@@ -931,7 +931,7 @@ const App: React.FC = () => {
   const isFullscreen = FULLSCREEN_PAGES.includes(screen);
 
   return (
-    <div className={`app-root${settings.uiBlur ? '' : ' no-ui-blur'}${!settings.showMascot && screen === 'menu' ? ' no-mascot' : ''}`}>
+    <div className={`app-root${settings.uiBlur ? '' : ' no-ui-blur'}${!settings.showMascot && screen === 'menu' ? ' no-mascot' : ''}`} style={{ zoom: settings.uiScale }}>
       {/* EULA */}
       {!eulaAccepted && (
         <EULAModal lang={lang} onAgree={() => { localStorage.setItem('palab_eula', '1'); setEulaAccepted(true); }} />

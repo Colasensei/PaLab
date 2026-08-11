@@ -238,6 +238,10 @@ export interface AppSettings {
   showFPS: boolean;
   /** 自定义电脑端键位（轨道数 → 键列表），未设置用默认 KEY_MAP */
   keyBindings?: Partial<Record<TrackCount, string[]>>;
+  /** 全局 GUI 大小倍率（大1.2 / 中1.0 / 小0.8） */
+  uiScale: number;
+  /** 游戏内界面大小倍率（轨道/音符/判定线/准度条；不含 HUD） */
+  gameUiScale: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -257,6 +261,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showAccuracyBar: false,
   showMascot: true,
   showFPS: false,
+  uiScale: 1,
+  gameUiScale: 1,
 };
 
 // ============ 账号信息 ============

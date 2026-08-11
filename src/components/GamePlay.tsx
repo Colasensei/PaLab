@@ -35,6 +35,8 @@ interface GamePlayProps {
   showAccuracyBar?: boolean;
   showFPS?: boolean;
   keyBindings?: Partial<Record<TrackCount, string[]>>;
+  /** 游戏内界面缩放（轨道/音符/判定线/准度条，不含HUD） */
+  gameUiScale?: number;
 }
 
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
@@ -259,7 +261,7 @@ const AudioViz: React.FC<{ active: boolean }> = ({ active }) => {
 // 准度条 — 显示最近打击偏移
 // ═══════════════════════════════════════════════
 
-const AccuracyBar: React.FC<{ lastOffset: number }> = ({ lastOffset }) => {
+const AccuracyBar: React.FC<{ lastOffset: number; scale?: number }> = ({ lastOffset, scale = 1 }) => {
   const caretRef = useRef<HTMLDivElement>(null);
 
   const timeB = useMemo(() => getDevOverride('j_timeB'), []); // perfect ±80ms
@@ -316,6 +318,7 @@ const AccuracyBar: React.FC<{ lastOffset: number }> = ({ lastOffset }) => {
       transform: 'translateX(-50%)',
       width: 'clamp(140px, 20vw, 280px)',
       zIndex: 20,
+      zoom: scale,
     }}>
       {/* 条 */}
       <div style={{
@@ -358,10 +361,12 @@ const AccuracyBar: React.FC<{ lastOffset: number }> = ({ lastOffset }) => {
 };
 
 export const GamePlay: React.FC<GamePlayProps> = ({
-  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings,
+  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings, gameUiScale = 1,
 }) => {
   // 键位：自定义优先，否则默认（useMemo 保证引用稳定，避免 useInput 监听重建）
   const keys = useMemo(() => resolveKeys(keyBindings, config.trackCount), [keyBindings, config.trackCount]);
+  // 游戏内界面缩放（不含HUD）
+  const gameScale = gameUiScale ?? 1;
   const containerRef = useRef<HTMLDivElement>(null);
   const noteCanvasRef = useRef<HTMLCanvasElement>(null);
   // Hold 进度环 — 独立特效 canvas 层（zIndex 9，判定环之上）。
@@ -1212,7 +1217,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       </div>
 
       {/* 准度条 */}
-      {showAccuracyBar && state.isPlaying && <AccuracyBar lastOffset={state.lastOffset} />}
+      {showAccuracyBar && state.isPlaying && <AccuracyBar lastOffset={state.lastOffset} scale={gameScale} />}
 
       {/* 顶部进度条，DOM 直驱不走 React */}
       <div className="progress-bar-container">
@@ -1232,7 +1237,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         ref={containerRef}
         className="game-area"
         onContextMenu={e => e.preventDefault()}
-        style={{ width: totalWidth + 10, height: gameHeight, marginTop: gameTopCssVal, touchAction: 'none' }}
+        style={{ width: totalWidth + 10, height: gameHeight, marginTop: gameTopCssVal, touchAction: 'none', zoom: gameScale }}
       >
         {/* Canvas 音符渲染层 */}
         <canvas

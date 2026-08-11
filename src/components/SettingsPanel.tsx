@@ -28,6 +28,8 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [musicVol, setMusicVol] = useState(settings.musicVolume ?? 50);
   const [hitVol, setHitVol] = useState(Math.round(getHitVolume() * 100));
   const [keyBindings, setKeyBindings] = useState<Partial<Record<TrackCount, string[]>> | undefined>(settings.keyBindings);
+  const [uiScale, setUiScale] = useState(settings.uiScale ?? 1);
+  const [gameUiScale, setGameUiScale] = useState(settings.gameUiScale ?? 1);
   const [sub, setSub] = useState<Sub>('main');
 
   const build = (o: Partial<AppSettings> = {}): AppSettings => ({
@@ -38,6 +40,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     language: currentLang, showACC, devMode, showWaveform, uiBlur, noPageLoading,
     noteScale, musicVolume: musicVol, judgeLineThickness, showAccuracyBar, showFPS,
     keyBindings,
+    uiScale, gameUiScale,
     showMascot: false, // 立绘已移除，永远关闭
     ...o,
   });
@@ -96,6 +99,20 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '显示帧数' : 'Show FPS'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={showFPS} onChange={e => setShowFPS(e.target.checked)} /><span className="toggle-slider" /></label>
+          </div>
+          <div className="st-row"><span className="st-label">{lang === 'zh' ? '界面大小' : 'UI Scale'}</span>
+            <div className="st-lang-toggle">
+              {([{ v: 0.8, l: lang === 'zh' ? '小' : 'S' }, { v: 1, l: lang === 'zh' ? '中' : 'M' }, { v: 1.2, l: lang === 'zh' ? '大' : 'L' }] as { v: number; l: string }[]).map(s => (
+                <button key={s.v} className={`st-lang-btn ${uiScale === s.v ? 'active' : ''}`} onClick={() => setUiScale(s.v)}>{s.l}</button>
+              ))}
+            </div>
+          </div>
+          <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '游戏界面大小' : 'Game UI Scale'}</span>
+            <div className="st-lang-toggle">
+              {([{ v: 0.8, l: lang === 'zh' ? '小' : 'S' }, { v: 1, l: lang === 'zh' ? '中' : 'M' }, { v: 1.2, l: lang === 'zh' ? '大' : 'L' }] as { v: number; l: string }[]).map(s => (
+                <button key={s.v} className={`st-lang-btn ${gameUiScale === s.v ? 'active' : ''}`} onClick={() => setGameUiScale(s.v)}>{s.l}</button>
+              ))}
+            </div>
           </div>
           <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '开发者模式' : 'Developer Mode'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={devMode} onChange={e => {
