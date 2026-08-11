@@ -260,7 +260,7 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '协助开发' : 'Contributor'}</div>
-        <div className="about-contrib-box"><span>满目星辰</span></div>
+        <span className="about-link about-link-plain">满目星辰</span>
         <span className="about-link about-link-plain">C.C</span>
         <span className="about-link about-link-plain">ATHAZA2322</span>
         <a className="about-link" href="https://space.bilibili.com/3546634667428724" target="_blank" rel="noopener noreferrer">
