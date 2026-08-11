@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Lang } from '@/utils/lang';
 import { loadCharts, saveCharts } from '@/utils';
 import { HighScoreRecord } from '@/types';
-import JSZip from 'jszip';
 import { generateBlurredBg } from '@/utils/blurImage';
 import { PREVIEW_VOLUME, PREVIEW_LOW_VOLUME, setPreviewVolume } from '@/utils/previewPlayer';
+import { parseChartZip } from '@/utils/chartParser';
+import { CommunityPanel } from './CommunityPanel';
 
 export interface ChartPackage {
   fileName: string;
@@ -77,6 +78,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   const [landscape, setLandscape] = useState(window.innerWidth > window.innerHeight);
   const [sortBy, setSortBy] = useState<'name' | 'difficulty' | 'rks' | 'score'>('name');
   const fileRef = useRef<HTMLInputElement>(null);
+  // 社区谱面面板开关
+  const [showCommunity, setShowCommunity] = useState(false);
 
   // 列表选择框：绝对定位高亮条，随选中项平滑滑动。
   // 关键：用 useEffect（paint 后）测量 + React state 驱动 transform。若用
@@ -164,55 +167,19 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const zip = await JSZip.loadAsync(file);
-      const info = JSON.parse(await zip.file('info.json')!.async('string'));
-      const chartJson = await zip.file('chart.json')!.async('string');
-      const songFile = zip.file('song.mp3') || zip.file('song.wav') || zip.file('song.ogg') || zip.file('song.m4a') || zip.file('song.flac') || zip.file('song.aac') ||
-        (() => { let sf: any = null; zip.forEach((p, f) => { if (!sf && /^song\./.test(p)) sf = f; }); return sf; })();
-      const coverFile = zip.file('cover.png') || zip.file('cover.jpg');
-      const illusFile = zip.file('illustration.png') || zip.file('illustration.jpg');
-
-      // 转换为 base64 data URL 以持久化存储
-      let songUrl: string | null = null;
-      if (songFile) {
-        const b64 = await songFile.async('base64');
-        const mimeMap: Record<string, string> = { ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', wma: 'audio/x-ms-wma', opus: 'audio/opus' };
-        const ext = songFile.name.split('.').pop() || 'mp3';
-        const mime = mimeMap[ext] || 'audio/mpeg';
-        songUrl = `data:${mime};base64,${b64}`;
-      }
-      let coverUrl: string | null = null;
-      if (coverFile) {
-        const b64 = await coverFile.async('base64');
-        coverUrl = `data:image/png;base64,${b64}`;
-      }
-      let illustrationUrl: string | null = null;
-      if (illusFile) {
-        const b64 = await illusFile.async('base64');
-        illustrationUrl = `data:image/png;base64,${b64}`;
-      }
-      // 背景视频（zip 内 video.*）→ dataURL 持久化
-      const videoFile = (() => { let vf: any = null; zip.forEach((p, f) => { if (!vf && !f.dir && /^video\./i.test(p)) vf = f; }); return vf; })();
-      let videoUrl: string | null = null;
-      if (videoFile) {
-        const b64 = await videoFile.async('base64');
-        const vext = (videoFile.name.split('.').pop() || 'mp4').toLowerCase();
-        const vMimeMap: Record<string, string> = { mp4: 'video/mp4', webm: 'video/webm', avi: 'video/x-msvideo', flv: 'video/x-flv', mov: 'video/quicktime' };
-        videoUrl = `data:${vMimeMap[vext] || 'video/mp4'};base64,${b64}`;
-      }
-
-      const pkg: ChartPackage = {
-        fileName: file.name, title: info.title || 'Unknown', artist: info.artist || '', author: info.author || '',
-        difficulty: info.difficulty || 'NM', chartConstant: info.chartConstant || 8.0,
-        description: info.description || '', coverUrl, illustrationUrl, songUrl, videoUrl, chartData: chartJson,
-        config: JSON.stringify(info.config || {}),
-        speed: info.config?.speed ?? 5.0,
-      };
+      const pkg = await parseChartZip(file, file.name);
       const updated = [...charts, pkg];
       setCharts(updated);
       saveCharts(updated);
     } catch { alert(lang === 'zh' ? '导入失败' : 'Import failed'); }
     if (fileRef.current) fileRef.current.value = '';
+  };
+
+  // 社区下载导入：直接并入本地谱面库（不落盘到文件系统）
+  const onCommunityImported = (pkg: ChartPackage) => {
+    const updated = [...charts, pkg];
+    setCharts(updated);
+    saveCharts(updated);
   };
 
   const hs = sel ? highScores[sel.fileName] : null;
@@ -274,8 +241,12 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     <div className="cl-scroll">
       <div className="cl-wheel-header">
         <h3 className="cl2-list-title">{lang === 'zh' ? '谱面库' : 'Chart Library'}</h3>
-        <input ref={fileRef} type="file" accept=".zip" onChange={handleImport} style={{ display: 'none' }} id="cl-import" />
-        <label htmlFor="cl-import" className="btn btn-primary" style={{ cursor: 'pointer', padding: '5px 12px', fontSize: 11, background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: '#ccc', boxShadow: 'none' }}>{lang === 'zh' ? '导入' : 'Import'}</label>
+        <div className="cl-header-actions">
+          <button className="btn btn-primary" onClick={() => { onPreview(null); setShowCommunity(true); }}
+            style={{ cursor: 'pointer', padding: '7px 16px', fontSize: 12, background: 'transparent', border: '1px solid rgba(255,255,255,0.14)', color: '#ccc', boxShadow: 'none' }}>{lang === 'zh' ? '社区' : 'Community'}</button>
+          <input ref={fileRef} type="file" accept=".zip" onChange={handleImport} style={{ display: 'none' }} id="cl-import" />
+          <label htmlFor="cl-import" className="btn btn-primary" style={{ cursor: 'pointer', padding: '7px 16px', fontSize: 12, background: 'transparent', border: '1px solid rgba(255,255,255,0.14)', color: '#ccc', boxShadow: 'none' }}>{lang === 'zh' ? '导入' : 'Import'}</label>
+        </div>
       </div>
       {charts.length > 0 && (
         <div className="cl2-sort">
@@ -711,6 +682,14 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
           {detailPanel}
         </div>
       </div>
+      {showCommunity && (
+        <CommunityPanel
+          onClose={() => { setShowCommunity(false); onPreview(sel?.songUrl ?? null); }}
+          onImported={onCommunityImported}
+          localCharts={charts}
+          lang={lang}
+        />
+      )}
     </div>
   );
 };
