@@ -56,7 +56,7 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
   const [diff, setDiff] = useState('');
   const [sort, setSort] = useState('latest');
   const [downloading, setDownloading] = useState<number | null>(null);
-  const [detail, setDetail] = useState<CommunityChart | null>(null);
+  const [sel, setSel] = useState<CommunityChart | null>(null);
   const [landscape, setLandscape] = useState(window.innerWidth > window.innerHeight);
   const pageSize = 15;
   const listRef = useRef<HTMLDivElement>(null);
@@ -110,6 +110,41 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
 
+  // 详情内容（横屏右侧面板 / 竖屏全屏共用）
+  const renderDetail = (c: CommunityChart) => {
+    const ds = DIFF_STYLE[c.difficulty] || { bg: 'rgba(255,255,255,0.15)', fg: '#fff' };
+    const owned = isOwned(c);
+    return (
+      <div className="cp-detail-inner">
+        <div className="cp-detail-coverwrap">
+          {c.illustration_url || c.cover_url ? (
+            <img className="cp-detail-cover" src={assetUrl(c.illustration_url || c.cover_url)} alt="" />
+          ) : (
+            <div className="cp-detail-cover cp-detail-cover-empty" />
+          )}
+        </div>
+        <div className="cp-detail-info">
+          <h2 className="cp-detail-title">{c.title}</h2>
+          <div className="cp-detail-meta">{lang === 'zh' ? '曲师' : 'Artist'}：{c.artist || '—'} · {lang === 'zh' ? '谱师' : 'Mapper'}：{c.author || '—'}</div>
+          <div className="cp-detail-meta">
+            <span className="cp-diff" style={{ background: ds.bg, color: ds.fg }}>{c.difficulty}</span>
+            <span style={{ marginLeft: 8 }}>{lang === 'zh' ? '定数' : 'Const'} {c.chart_constant.toFixed(1)}</span>
+          </div>
+          <div className="cp-detail-sub">{lang === 'zh' ? '下载' : 'DL'} {c.downloads} · {fmtSize(c.size)} · {c.created_at}</div>
+          {c.description && <p className="cp-detail-desc">{c.description}</p>}
+          {c.audio_url && <audio controls preload="none" src={assetUrl(c.audio_url)} className="cp-audio" />}
+          <div className="cp-detail-actions">
+            <button className="btn btn-primary cp-dl" disabled={downloading !== null || owned} onClick={() => download(c.id)} style={btnStyle}>
+              {owned ? (lang === 'zh' ? '已拥有' : 'Owned')
+                : downloading === c.id ? (lang === 'zh' ? '导入中...' : '...')
+                : (lang === 'zh' ? '下载并导入' : 'Get & Import')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const panel = (
     <div className={`cp-overlay${landscape ? ' cp-landscape' : ''}`}>
       <div className="cp-top">
@@ -139,6 +174,7 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
         </button>
       </div>
 
+      <div className="cp-body">
       <div className="cp-list" ref={listRef}>
         {loading ? (
           <div className="cp-empty">{lang === 'zh' ? '加载中...' : 'Loading...'}</div>
@@ -154,7 +190,7 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
             const ds = DIFF_STYLE[c.difficulty] || { bg: 'rgba(255,255,255,0.15)', fg: '#fff' };
             const owned = isOwned(c);
             return (
-              <div className="cp-item" key={c.id} onClick={() => setDetail(c)}>
+              <div className={`cp-item${sel && sel.id === c.id ? ' selected' : ''}`} key={c.id} onClick={() => setSel(c)}>
                 {c.cover_url ? <img className="cp-cover" src={assetUrl(c.cover_url)} alt="" /> : <div className="cp-cover" />}
                 <div className="cp-info">
                   <div className="cp-item-title">
@@ -180,6 +216,12 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
           })
         )}
       </div>
+      {landscape && (
+        <div className="cp-detail-pane">
+          {sel ? renderDetail(sel) : <div className="cp-empty cp-detail-empty">{lang === 'zh' ? '选择左侧谱面' : 'Select a chart'}</div>}
+        </div>
+      )}
+      </div>
 
       {!loading && !error && items.length > 0 && (
         <div className="cp-pager">
@@ -189,39 +231,13 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
         </div>
       )}
 
-      {/* 详情覆盖层 */}
-      {detail && (
-        <div className={`cp-detail${landscape ? ' cp-landscape' : ''}`}>
+      {/* 竖屏：全屏详情覆盖层 */}
+      {!landscape && sel && (
+        <div className="cp-detail-fs">
           <div className="cp-detail-head">
-            <button className="btn btn-primary cp-back" onClick={() => setDetail(null)} style={btnStyle}>{lang === 'zh' ? '← 返回列表' : '← Back'}</button>
+            <button className="btn btn-primary cp-back" onClick={() => setSel(null)} style={btnStyle}>{lang === 'zh' ? '← 返回列表' : '← Back'}</button>
           </div>
-          <div className="cp-detail-body">
-            <div className="cp-detail-coverwrap">
-              {detail.illustration_url || detail.cover_url ? (
-                <img className="cp-detail-cover" src={assetUrl(detail.illustration_url || detail.cover_url)} alt="" />
-              ) : (
-                <div className="cp-detail-cover cp-detail-cover-empty" />
-              )}
-            </div>
-            <div className="cp-detail-info">
-              <h2 className="cp-detail-title">{detail.title}</h2>
-              <div className="cp-detail-meta">{lang === 'zh' ? '曲师' : 'Artist'}：{detail.artist || '—'} · {lang === 'zh' ? '谱师' : 'Mapper'}：{detail.author || '—'}</div>
-              <div className="cp-detail-meta">
-                <span className="cp-diff" style={{ background: (DIFF_STYLE[detail.difficulty] || { bg: 'rgba(255,255,255,0.15)' }).bg, color: (DIFF_STYLE[detail.difficulty] || { fg: '#fff' }).fg }}>{detail.difficulty}</span>
-                <span style={{ marginLeft: 8 }}>{lang === 'zh' ? '定数' : 'Const'} {detail.chart_constant.toFixed(1)}</span>
-              </div>
-              <div className="cp-detail-sub">{lang === 'zh' ? '下载' : 'DL'} {detail.downloads} · {fmtSize(detail.size)} · {detail.created_at}</div>
-              {detail.description && <p className="cp-detail-desc">{detail.description}</p>}
-              {detail.audio_url && <audio controls preload="none" src={assetUrl(detail.audio_url)} className="cp-audio" />}
-              <div className="cp-detail-actions">
-                <button className="btn btn-primary cp-dl" disabled={downloading !== null || isOwned(detail)} onClick={() => download(detail.id)} style={btnStyle}>
-                  {isOwned(detail) ? (lang === 'zh' ? '已拥有' : 'Owned')
-                    : downloading === detail.id ? (lang === 'zh' ? '导入中...' : '...')
-                    : (lang === 'zh' ? '下载并导入' : 'Get & Import')}
-                </button>
-              </div>
-            </div>
-          </div>
+          {renderDetail(sel)}
         </div>
       )}
     </div>
