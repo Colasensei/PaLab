@@ -290,6 +290,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
       <p className="about-footer">
         {lang === 'zh' ? '感谢游玩 Palab' : 'Thanks for playing Palab'}
       </p>
+
+      <img className="about-xwhite" src="/xWhite.png" alt="xWhite" />
     </>
   );
 

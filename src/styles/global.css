@@ -7349,6 +7349,16 @@ body::after {
   margin-top: 16px;
 }
 
+/* 左侧栏底部配图 */
+.about-xwhite {
+  width: 120px;
+  max-width: 60%;
+  height: auto;
+  opacity: 0.85;
+  margin-top: 4px;
+  pointer-events: none;
+}
+
 /* OSU 谱面选择按钮 */
 .osu-choice-btn {
   display: block;
