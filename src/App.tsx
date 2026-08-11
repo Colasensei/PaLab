@@ -192,7 +192,7 @@ const App: React.FC = () => {
   const [manualDuration, setManualDuration] = useState<number>(0);
 
   // 可视化编辑器流程
-  const [editorConfig, setEditorConfig] = useState<{ bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; videoUrl?: string; videoFileName?: string } | null>(null);
+  const [editorConfig, setEditorConfig] = useState<{ bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; videoUrl?: string; videoFileName?: string; videoBlur?: boolean; videoSound?: boolean } | null>(null);
   const [editorNotes, setEditorNotes] = useState<Note[]>([]);
   const [fromEditor, setFromEditor] = useState(false);
 
@@ -474,13 +474,13 @@ const App: React.FC = () => {
   const goToManualConfig = useCallback(() => navigateTo('manual-config'), [navigateTo]);
   const goToEditorSetup = useCallback(() => navigateTo('editor-setup'), [navigateTo]);
 
-  const handleEditorConfirm = useCallback((cfg: { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string }) => {
+  const handleEditorConfirm = useCallback((cfg: { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; videoUrl?: string; videoFileName?: string }) => {
     setEditorConfig(cfg);
     navigateTo('visual-editor');
   }, [navigateTo]);
 
   // 编辑器 → 保存：进入元数据编辑界面
-  const handleEditorSave = useCallback((notes: Note[], splits: BrainSplitSection[] = []) => {
+  const handleEditorSave = useCallback((notes: Note[], splits: BrainSplitSection[] = [], video?: { url?: string; fileName?: string; blur: boolean; sound: boolean }) => {
     if (!editorConfig) return;
     setEditorNotes(notes);
     // 提前加载歌，防止 ChartEditor 里 blob URL 挂（
@@ -506,7 +506,9 @@ const App: React.FC = () => {
       chartAuthor: editorConfig.author,
       coverUrl: editorConfig.coverUrl,
       coverFileName: editorConfig.coverFileName,
-      videoUrl: editorConfig.videoUrl,
+      videoUrl: video?.url ?? editorConfig.videoUrl,
+      videoBlur: video?.blur ?? true,
+      videoSound: video?.sound ?? false,
       autoPlay: false,
       splits: splits.length > 0 ? splits : undefined,
     };
@@ -516,13 +518,13 @@ const App: React.FC = () => {
     chartGeneratedRef.current = true;
     setIsTrial(false);
     setFromEditor(true);
-    setEditorConfig(prev => prev ? { ...prev, existingNotes: notes } : null);
+    setEditorConfig(prev => prev ? { ...prev, existingNotes: notes, videoUrl: video?.url ?? prev.videoUrl, videoFileName: video?.fileName ?? prev.videoFileName, videoBlur: video?.blur ?? true, videoSound: video?.sound ?? false } : null);
     setScreen('editor');
     setScreenStack(['chart-mode-select', 'visual-editor', 'editor']);
   }, [editorConfig]);
 
   // 编辑器试玩：进 SongPanel，不重新生成谱（
-  const handleEditorTrial = useCallback(async (notes: Note[], splits: BrainSplitSection[] = []) => {
+  const handleEditorTrial = useCallback(async (notes: Note[], splits: BrainSplitSection[] = [], video?: { url?: string; fileName?: string; blur: boolean; sound: boolean }) => {
     if (!editorConfig) return;
     setEditorNotes(notes);
     const durMs = duration > 0 ? duration : (notes.length > 1 ? (notes[notes.length - 1].endTime || notes[notes.length - 1].startTime) - notes[0].startTime : 60000);
@@ -537,7 +539,9 @@ const App: React.FC = () => {
       chartAuthor: editorConfig.author,
       coverUrl: editorConfig.coverUrl,
       coverFileName: editorConfig.coverFileName,
-      videoUrl: editorConfig.videoUrl,
+      videoUrl: video?.url ?? editorConfig.videoUrl,
+      videoBlur: video?.blur ?? true,
+      videoSound: video?.sound ?? false,
       autoPlay: false,
       splits: splits.length > 0 ? splits : undefined,
     };
@@ -791,6 +795,8 @@ const App: React.FC = () => {
         autoPlay,
         splits: infoConfig.splits || undefined,
         videoUrl: pkg.videoUrl || undefined,
+        videoBlur: infoConfig.videoBlur ?? true,
+        videoSound: infoConfig.videoSound ?? false,
       };
       setConfig(cfg);
       setNotes(ensureDoubleGroups(parsedNotes));

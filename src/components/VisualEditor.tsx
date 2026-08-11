@@ -4,8 +4,9 @@ import { getDevOverride } from '@/utils/devOverrides';
 import { Note, BrainSplitSection } from '@/types';
 import { normalizeSplits } from '@/utils/brainSplit';
 
-interface EditorConfig { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; videoUrl?: string; }
-interface Props { config: EditorConfig; onBack: () => void; onSave: (notes: Note[], splits: BrainSplitSection[]) => void; onTrial: (notes: Note[], splits: BrainSplitSection[]) => void; lang: Lang; latencyOffset: number; }
+interface EditorConfig { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; videoUrl?: string; videoFileName?: string; }
+interface VideoOptions { url?: string; fileName?: string; blur: boolean; sound: boolean; }
+interface Props { config: EditorConfig; onBack: () => void; onSave: (notes: Note[], splits: BrainSplitSection[], video: VideoOptions) => void; onTrial: (notes: Note[], splits: BrainSplitSection[], video: VideoOptions) => void; lang: Lang; latencyOffset: number; }
 type AlignMode = 'none' | 'beat' | 'half' | 'quarter';
 interface PlacedNote { id: number; track: number; startBeat: number; endBeat: number; startTime: number; endTime: number; }
 
@@ -37,10 +38,25 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
   const [splits, setSplits] = useState<BrainSplitSection[]>([]);
   const [showEffect, setShowEffect] = useState(false);
   const [effectTracks, setEffectTracks] = useState<Set<number>>(new Set());
+  // 背景视频设置（仅作为谱面背景，编辑器内不显示视频画面）
+  const [videoUrl, setVideoUrl] = useState<string | undefined>(initialConfig.videoUrl);
+  const [videoFileName, setVideoFileName] = useState<string | undefined>(initialConfig.videoFileName);
+  const [videoBlur, setVideoBlur] = useState(true);
+  const [videoSound, setVideoSound] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null!);
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const noteIdRef = useRef(0);
+
+  // 导入背景视频（ObjectURL，不渲染到编辑器界面）
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVideoFileName(file.name);
+    setVideoUrl(URL.createObjectURL(file));
+  };
+
   const touchStartRef = useRef<{ y: number; count: number } | null>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tickRafRef = useRef(0);
@@ -367,9 +383,6 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
     <div className="screen ve-screen">
       <div className="ve-main">
         <div className="ve-game-wrap" onWheel={onWheel} onTouchStart={onTouchStart} onTouchMove={onTouchMove}>
-          {initialConfig.videoUrl && (
-            <video className="ve-video-bg" src={initialConfig.videoUrl} autoPlay muted loop playsInline preload="metadata" />
-          )}
           <div ref={gameAreaRef} className="ve-game-area" style={{ width: totalWidth }} onPointerDown={onGameAreaDown}>
             {Array.from({ length: trackCount }, (_, i) => (
               <div key={i} style={{ position: 'absolute', left: i * trackWidth, top: 0, bottom: 0, width: trackWidth, borderRight: i < trackCount - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }} />
@@ -441,9 +454,26 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
               <span style={{ display: 'block', fontSize: 9, color: '#FF7878', marginTop: 4, letterSpacing: 1 }}>{lang === 'zh' ? '脑裂进行中 ▸ 移判定线后点效果结束' : 'SPLIT ON ▸ move line then end'}</span>
             )}
           </div>
+          {/* 背景视频：仅作为谱面背景设置，编辑器内不显示视频画面 */}
+          <div className="ve-panel-sec ve-panel-video">
+            <label className="ve-label">{lang === 'zh' ? '背景视频' : 'BG Video'}</label>
+            {videoUrl ? (
+              <>
+                <div className="ve-video-row">
+                  <span className="ve-val" style={{ flex: 1, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{videoFileName || (lang === 'zh' ? '已导入' : 'Imported')}</span>
+                  <button className="ve-btn ve-btn-reset" onClick={() => { setVideoUrl(undefined); setVideoFileName(undefined); }}>{lang === 'zh' ? '移除' : 'Remove'}</button>
+                </div>
+                <label className="ve-check-label"><input type="checkbox" checked={videoBlur} onChange={e => setVideoBlur(e.target.checked)} /><span>{lang === 'zh' ? '模糊背景' : 'Blur background'}</span></label>
+                <label className="ve-check-label"><input type="checkbox" checked={videoSound} onChange={e => setVideoSound(e.target.checked)} /><span>{lang === 'zh' ? '播放视频声音' : 'Play video sound'}</span></label>
+              </>
+            ) : (
+              <button className="ve-btn ve-btn-effect" onClick={() => videoInputRef.current?.click()}>{lang === 'zh' ? '导入视频作为背景' : 'Import BG Video'}</button>
+            )}
+            <input ref={videoInputRef} type="file" accept="video/*" onChange={handleVideoChange} style={{ display: 'none' }} />
+          </div>
           <div className="ve-panel-sec ve-panel-actions">
-            <button className="ve-btn ve-btn-save" onClick={() => { _savedPlacedNotes = [...notes]; _savedSplits = [...splits]; _savedSettings = { align, speed, invertScroll }; onSave(toNotes(), normalizeSplits(splits)); }}>{lang === 'zh' ? '保存并离开' : 'Save & Exit'}</button>
-            <button className="ve-btn ve-btn-trial" onClick={() => { _savedPlacedNotes = [...notes]; _savedSplits = [...splits]; _savedSettings = { align, speed, invertScroll }; onTrial(toNotes(), normalizeSplits(splits)); }}>{lang === 'zh' ? '试玩' : 'Trial'}</button>
+            <button className="ve-btn ve-btn-save" onClick={() => { _savedPlacedNotes = [...notes]; _savedSplits = [...splits]; _savedSettings = { align, speed, invertScroll }; onSave(toNotes(), normalizeSplits(splits), { url: videoUrl, fileName: videoFileName, blur: videoBlur, sound: videoSound }); }}>{lang === 'zh' ? '保存并离开' : 'Save & Exit'}</button>
+            <button className="ve-btn ve-btn-trial" onClick={() => { _savedPlacedNotes = [...notes]; _savedSplits = [...splits]; _savedSettings = { align, speed, invertScroll }; onTrial(toNotes(), normalizeSplits(splits), { url: videoUrl, fileName: videoFileName, blur: videoBlur, sound: videoSound }); }}>{lang === 'zh' ? '试玩' : 'Trial'}</button>
             <button className="ve-btn ve-btn-reset" onClick={() => setShowReset(true)}>{lang === 'zh' ? '重置' : 'Reset'}</button>
             <button className="ve-btn ve-btn-back" onClick={() => setShowExit(true)}>{lang === 'zh' ? '返回（不保存）' : 'Back (Discard)'}</button>
           </div>

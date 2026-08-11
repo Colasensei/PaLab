@@ -74,11 +74,51 @@ let _keepAliveOsc: OscillatorNode | null = null;
 let _keepAliveGain: GainNode | null = null;
 let _keepAliveRunning = false;
 
+// 音效池：WebAudio 不可用（移动端 fetch/decode 失败）时，用预加载的 Audio 元素
+// 循环复用，避免每次 hit 都 new Audio()（每次重新加载解码 = 严重延迟）
+let hitPool: HTMLAudioElement[] = [];
+let hitPoolIdx = 0;
+let hitPoolReady = false;
+
+/** 稳定资源 URL：兼容 Capacitor 的 https://localhost / capacitor:// 等 scheme */
+function assetBaseUrl(name: string): string {
+  try { return new URL(name, document.baseURI || window.location.href).href; } catch { return '/' + name; }
+}
+
+function ensureHitPool() {
+  if (hitPoolReady || hitPool.length > 0) return;
+  try {
+    const src = getAssetUrl(ASSET_KEYS.hitSound, assetBaseUrl('tab.ogg'));
+    for (let i = 0; i < 4; i++) {
+      const a = new Audio(src);
+      a.preload = 'auto';
+      a.volume = hitVolume;
+      hitPool.push(a);
+    }
+    hitPoolReady = true;
+    for (const a of hitPool) { try { a.load(); } catch {} }
+  } catch { /* 音频不可用 */ }
+}
+
+function playPoolHit() {
+  if (hitPool.length === 0) { ensureHitPool(); return; }
+  const a = hitPool[hitPoolIdx];
+  hitPoolIdx = (hitPoolIdx + 1) % hitPool.length;
+  try { a.currentTime = 0; a.play().catch(() => {}); } catch { /* 忽略 */ }
+}
+
+/** 首次触摸时唤醒音频：手势内 resume 即时生效，避免 hit 时才异步恢复 */
+function warmupAudioOnGesture() {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  ensureHitPool();
+  startHitKeepAlive();
+}
+
 async function preloadAudio() {
   if (audioPreloaded) return;
   try {
     audioCtx = new AudioContext({ latencyHint: 'interactive' });
-    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
 
     // 缓存 gain 参数（只在 preload 时读一次 localStorage）
     _cachedGainMax = getDevOverride('a_hitGainMax');
@@ -94,7 +134,8 @@ async function preloadAudio() {
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       arrayBuf = bytes.buffer;
     } else {
-      const resp = await fetch('/tab.ogg');
+      // 用稳定 URL（兼容移动端 Capacitor 路径），避免 / 绝对路径取不到资源
+      const resp = await fetch(assetBaseUrl('tab.ogg'));
       arrayBuf = await resp.arrayBuffer();
     }
     hitBuffer = await audioCtx.decodeAudioData(arrayBuf);
@@ -113,7 +154,7 @@ async function preloadAudio() {
     warmSrc.connect(warmGain).connect(audioCtx.destination);
     warmSrc.start(0);
     warmSrc.onended = () => { try { warmSrc.disconnect(); warmGain.disconnect(); } catch {} };
-  } catch { /* fallback to HTMLAudioElement */ }
+  } catch { ensureHitPool(); }
 }
 
 /**
@@ -155,6 +196,8 @@ export function setHitVolume(v: number) {
   if (hitGain && audioCtx) {
     hitGain.gain.value = Math.min(_cachedGainMax, v * _cachedGainMul);
   }
+  // 同步音效池音量（回退路径）
+  for (const a of hitPool) { try { a.volume = v; } catch {} }
 }
 
 export function getHitVolume() { return hitVolume; }
@@ -178,10 +221,7 @@ function playHitSound() {
     src.start(0);
     src.onended = () => { try { src.disconnect(); } catch {} };
   } else {
-    const src = getAssetUrl('tab.ogg', '/tab.ogg');
-    const a = new Audio(src);
-    a.volume = hitVolume;
-    a.play().catch(() => {});
+    playPoolHit();
   }
 }
 
@@ -591,6 +631,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   };
 
   const onPressWithFX = useCallback((track: number) => {
+    warmupAudioOnGesture();
     if (paused || effectiveConfig.autoPlay) return;
     const result = handlePress(track);
     if (result.hit) {
@@ -1182,7 +1223,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           ref={videoBgRef}
           className="gameplay-cover-bg gameplay-video-bg"
           src={config.videoUrl}
-          autoPlay muted loop playsInline preload="metadata"
+          autoPlay muted={!config.videoSound} loop playsInline preload="metadata"
+          style={config.videoBlur === false ? { filter: 'brightness(0.45)' } : undefined}
         />
       )}
       {perfBgCover && !config.videoUrl && coverUrl && (

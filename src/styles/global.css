@@ -7240,16 +7240,13 @@ body::after {
 /* 游戏区域 — 居中，跟 GamePlay 一样 */
 .ve-game-wrap { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #0a0a14; touch-action: none; }
 .ve-game-area { height: 100%; position: relative; }
-/* 编辑器谱面背景视频：铺满 + 模糊低亮度，保证音符可读且不挡点击 */
-.ve-video-bg {
-  position: absolute;
-  inset: 0;
+/* 右栏背景视频设置行 */
+.ve-video-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: blur(14px) brightness(0.22);
-  pointer-events: none;
-  z-index: 0;
+  margin-bottom: 6px;
 }
 
 /* 右面板 */

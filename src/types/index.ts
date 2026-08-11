@@ -77,6 +77,10 @@ export interface GameConfig {
   splits?: BrainSplitSection[];
   /** 谱面背景视频（dataURL/ObjectURL），优先于封面背景 */
   videoUrl?: string | null;
+  /** 背景视频是否模糊（默认模糊） */
+  videoBlur?: boolean;
+  /** 背景视频是否播放声音（默认静音） */
+  videoSound?: boolean;
   /** 自动生成时是否可能产生脑裂（16+ 定数且开启） */
   enableSplit?: boolean;
   /** 编辑器元数据（OSU 导入预填） */
