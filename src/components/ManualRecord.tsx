@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Lang } from '@/utils/lang';
-import { GameConfig, Note, KEY_MAP, TrackCount } from '@/types';
+import { GameConfig, Note, TrackCount, resolveKeys } from '@/types';
 import { audioManager } from '@/utils/audioManager';
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   onBack: () => void;
   lang: Lang;
   latencyOffset?: number;
+  keyBindings?: Partial<Record<TrackCount, string[]>>;
 }
 
 interface RawInput {
@@ -21,9 +22,9 @@ interface RawInput {
 /** Hold 判定最短时长 (ms) */
 const HOLD_THRESHOLD = 500;
 
-export const ManualRecord: React.FC<Props> = ({ config, duration, onComplete, onBack, lang, latencyOffset = 0 }) => {
+export const ManualRecord: React.FC<Props> = ({ config, duration, onComplete, onBack, lang, latencyOffset = 0, keyBindings }) => {
   const tk = config.trackCount as number;
-  const keys = KEY_MAP[config.trackCount];
+  const keys = resolveKeys(keyBindings, config.trackCount);
   const hasSong = !!config.songUrl;
 
   const [phase, setPhase] = useState<'ready' | 'recording' | 'finished'>('ready');

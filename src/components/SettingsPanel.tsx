@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { AppSettings } from '@/types';
+import { AppSettings, TrackCount, KEY_MAP } from '@/types';
 import { t, Lang } from '@/utils/lang';
 import { saveAsset, fileToDataURL, hasAsset, loadAsset, clearAsset, ASSET_KEYS } from '@/utils/assetStore';
 import { setHitVolume, getHitVolume } from './GamePlay';
@@ -12,7 +12,7 @@ interface Props {
   devMode?: boolean;
 }
 
-type Sub = 'main' | 'repair' | 'personalize' | 'latency' | 'audio';
+type Sub = 'main' | 'repair' | 'personalize' | 'latency' | 'audio' | 'keys';
 
 export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang, devMode = false }) => {
   const [showDoubleGlow, setShowDoubleGlow] = useState(settings.showDoubleGlow);
@@ -27,6 +27,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [showFPS, setShowFPS] = useState(settings.showFPS ?? false);
   const [musicVol, setMusicVol] = useState(settings.musicVolume ?? 50);
   const [hitVol, setHitVol] = useState(Math.round(getHitVolume() * 100));
+  const [keyBindings, setKeyBindings] = useState<Partial<Record<TrackCount, string[]>> | undefined>(settings.keyBindings);
   const [sub, setSub] = useState<Sub>('main');
 
   const build = (o: Partial<AppSettings> = {}): AppSettings => ({
@@ -36,6 +37,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     bgColor: '#0a0a14', judgeLineColor: '#999999',
     language: currentLang, showACC, devMode, showWaveform, uiBlur, noPageLoading,
     noteScale, musicVolume: musicVol, judgeLineThickness, showAccuracyBar, showFPS,
+    keyBindings,
     showMascot: false, // 立绘已移除，永远关闭
     ...o,
   });
@@ -46,6 +48,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   if (sub === 'personalize') return <PersonalizePanel lang={lang} onBack={() => setSub('main')} />;
   if (sub === 'latency') return <LatencyPanel lang={lang} offset={settings.latencyOffset} onSave={o => onSave(build({ latencyOffset: o }))} onBack={() => setSub('main')} />;
   if (sub === 'audio') return <AudioPanel lang={lang} musicVol={musicVol} hitVol={hitVol} onMusic={setMusicVol} onHit={v => { setHitVol(v); setHitVolume(v / 100); }} onBack={() => setSub('main')} />;
+  if (sub === 'keys') return <KeyBindingsPanel lang={lang} bindings={keyBindings} onChange={setKeyBindings} onBack={() => setSub('main')} />;
 
   return (
     <div className="screen settings-screen">
@@ -111,6 +114,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
           </span>
         </button>
         <button className="st-action-btn st-sub-btn" onClick={() => setSub('audio')}>{lang === 'zh' ? '音量' : 'Volume'}</button>
+        <button className="st-action-btn st-sub-btn" onClick={() => setSub('keys')}>{lang === 'zh' ? '键位' : 'Keys'}</button>
 
         <button className="st-save-btn" onClick={save}>{t('save', lang)}</button>
       </div>
@@ -443,3 +447,95 @@ const AudioPanel: React.FC<{ lang: Lang; musicVol: number; hitVol: number; onMus
     </div>
   </div>
 );
+
+const KEY_TRACK_COUNTS: TrackCount[] = [2, 4, 6, 8];
+
+/** 键位设置面板：点击键位框后按新键修改，支持 2/4/6/8 独立设置 */
+const KeyBindingsPanel: React.FC<{
+  lang: Lang;
+  bindings: Partial<Record<TrackCount, string[]>> | undefined;
+  onChange: (b: Partial<Record<TrackCount, string[]>>) => void;
+  onBack: () => void;
+}> = ({ lang, bindings, onChange, onBack }) => {
+  const [tc, setTc] = useState<TrackCount>(4);
+  const [captureIdx, setCaptureIdx] = useState<number | null>(null);
+  const [msg, setMsg] = useState('');
+
+  const current = bindings?.[tc] ?? KEY_MAP[tc];
+
+  const setKey = (idx: number, key: string) => {
+    const arr = bindings?.[tc] ? [...bindings[tc]!] : [...KEY_MAP[tc]];
+    while (arr.length < tc) arr.push(''); // 补足长度
+    const conflict = arr.findIndex((k, i) => i !== idx && k === key);
+    if (conflict >= 0) {
+      setMsg(lang === 'zh' ? `该键已分配给轨道 ${conflict + 1}` : `Key already used by track ${conflict + 1}`);
+      return;
+    }
+    arr[idx] = key;
+    setMsg('');
+    onChange({ ...bindings, [tc]: arr });
+  };
+
+  // 等待按键捕获
+  useEffect(() => {
+    if (captureIdx === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      if (e.key === 'Escape') { setCaptureIdx(null); return; }
+      const mods = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab', 'Enter'];
+      if (mods.includes(e.key)) return;
+      const k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+      setKey(captureIdx, k);
+      setCaptureIdx(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [captureIdx, tc, bindings]);
+
+  const reset = () => {
+    setMsg('');
+    setCaptureIdx(null);
+    const next = { ...(bindings || {}) };
+    delete next[tc];
+    onChange(next);
+  };
+
+  return (
+    <div className="screen settings-screen">
+      <div className="settings-container">
+        <SubHdr title={lang === 'zh' ? '键位设置' : 'Key Bindings'} onBack={onBack} lang={lang} />
+        <div className="st-card">
+          <div className="st-row st-row-noborder">
+            <span className="st-label">{lang === 'zh' ? '轨道数' : 'Tracks'}</span>
+            <div className="st-lang-toggle">
+              {KEY_TRACK_COUNTS.map(n => (
+                <button key={n} className={`st-lang-btn ${tc === n ? 'active' : ''}`} onClick={() => { setTc(n); setCaptureIdx(null); setMsg(''); }}>{n}K</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="st-card">
+          {Array.from({ length: tc }, (_, i) => (
+            <div key={i} className={`st-row ${i === tc - 1 ? 'st-row-noborder' : ''}`}>
+              <span className="st-label">{lang === 'zh' ? '轨道' : 'Track'} {i + 1}</span>
+              <button
+                className={`st-key-box ${captureIdx === i ? 'capturing' : ''}`}
+                onClick={() => setCaptureIdx(captureIdx === i ? null : i)}
+              >
+                {captureIdx === i
+                  ? (lang === 'zh' ? '按下新键...' : 'Press a key...')
+                  : current[i] || '?'}
+              </button>
+            </div>
+          ))}
+        </div>
+        {msg && <p style={{ color: '#FF7878', fontSize: 11, marginTop: 8, textAlign: 'center' }}>{msg}</p>}
+        <p style={{ fontSize: 10, color: 'var(--text-secondary)', opacity: 0.6, textAlign: 'center', marginTop: 6 }}>
+          {lang === 'zh' ? '点击轨道按键框后按下新键即可修改；Esc 取消；2/4/6/8 轨道可独立设置' : 'Click a key box then press a new key; Esc cancels; 2/4/6/8 tracks are independent'}
+        </p>
+        <button className="st-action-btn st-sub-btn" onClick={reset}>{lang === 'zh' ? '恢复默认（当前轨道数）' : 'Reset (current)'}</button>
+      </div>
+    </div>
+  );
+};

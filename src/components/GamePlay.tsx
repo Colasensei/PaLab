@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import {
-  Note, GameConfig, GameResults, KEY_MAP, JudgmentType,
+  Note, GameConfig, GameResults, JudgmentType, TrackCount, resolveKeys,
 } from '@/types';
 import { useGameEngine, useInput } from '@/hooks';
 import { audioManager } from '@/utils';
@@ -34,6 +34,7 @@ interface GamePlayProps {
   correctHitSound?: boolean;
   showAccuracyBar?: boolean;
   showFPS?: boolean;
+  keyBindings?: Partial<Record<TrackCount, string[]>>;
 }
 
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
@@ -357,8 +358,10 @@ const AccuracyBar: React.FC<{ lastOffset: number }> = ({ lastOffset }) => {
 };
 
 export const GamePlay: React.FC<GamePlayProps> = ({
-  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false,
+  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings,
 }) => {
+  // 键位：自定义优先，否则默认（useMemo 保证引用稳定，避免 useInput 监听重建）
+  const keys = useMemo(() => resolveKeys(keyBindings, config.trackCount), [keyBindings, config.trackCount]);
   const containerRef = useRef<HTMLDivElement>(null);
   const noteCanvasRef = useRef<HTMLCanvasElement>(null);
   // Hold 进度环 — 独立特效 canvas 层（zIndex 9，判定环之上）。
@@ -609,7 +612,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [effectiveConfig.autoPlay, handleRelease]);
 
   useInput({
-    trackCount: config.trackCount,
+    keys,
     onPress: onPressWithFX,
     onRelease: onReleaseWithFX,
   });
@@ -1105,8 +1108,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     const eff = fallDuration / config.speedMultiplier;
     return JUDGMENT_LINE_Y - (timeUntil / eff) * (JUDGMENT_LINE_Y - 50);
   };
-
-  const keys = KEY_MAP[config.trackCount];
 
   // 触控判定：基于游戏区域实际边界，支持多点触控
   const activeTouchesRef = useRef<Map<number, number>>(new Map()); // pointerId → track

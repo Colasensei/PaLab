@@ -149,6 +149,16 @@ export const KEY_DISPLAY: Record<TrackCount, string> = {
   8: 'A S D F J K L ;',
 };
 
+/** 解析有效键位：优先自定义（长度须匹配轨道数），否则用默认 KEY_MAP */
+export function resolveKeys(
+  keyBindings: Partial<Record<TrackCount, string[]>> | undefined,
+  trackCount: TrackCount,
+): string[] {
+  const kb = keyBindings?.[trackCount];
+  if (kb && kb.length === trackCount) return kb;
+  return KEY_MAP[trackCount];
+}
+
 // ============ 游戏状态 ============
 
 export interface NoteResult {
@@ -226,6 +236,8 @@ export interface AppSettings {
   /** 主界面显示看板娘立绘 */
   showMascot: boolean;
   showFPS: boolean;
+  /** 自定义电脑端键位（轨道数 → 键列表），未设置用默认 KEY_MAP */
+  keyBindings?: Partial<Record<TrackCount, string[]>>;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { TrackCount, KEY_MAP } from '@/types';
 
 interface UseInputOptions {
-  trackCount: TrackCount;
+  /** 轨道 → 键名 数组（长度=轨道数），由调用方传入（支持自定义键位） */
+  keys: string[];
   onPress: (track: number) => void;
   onRelease: (track: number) => void;
 }
 
-export function useInput({ trackCount, onPress, onRelease }: UseInputOptions) {
-  const keys = KEY_MAP[trackCount];
+export function useInput({ keys, onPress, onRelease }: UseInputOptions) {
   const pressedRef = useRef<Set<string>>(new Set());
   // 用 ref 保存最新回调，避免 effect 频繁重建
   const onPressRef = useRef(onPress);

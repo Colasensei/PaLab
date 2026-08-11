@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
-  GameConfig, TimingWindows, KEY_DISPLAY, HighScoreRecord,
-  constantToDifficulty,
+  GameConfig, TimingWindows, HighScoreRecord,
+  constantToDifficulty, TrackCount, resolveKeys,
 } from '@/types';
 import { t, Lang } from '@/utils/lang';
 
@@ -18,6 +18,7 @@ interface SongPanelProps {
   onSettings: () => void;
   lang: Lang;
   isTrial?: boolean;
+  keyBindings?: Partial<Record<TrackCount, string[]>>;
 }
 
 export const SongPanel: React.FC<SongPanelProps> = ({
@@ -32,6 +33,7 @@ export const SongPanel: React.FC<SongPanelProps> = ({
   onBack, onSettings,
   lang,
   isTrial = false,
+  keyBindings,
 }) => {
   const [speed, setSpeed] = useState(config.speedMultiplier);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -96,7 +98,7 @@ export const SongPanel: React.FC<SongPanelProps> = ({
               </div>
               <div className="sp-chip">
                 <span className="sp-chip-label">KEYS</span>
-                <span className="sp-chip-value">{KEY_DISPLAY[config.trackCount]}</span>
+                <span className="sp-chip-value">{resolveKeys(keyBindings, config.trackCount).join(' ')}</span>
               </div>
               {config.songFileName && (
                 <div className="sp-chip sp-chip-song">
