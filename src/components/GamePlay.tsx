@@ -937,7 +937,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     let raf = 0;
 
     const loop = () => {
-      const w = totalWidth + 10;
+      const w = totalWidth * gameScale + 10;
       const h = gameHeight;
       if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
         canvas.width = w * dpr;
@@ -979,15 +979,18 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         const isSplit = isTrackSplit(splits, note.track, now);
         const noteJy = isSplit ? TOP_JUDGE_Y : jy;
         const originY = isSplit ? h - 50 : 50;
-        const startY = noteJy - ((note.startTime - now) / eff) * (noteJy - originY);
+        // 下落距离 × gameScale：判定线固定贴底/贴顶，轨道向屏幕外延伸
+        const fallDist = (noteJy - originY) * gameScale;
+        const scaledTrackW = trackWidth * gameScale;
+        const startY = noteJy - ((note.startTime - now) / eff) * fallDist;
         if (note.type === 'tap') {
           if (result && !isBadOrMiss) continue;
           // autoPlay 到线即消失（不依赖判定帧）
           if (reachedLineInAuto) continue;
-          const noteW = trackWidth - notePadX;
-          const nx = note.track * trackWidth + trackWidth / 2 - noteW / 2;
+          const noteW = (trackWidth - notePadX) * gameScale;
+          const nx = note.track * scaledTrackW + scaledTrackW / 2 - noteW / 2;
           const ny = startY;
-          const nh = tapHeight;
+          const nh = tapHeight * gameScale;
           if (ny + nh < -noteClipTop || ny > h + noteClipTop) continue;
 
           ctx.globalAlpha = isRed ? 0.7 : 1;
@@ -1006,9 +1009,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           }
 
         } else {
-          const endY = noteJy - ((note.endTime - now) / eff) * (noteJy - originY);
-          const noteW = trackWidth - notePadX;
-          const nx = note.track * trackWidth + trackWidth / 2 - noteW / 2;
+          const endY = noteJy - ((note.endTime - now) / eff) * fallDist;
+          const noteW = (trackWidth - notePadX) * gameScale;
+          const nx = note.track * scaledTrackW + scaledTrackW / 2 - noteW / 2;
 
           let ny: number, nh: number;
           if (isHolding) {
@@ -1021,7 +1024,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           } else {
             ny = Math.min(startY, endY);
             nh = Math.abs(endY - startY);
-            if (nh < holdMinH) nh = holdMinH;
+            if (nh < holdMinH * gameScale) nh = holdMinH * gameScale;
           }
           if (ny + nh < -noteClipTop || ny > h + noteClipTop) continue;
 
@@ -1046,7 +1049,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, TOP_JUDGE_Y, splits, trackWidth, notePadX, tapHeight, holdMinH,
+  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, TOP_JUDGE_Y, splits, trackWidth, notePadX, tapHeight, holdMinH, gameScale,
       doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop,
       getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay]);
 
@@ -1059,7 +1062,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     const ctx = canvas.getContext('2d')!;
     let raf = 0;
     const loop = () => {
-      const w = totalWidth + 10;
+      const w = totalWidth * gameScale + 10;
       const h = gameHeight;
       if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
         canvas.width = w * dpr;
@@ -1082,30 +1085,30 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         const dur = note.endTime - note.startTime;
         const elapsed = now - note.startTime;
         const prog = dur > 0 ? Math.min(1, Math.max(0, elapsed / dur)) : 0;
-        const rr = holdRingR;
-        const cx = note.track * trackWidth + trackWidth / 2;
+        const rr = holdRingR * gameScale;
+        const cx = note.track * (trackWidth * gameScale) + (trackWidth * gameScale) / 2;
         // 脑裂轨道：进度环画在顶部判定线
         const cy = isTrackSplit(splits, note.track, now) ? TOP_JUDGE_Y : JUDGMENT_LINE_Y;
         ctx.beginPath();
-        ctx.arc(cx, cy, rr + 4, 0, Math.PI * 2);
+        ctx.arc(cx, cy, rr + 4 * gameScale, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fill();
         ctx.beginPath();
         ctx.arc(cx, cy, rr, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-        ctx.lineWidth = holdRingW;
+        ctx.lineWidth = holdRingW * gameScale;
         ctx.stroke();
         ctx.beginPath();
         ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
         ctx.strokeStyle = holdRingColor;
-        ctx.lineWidth = holdRingW;
+        ctx.lineWidth = holdRingW * gameScale;
         ctx.stroke();
       }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, TOP_JUDGE_Y, splits, trackWidth, holdRingR, holdRingW, holdRingColor,
+  }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, TOP_JUDGE_Y, splits, trackWidth, holdRingR, holdRingW, holdRingColor, gameScale,
       getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay]);
 
   const getNoteY = (noteTime: number): number => {
@@ -1232,20 +1235,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         <AudioViz active={state.isPlaying} />
       )}
 
-      {/* 游戏区域（游戏内缩放：transform scale + 反向容器，缩放后填满无留白） */}
-      <div style={{
-        width: (totalWidth + 10) / gameScale,
-        height: gameHeight / gameScale,
-        marginTop: gameTopCssVal,
-        marginLeft: 'auto',
-        marginRight: 'auto',
-        flexShrink: 0,
-      }}>
+      {/* 游戏区域（游戏内缩放：渲染坐标×gameScale，判定线固定贴底/贴顶，轨道向屏幕外延伸） */}
       <div
         ref={containerRef}
         className="game-area"
         onContextMenu={e => e.preventDefault()}
-        style={{ width: totalWidth + 10, height: gameHeight, margin: 0, touchAction: 'none', transform: `scale(${gameScale})`, transformOrigin: 'top left' }}
+        style={{ width: totalWidth * gameScale + 10, height: gameHeight, marginTop: gameTopCssVal, touchAction: 'none' }}
       >
         {/* Canvas 音符渲染层 */}
         <canvas
@@ -1267,21 +1262,22 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             <div
               key={i}
               className={`track${keysDown.has(i) ? ' track-active' : ''}`}
-              style={{ width: trackWidth, borderRight: i < config.trackCount - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
+              style={{ width: trackWidth * gameScale, borderRight: i < config.trackCount - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}
             >
               <span className="track-key">{keys[i]}</span>
             </div>
           ))}
         </div>
 
-        {/* 判定线 — 按轨道绘制，脑裂轨道在顶部（红色警示） */}
+        {/* 判定线 — 按轨道绘制，脑裂轨道在顶部（红色警示）；判定线固定不随缩放移动 */}
         {Array.from({ length: config.trackCount }, (_, i) => {
           const isSplit = isTrackSplit(splits, i, state.currentTime);
+          const scaledTrackW = trackWidth * gameScale;
           return (
             <div key={i} className="judgment-line" style={{
               top: isSplit ? TOP_JUDGE_Y : JUDGMENT_LINE_Y,
-              left: i * trackWidth,
-              width: trackWidth,
+              left: i * scaledTrackW,
+              width: scaledTrackW,
               height: judgeLineThickness,
               background: isSplit ? '#FF7878' : config.judgeLineColor,
               borderRadius: Math.ceil(judgeLineThickness / 2),
@@ -1299,35 +1295,35 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           const outerSize = ringEffInitial + p * ringEffSpread;
           const outerOpacity = Math.max(0, 0.6 - p * ringEffFade);
           const effY = isTrackSplit(splits, eff.track, state.currentTime) ? TOP_JUDGE_Y : JUDGMENT_LINE_Y;
+          const effX = eff.track * (trackWidth * gameScale) + (trackWidth * gameScale) / 2;
           return (
             <React.Fragment key={eff.id}>
               {/* 外圈 */}
               <div
                 className="judgment-circle-outer"
                 style={{
-                  left: eff.track * trackWidth + trackWidth / 2,
+                  left: effX,
                   top: effY,
-                  width: outerSize, height: outerSize,
+                  width: outerSize * gameScale, height: outerSize * gameScale,
                   borderColor: c, opacity: outerOpacity,
-                  borderWidth: circleOuterW,
+                  borderWidth: circleOuterW * gameScale,
                 }}
               />
               {/* 内圈 */}
               <div
                 className="judgment-circle"
                 style={{
-                  left: eff.track * trackWidth + trackWidth / 2,
+                  left: effX,
                   top: effY,
-                  width: size, height: size,
+                  width: size * gameScale, height: size * gameScale,
                   borderColor: c, opacity,
-                  borderWidth: circleInnerW,
-                  boxShadow: `0 0 ${size / 2}px ${c}88`,
+                  borderWidth: circleInnerW * gameScale,
+                  boxShadow: `0 0 ${size / 2 * gameScale}px ${c}88`,
                 }}
               />
             </React.Fragment>
           );
         })}
-      </div>
       </div>
 
       {/* FC/AP 目标失败 ⟳ 动画 */}

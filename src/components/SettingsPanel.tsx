@@ -415,7 +415,7 @@ const LatencyPanel: React.FC<{ lang: Lang; offset: number; onSave: (o: number) =
           </div>
           <div className="st-speed-row" style={{ justifyContent: 'center' }}>
             <input
-              type="range" min={-300} max={300} step={5}
+              type="range" min={-500} max={500} step={5}
               value={value}
               onChange={e => setValue(parseInt(e.target.value))}
               className="st-range" style={{ maxWidth: 280 }}
