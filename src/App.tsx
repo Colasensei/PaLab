@@ -931,7 +931,13 @@ const App: React.FC = () => {
   const isFullscreen = FULLSCREEN_PAGES.includes(screen);
 
   return (
-    <div className={`app-root${settings.uiBlur ? '' : ' no-ui-blur'}${!settings.showMascot && screen === 'menu' ? ' no-mascot' : ''}`} style={{ zoom: settings.uiScale }}>
+    <div className={`app-root${settings.uiBlur ? '' : ' no-ui-blur'}${!settings.showMascot && screen === 'menu' ? ' no-mascot' : ''}`} style={settings.uiScale !== 1 ? {
+      // 全局缩放：容器反向放大(100%/scale)，transform:scale(scale) 后正好填满视口，无留白
+      width: `${100 / settings.uiScale}%`,
+      height: `${100 / settings.uiScale}%`,
+      transform: `scale(${settings.uiScale})`,
+      transformOrigin: 'top left',
+    } : undefined}>
       {/* EULA */}
       {!eulaAccepted && (
         <EULAModal lang={lang} onAgree={() => { localStorage.setItem('palab_eula', '1'); setEulaAccepted(true); }} />

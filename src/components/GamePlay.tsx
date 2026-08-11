@@ -1232,12 +1232,20 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         <AudioViz active={state.isPlaying} />
       )}
 
-      {/* 游戏区域 */}
+      {/* 游戏区域（游戏内缩放：transform scale + 反向容器，缩放后填满无留白） */}
+      <div style={{
+        width: (totalWidth + 10) / gameScale,
+        height: gameHeight / gameScale,
+        marginTop: gameTopCssVal,
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        flexShrink: 0,
+      }}>
       <div
         ref={containerRef}
         className="game-area"
         onContextMenu={e => e.preventDefault()}
-        style={{ width: totalWidth + 10, height: gameHeight, marginTop: gameTopCssVal, touchAction: 'none', zoom: gameScale }}
+        style={{ width: totalWidth + 10, height: gameHeight, margin: 0, touchAction: 'none', transform: `scale(${gameScale})`, transformOrigin: 'top left' }}
       >
         {/* Canvas 音符渲染层 */}
         <canvas
@@ -1319,6 +1327,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             </React.Fragment>
           );
         })}
+      </div>
       </div>
 
       {/* FC/AP 目标失败 ⟳ 动画 */}
