@@ -184,7 +184,6 @@ export const DevPanel: React.FC<Props> = ({ lang, settings, onSave, onBack }) =>
         <h3 className="dp-sec-title">{L('Combo / Score 显示', 'Combo / Score Display')}</h3>
         <NumInput lang={lang} label="Combo 字号 (px)" tip={L('Combo 显示大小', 'Combo font size')} defKey="e_comboFontSize" value={ov.e_comboFontSize} min={12} max={64} onChange={v => set('e_comboFontSize', v)} />
         <NumInput lang={lang} label="Score 字号 (px)" tip={L('分数显示大小', 'Score font size')} defKey="e_scoreFontSize" value={ov.e_scoreFontSize} min={10} max={48} onChange={v => set('e_scoreFontSize', v)} />
-        <NumInput lang={lang} label="Combo 百倍脉冲 (ms)" tip={L('整百 combo 特效持续', 'Hundred-combo pulse dur')} defKey="e_comboPulseMs" value={ov.e_comboPulseMs} min={100} max={2000} onChange={v => set('e_comboPulseMs', v)} />
         <NumInput lang={lang} label="Combo K 格式门槛" tip={L('超过此值 → x.xk', 'Threshold for k-format')} defKey="u_comboKFormat" value={ov.u_comboKFormat} min={100} max={1000000} onChange={v => set('u_comboKFormat', v)} />
         <NumInput lang={lang} label="Score K 格式门槛" tip={L('超过此值 → K 格式', 'Threshold for k-format')} defKey="u_scoreKFormat" value={ov.u_scoreKFormat} min={1000} max={10000000} onChange={v => set('u_scoreKFormat', v)} />
 

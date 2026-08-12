@@ -441,9 +441,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   // 键盘按下的轨道
   const [keysDown, setKeysDown] = useState<Set<number>>(new Set());
-  // combo 整百放大一下（
-  const [comboPulse, setComboPulse] = useState(false);
-  const prevComboRef = useRef(0);
 
   // 进度条直接操 DOM，别走 React 渲染，每帧 setState 顶不住（
   const progressBarRef = useRef<HTMLDivElement>(null);
@@ -482,7 +479,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const ringEffInitial = useMemo(() => getDevOverride('e_ringEffInitial'), []);
   const ringEffSpread = useMemo(() => getDevOverride('e_ringEffSpread'), []);
   const ringEffFade = useMemo(() => getDevOverride('e_ringEffFade'), []);
-  const comboPulseMs = useMemo(() => getDevOverride('e_comboPulseMs'), []);
   const noteFadeIn = useMemo(() => getDevOverride('e_noteFadeIn'), []);
   const noteFadeOut = useMemo(() => getDevOverride('e_noteFadeOut'), []);
   const holdPulseS = useMemo(() => getDevOverride('e_holdPulse'), []);
@@ -874,16 +870,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     });
   }, [state.activeHolds, notes]);
 
-  // Combo 整百炸一下（
-  useEffect(() => {
-    const combo = state.combo;
-    if (combo > 0 && combo % 100 === 0 && combo !== prevComboRef.current) {
-      setComboPulse(true);
-      setTimeout(() => setComboPulse(false), comboPulseMs);
-    }
-    prevComboRef.current = combo;
-  }, [state.combo]);
-
   // 过期特效该扫了（
   useEffect(() => {
     if (effects.length === 0) return;
@@ -1246,7 +1232,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       <div className="hud-center">
         {leadInActive ? (
           <span className="combo-count" style={{ ...comboStyle, fontSize: comboFontSize }}>READY?</span>
-        ) : state.combo > 0 && <div className="hud-combo-wrap"><span className={`combo-count${comboPulse ? ' combo-pulse' : ''}`} style={{ ...comboStyle, fontSize: comboFontSize }}>
+        ) : state.combo > 0 && <div className="hud-combo-wrap"><span className="combo-count" style={{ ...comboStyle, fontSize: comboFontSize }}>
           {state.combo >= comboKThreshold ? (state.combo / 1000).toFixed(1) + 'k' : state.combo}</span><span className="combo-label">COMBO</span></div>}
       </div>
       <div className="hud-right">

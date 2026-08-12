@@ -166,8 +166,6 @@ export interface DevOverrides {
   e_ringEffSpread: number;
   /** 外圈特效透明度衰减 */
   e_ringEffFade: number;
-  /** Combo 百倍脉冲时长 (ms) */
-  e_comboPulseMs: number;
   /** 音符淡入时长 (s) */
   e_noteFadeIn: number;
   /** 音符淡出时长 (s) */
@@ -500,7 +498,6 @@ export const DEFAULT_OVERRIDES: DevOverrides = {
   e_ringEffInitial: 24,
   e_ringEffSpread: 100,
   e_ringEffFade: 0.7,
-  e_comboPulseMs: 600,
   e_noteFadeIn: 0.2,
   e_noteFadeOut: 0.5,
   e_holdPulse: 0.4,
