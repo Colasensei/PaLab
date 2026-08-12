@@ -10,6 +10,18 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 7.0（正式版）', date: '2026-08-12',
+    items: [
+      '新增社区谱面库（lingyanspace 托管）：谱面库「社区」面板可浏览、搜索、筛选、排序并下载导入玩家分享的谱面',
+      '新增公告系统：首页「公告」入口，重要更新置顶自动弹窗、未读黄色提示、按 id 记录已读',
+      '关于界面重构：改为与其他页面一致的全屏叠加样式（顶部返回 + 标题 + 内容滚动）',
+      '编辑器导出支持自由编辑难度与定数：难度下拉选择、定数不再锁定 ±5',
+      '难度分析校准：整体下调约 7%，实际难度通常低于分析值',
+      '性能优化：关闭 COMBO 动画（整百脉冲 + 数字 pop）',
+      '修复：社区谱面下载 CORS、社区音乐播放泄漏、谱面库选中音乐停不下来等',
+    ],
+  },
+  {
     ver: 'Alpha 6.1（正式版）', date: '2026-08-11',
     items: [
       '支持 OSU 谱面包视频导入：视频作为谱面背景，编辑器右栏可导入/移除/模糊/播放声音',
@@ -262,8 +274,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 6.1</div>
-      <div className="about-ver about-ver-sub">v0.6.1</div>
+      <div className="about-ver">Alpha 7.0</div>
+      <div className="about-ver about-ver-sub">v0.7.0</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
@@ -334,7 +346,7 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
       <div className="ann-top">
         <button className="btn btn-primary ann-back" onClick={onClose}>{lang === 'zh' ? '返回' : 'Back'}</button>
         <h3 className="ann-title">{lang === 'zh' ? '关于' : 'About'}</h3>
-        <span className="ann-count">Alpha 6.1</span>
+        <span className="ann-count">Alpha 7.0</span>
       </div>
       <div className="ann-list about-list">
         {/* 宽屏：双栏布局 */}
