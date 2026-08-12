@@ -6168,13 +6168,25 @@ body::after {
 .cl2-list-title { font-size: 17px; font-weight: 700; letter-spacing: 3px; color: var(--text-primary); margin: 0; }
 
 /* ── 排序按钮 ── */
-.cl2-sort { display: flex; gap: 3px; margin-bottom: 10px; }
+.cl2-sort { display: flex; gap: 3px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
 .cl2-sort-btn {
   padding: 3px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);
   background: transparent; color: #555; font-size: 10px;
   cursor: pointer; font-family: var(--font-main); transition: all 0.15s;
 }
 .cl2-sort-btn.active { color: #ccc; background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.12); }
+.cl2-favonly { position: relative; display: inline-flex; align-items: center; gap: 6px; margin-left: auto; cursor: pointer; user-select: none; }
+.cl2-favonly input { position: absolute; opacity: 0; width: 0; height: 0; }
+.cl2-favonly-box { width: 15px; height: 15px; border: 1.5px solid rgba(255,255,255,0.32); border-radius: 4px; background: transparent; position: relative; flex-shrink: 0; transition: all 0.15s; box-sizing: border-box; }
+.cl2-favonly input:checked + .cl2-favonly-box { background: #FFD700; border-color: #FFD700; box-shadow: 0 0 6px rgba(255,215,0,0.35); }
+.cl2-favonly-box::after { content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #111; border-width: 0 2px 2px 0; transform: rotate(45deg); opacity: 0; transition: opacity 0.15s; box-sizing: border-box; }
+.cl2-favonly input:checked + .cl2-favonly-box::after { opacity: 1; }
+.cl2-favonly-label { color: rgba(255,255,255,0.6); font-size: 10px; letter-spacing: 1px; }
+/* 喜爱星标 */
+.cl2-fav { color: rgba(255,255,255,0.28); font-size: 15px; cursor: pointer; flex-shrink: 0; line-height: 1; user-select: none; transition: color 0.15s, transform 0.15s; }
+.cl2-fav:hover { color: rgba(255,215,0,0.8); transform: scale(1.15); }
+.cl2-fav.on { color: #FFD700; }
+.cl2-fav-lg { font-size: 22px; }
 
 /* ── 列表项 ── */
 .cl2-scroll-list { display: flex; flex-direction: column; gap: 2px; }
@@ -8260,6 +8272,16 @@ body::after {
 .mp-item.active .mp-item-title { color: #fff; }
 .mp-item-artist { color: rgba(255,255,255,0.4); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mp-item-dur { color: rgba(255,255,255,0.4); font-size: 11px; flex-shrink: 0; }
+.mp-favonly { position: relative; display: inline-flex; align-items: center; gap: 6px; margin-left: auto; cursor: pointer; user-select: none; }
+.mp-favonly input { position: absolute; opacity: 0; width: 0; height: 0; }
+.mp-favonly-box { width: 15px; height: 15px; border: 1.5px solid rgba(255,255,255,0.32); border-radius: 4px; background: transparent; position: relative; flex-shrink: 0; transition: all 0.15s; box-sizing: border-box; }
+.mp-favonly input:checked + .mp-favonly-box { background: #FFD700; border-color: #FFD700; box-shadow: 0 0 6px rgba(255,215,0,0.35); }
+.mp-favonly-box::after { content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #111; border-width: 0 2px 2px 0; transform: rotate(45deg); opacity: 0; transition: opacity 0.15s; box-sizing: border-box; }
+.mp-favonly input:checked + .mp-favonly-box::after { opacity: 1; }
+.mp-favonly-label { color: rgba(255,255,255,0.6); font-size: 11px; letter-spacing: 1px; }
+.mp-fav { color: rgba(255,255,255,0.28); font-size: 15px; cursor: pointer; flex-shrink: 0; line-height: 1; user-select: none; transition: color 0.15s, transform 0.15s; }
+.mp-fav:hover { color: rgba(255,215,0,0.8); transform: scale(1.15); }
+.mp-fav.on { color: #FFD700; }
 
 .mp-controls {
   border-top: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.28);

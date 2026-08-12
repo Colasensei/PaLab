@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Lang, t } from '@/utils/lang';
+import { isFav, subscribeFavs } from '@/utils/favStore';
 import {
   subscribeMusicPlayer, getMusicPlayerState,
   selectTrack, toggleMusicPlay, nextMusic, prevMusic, seekMusic, cycleMusicMode,
-  closeMusicPlayer,
+  closeMusicPlayer, setFavOnly, onToggleFav,
 } from '@/utils/musicPlayer';
 
 interface Props {
@@ -23,6 +24,8 @@ function fmt(ms: number): string {
 export const MusicPlayer: React.FC<Props> = ({ lang, uiBlur, onClose }) => {
   const [, force] = useState(0);
   useEffect(() => subscribeMusicPlayer(() => force(x => x + 1)), []);
+  // 喜爱变化（谱面库/播放器切换喜爱）也刷新
+  useEffect(() => subscribeFavs(() => force(x => x + 1)), []);
   const st = getMusicPlayerState();
 
   const { tracks, index, mode, playing, currentTime, duration } = st;
@@ -41,6 +44,11 @@ export const MusicPlayer: React.FC<Props> = ({ lang, uiBlur, onClose }) => {
         {/* 顶部：歌曲列表 */}
         <div className="mp-header">
           <span className="mp-title">{t('music.player.title', lang)}</span>
+          <label className="mp-favonly">
+            <input type="checkbox" checked={st.favOnly} onChange={e => setFavOnly(e.target.checked)} />
+            <span className="mp-favonly-box" />
+            <span className="mp-favonly-label">{lang === 'zh' ? '仅喜爱' : 'Fav only'}</span>
+          </label>
           <button className="mp-close" onClick={handleClose}>{t('music.close', lang)}</button>
         </div>
 
@@ -57,6 +65,7 @@ export const MusicPlayer: React.FC<Props> = ({ lang, uiBlur, onClose }) => {
                 <span className="mp-item-title">{tr.title}</span>
                 <span className="mp-item-artist">{tr.artist}</span>
               </div>
+              <span className={`mp-fav${isFav(tr.key) ? ' on' : ''}`} onClick={e => { e.stopPropagation(); onToggleFav(tr.key); }} title={lang === 'zh' ? '喜爱' : 'Favorite'}>{isFav(tr.key) ? '★' : '☆'}</span>
               <span className="mp-item-dur">{fmt(tr.duration)}</span>
             </div>
           ))}

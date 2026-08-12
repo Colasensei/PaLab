@@ -5,10 +5,12 @@
  * - 模块级 Audio 元素，后台/切屏不受组件卸载影响
  */
 import { loadCharts } from './chartDB';
+import { isFav, toggleFav } from './favStore';
 import { syncMediaSession, clearMediaSession, onMediaControl, requestMediaSessionPermission, MediaControlEvent } from './mediaSession';
 import type { ChartPackage } from '@/components/ChartLibrary';
 
 export interface MusicTrack {
+  key: string;
   title: string;
   artist: string;
   url: string;
@@ -25,14 +27,18 @@ export interface MusicState {
   playing: boolean;
   currentTime: number; // ms
   duration: number;    // ms
+  /** 仅喜爱筛选 */
+  favOnly: boolean;
 }
 
 const LS_INDEX = 'palab_mp_index';
 const LS_MODE = 'palab_mp_mode';
+const LS_FAVONLY = 'palab_mp_favonly';
 
 const audio = new Audio();
 const listeners = new Set<() => void>();
 
+let allTracks: MusicTrack[] = [];
 let tracks: MusicTrack[] = [];
 let index = -1;
 let mode: PlayMode = 'list';
@@ -41,6 +47,7 @@ let currentTime = 0;
 let duration = 0;
 let lastSync = 0;
 let listLoaded = false;
+let favOnly = false;
 
 function loadIndex(): number {
   try { const v = parseInt(localStorage.getItem(LS_INDEX) || '0'); return isNaN(v) ? 0 : Math.max(0, v); } catch { return 0; }
@@ -48,15 +55,26 @@ function loadIndex(): number {
 function loadMode(): PlayMode {
   try { const m = localStorage.getItem(LS_MODE); return m === 'single' || m === 'shuffle' || m === 'list' ? m : 'list'; } catch { return 'list'; }
 }
+function loadFavOnly(): boolean {
+  try { return localStorage.getItem(LS_FAVONLY) === '1'; } catch { return false; }
+}
 function persist() {
   try { localStorage.setItem(LS_INDEX, String(index)); } catch { /* ignore */ }
   try { localStorage.setItem(LS_MODE, mode); } catch { /* ignore */ }
+  try { localStorage.setItem(LS_FAVONLY, favOnly ? '1' : '0'); } catch { /* ignore */ }
 }
 
 function emit() { listeners.forEach(l => l()); }
 
 function getState(): MusicState {
-  return { tracks, index, mode, playing, currentTime, duration };
+  return { tracks, index, mode, playing, currentTime, duration, favOnly };
+}
+
+/** 按 favOnly 重建显示/播放列表；index 越界则归零 */
+function rebuildTracks(): void {
+  tracks = favOnly ? allTracks.filter(t => isFav(t.key)) : allTracks;
+  if (tracks.length === 0) { index = -1; return; }
+  if (index < 0 || index >= tracks.length) index = 0;
 }
 
 function sync(includeCover: boolean) {
@@ -82,23 +100,41 @@ export function subscribeMusicPlayer(cb: () => void): () => void {
 
 export function getMusicPlayerState(): MusicState { return getState(); }
 
+/** 设置仅喜爱筛选（影响播放列表与随机） */
+export function setFavOnly(v: boolean): void {
+  favOnly = v;
+  persist();
+  rebuildTracks();
+  emit();
+}
+
+/** 列表项切换喜爱；若开启仅喜爱则立即从列表移除 */
+export function onToggleFav(key: string): void {
+  toggleFav(key);
+  if (favOnly) rebuildTracks();
+  emit();
+}
+
 /** 打开播放器：首次加载谱面库音乐列表，并恢复/开始播放 */
 export async function openMusicPlayer(): Promise<void> {
   // Android 13+ 媒体通知需要通知权限
   requestMediaSessionPermission();
   if (!listLoaded) {
     listLoaded = true;
+    favOnly = loadFavOnly();
     try {
       const charts: ChartPackage[] = await loadCharts();
-      tracks = charts
+      allTracks = charts
         .filter(c => c.songUrl)
         .map(c => ({
+          key: c.fileName,
           title: c.title || c.fileName,
           artist: c.artist || '',
           url: c.songUrl!,
           coverUrl: c.coverUrl,
           duration: 0,
         }));
+      rebuildTracks();
       index = loadIndex();
       if (tracks.length > 0 && (index < 0 || index >= tracks.length)) index = 0;
       emit();

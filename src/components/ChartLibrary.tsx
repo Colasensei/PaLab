@@ -4,6 +4,7 @@ import { loadCharts, saveCharts } from '@/utils';
 import { HighScoreRecord } from '@/types';
 import { generateBlurredBg } from '@/utils/blurImage';
 import { PREVIEW_VOLUME, PREVIEW_LOW_VOLUME, setPreviewVolume } from '@/utils/previewPlayer';
+import { isFav, toggleFav, subscribeFavs } from '@/utils/favStore';
 import { parseChartZip } from '@/utils/chartParser';
 import { CommunityPanel } from './CommunityPanel';
 
@@ -82,6 +83,10 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   const fileRef = useRef<HTMLInputElement>(null);
   // 社区谱面面板开关
   const [showCommunity, setShowCommunity] = useState(false);
+  // 仅喜爱筛选
+  const [favOnly, setFavOnly] = useState(false);
+  const [, force] = useState(0);
+  useEffect(() => subscribeFavs(() => force(x => x + 1)), []);
   // 社区打开标记：打开期间屏蔽选曲预览自动播放（避免导入/关闭时音乐停不下来）
   const communityOpenRef = useRef(false);
 
@@ -200,7 +205,9 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     else if (selected > i) setSelected(selected - 1);
   };
 
-  const sortedCharts = [...charts].sort((a, b) => {
+  const sortedCharts = [...charts]
+    .filter(c => !favOnly || isFav(c.fileName))
+    .sort((a, b) => {
     const ha = highScores[a.fileName];
     const hb = highScores[b.fileName];
     switch (sortBy) {
@@ -259,6 +266,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
               {k === 'name' ? (lang === 'zh' ? '名称' : 'Name') : k === 'difficulty' ? (lang === 'zh' ? '难度' : 'Diff') : k === 'rks' ? 'RKS' : (lang === 'zh' ? '分数' : 'Score')}
             </button>
           ))}
+          <label className="cl2-favonly"><input type="checkbox" checked={favOnly} onChange={e => setFavOnly(e.target.checked)} /><span className="cl2-favonly-box" /><span className="cl2-favonly-label">{lang === 'zh' ? '仅喜爱' : 'Fav only'}</span></label>
         </div>
       )}
       {!dbLoaded ? (
@@ -318,7 +326,10 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                 <div className="cl2-item-cover">{c.coverUrl ? <img src={c.coverUrl} alt="" /> : <span>::</span>}</div>
                 {/* 标题 + 作者 */}
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>{c.title}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: '#eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>{c.title}</div>
+                    <span className={`cl2-fav${isFav(c.fileName) ? ' on' : ''}`} onClick={e => { e.stopPropagation(); toggleFav(c.fileName); }} title={lang === 'zh' ? '喜爱' : 'Favorite'}>{isFav(c.fileName) ? '★' : '☆'}</span>
+                  </div>
                   <div style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.artist}{c.author ? ` · ${c.author}` : ''}</div>
                 </div>
                 {/* 最高分 — 与难度方块同高 (48px) */}
@@ -402,12 +413,16 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
 
         {/* 右侧 3 层 — 与封面齐高，竖屏均分间距消空白 */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: landscape ? 4 : 0, justifyContent: landscape ? undefined : 'space-evenly' }}>
-          {/* Layer 1: 大标题 */}
-          <div style={{
-            fontSize: landscape ? 'clamp(20px,2.6vw,38px)' : 'clamp(16px,5vw,26px)',
-            fontWeight: 800, color: '#fff', lineHeight: 1.15,
-            wordBreak: 'break-word', flexShrink: 0,
-          }}>{sel.title}</div>
+          {/* Layer 1: 大标题 + 喜爱 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <div style={{
+              flex: 1, minWidth: 0,
+              fontSize: landscape ? 'clamp(20px,2.6vw,38px)' : 'clamp(16px,5vw,26px)',
+              fontWeight: 800, color: '#fff', lineHeight: 1.15,
+              wordBreak: 'break-word',
+            }}>{sel.title}</div>
+            <span className={`cl2-fav cl2-fav-lg${isFav(sel.fileName) ? ' on' : ''}`} onClick={e => { e.stopPropagation(); toggleFav(sel.fileName); }} title={lang === 'zh' ? '喜爱' : 'Favorite'}>{isFav(sel.fileName) ? '★' : '☆'}</span>
+          </div>
 
           {/* Layer 2: 作者+谱师 — 横排，右边跟歌曲信息 */}
           <div style={{ display: 'flex', gap: 12, flexShrink: 0, fontSize: landscape ? 'clamp(10px,1.2vw,14px)' : 'clamp(10px,2.5vw,12px)', color: '#666', alignItems: 'baseline' }}>

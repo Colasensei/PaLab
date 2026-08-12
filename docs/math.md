@@ -1,4 +1,4 @@
-# Palab 数值计算文档
+#  Palab 数值计算文档
 
 > 最后更新：2026-08-12 | 版本 0.7.1
 
@@ -10,20 +10,20 @@
 
 音符判定基于按下时间与音符起始时间的偏差 `offset = pressTime - noteStartTime`（单位 ms）。
 
-| 判定          | 条件                      | 默认窗口          |
-| ----------- | ----------------------- | ------------- |
-| **Perfect** | $\lvert\text{offset}\rvert \le \text{j\_timeB}$ | 80 ms |
-| **Good**    | $\lvert\text{offset}\rvert \le \text{j\_timeA}$ 且不满足 Perfect | 160 ms |
+| 判定          | 条件                                                                      | 默认窗口   |
+| ----------- | ----------------------------------------------------------------------- | ------ |
+| **Perfect** | $\lvert\text{offset}\rvert \le \text{j\_timeB}$                         | 80 ms  |
+| **Good**    | $\lvert\text{offset}\rvert \le \text{j\_timeA}$ 且不满足 Perfect            | 160 ms |
 | **Bad**     | $\text{offset} \lt 0$ 且 $\lvert\text{offset}\rvert \le \text{j\_timeC}$ | 280 ms |
-| **Miss**    | 其他情况（太晚或未按下）            | —             |
+| **Miss**    | 其他情况（太晚或未按下）                                                            | —      |
 
 **参数映射：**
 
-| 参数 key | 默认值 | 说明 |
-|-----------|--------|------|
-| `j_timeB` | 80 | Perfect 窗口 |
-| `j_timeA` | 160 | Good 窗口 |
-| `j_timeC` | 280 | Bad 提前窗口 |
+| 参数 key            | 默认值 | 说明          |
+| ----------------- | --- | ----------- |
+| `j_timeB`         | 80  | Perfect 窗口  |
+| `j_timeA`         | 160 | Good 窗口     |
+| `j_timeC`         | 280 | Bad 提前窗口    |
 | `j_missThreshold` | 300 | Miss 判定延迟阈值 |
 
 **优先级：** Perfect > Good > Bad > Miss（取最严格命中）。
@@ -87,8 +87,8 @@ $\text{ACC} = \frac{P \times 1.0 + G \times w}{N}$
 
 **参数映射：**
 
-| 参数 key | 默认值 | 说明 |
-|-----------|--------|------|
+| 参数 key    | 默认值    | 说明     |
+| --------- | ------ | ------ |
 | `s_rankS` | 95,000 | S 评级门槛 |
 | `s_rankA` | 90,000 | A 评级门槛 |
 | `s_rankB` | 80,000 | B 评级门槛 |
@@ -128,11 +128,11 @@ $ \text{songRKS} = x^2 \times \text{effectiveConst} $
 
 **参数映射：**
 
-| 参数 key | 默认值 | 说明 |
-|-----------|--------|------|
+| 参数 key          | 默认值  | 说明       |
+| --------------- | ---- | -------- |
 | `s_rksAccFloor` | 0.70 | ACC 最低门槛 |
-| `s_rksOffset` | 55 | 线性变换偏移 |
-| `s_rksDivisor` | 45 | 线性变换除数 |
+| `s_rksOffset`   | 55   | 线性变换偏移   |
+| `s_rksDivisor`  | 45   | 线性变换除数   |
 
 ### 5.3 公式直觉
 
@@ -169,13 +169,13 @@ RKS 是最强 20 次游玩 PP 的平均值，类似 osu! 的 pp 系统或 Phigro
 
 ### 7.1 定数 → 难度标签
 
-| 定数范围              | 难度标签   | 分界参数      | 默认值  |
-| ----------------- | ------ | --------- | ---- |
+| 定数范围                | 难度标签   | 分界参数      | 默认值  |
+| ------------------- | ------ | --------- | ---- |
 | $\lt c_1$           | **EZ** | `d_ezMax` | 5.0  |
 | $c_1 \le c \lt c_2$ | **NM** | `d_nmMax` | 9.0  |
 | $c_2 \le c \lt c_3$ | **HD** | `d_hdMax` | 12.5 |
 | $c_3 \le c \lt c_4$ | **IN** | `d_inMax` | 16.0 |
-| $\ge c_4$         | **AT** | —         | —    |
+| $\ge c_4$           | **AT** | —         | —    |
 
 ### 7.2 定数范围
 
