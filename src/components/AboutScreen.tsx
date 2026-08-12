@@ -10,6 +10,15 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 7.2（正式版）', date: '2026-08-13',
+    items: [
+      '新增「机器学习」开关（自动生成歌曲面板）：开启后加载界面后台学习谱面库中谱面的音符编排并显示学习进度',
+      '脑裂开关调整：默认关闭；开启后自动生成必定插入脑裂段，关闭则不生成',
+      '新增歌曲喜爱功能：谱面库与音乐播放器均可标记喜爱（★），支持「仅喜爱」筛选，筛选影响列表与随机播放',
+      '播放器顶部布局微调',
+    ],
+  },
+  {
     ver: 'Alpha 7.1（紧急修复）', date: '2026-08-12',
     items: [
       '紧急修复快照',
@@ -282,8 +291,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 7.1</div>
-      <div className="about-ver about-ver-sub">v0.7.1</div>
+      <div className="about-ver">Alpha 7.2</div>
+      <div className="about-ver about-ver-sub">v0.7.2</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
@@ -354,7 +363,7 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
       <div className="ann-top">
         <button className="btn btn-primary ann-back" onClick={onClose}>{lang === 'zh' ? '返回' : 'Back'}</button>
         <h3 className="ann-title">{lang === 'zh' ? '关于' : 'About'}</h3>
-        <span className="ann-count">Alpha 7.1</span>
+        <span className="ann-count">Alpha 7.2</span>
       </div>
       <div className="ann-list about-list">
         {/* 宽屏：双栏布局 */}
