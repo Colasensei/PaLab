@@ -10,6 +10,14 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 7.1（紧急修复）', date: '2026-08-12',
+    items: [
+      '紧急修复快照',
+      '修复游玩中音符凭空消失（同屏音符上限提升、已判定音符更快移出渲染窗口）',
+      '界面大小 / 游戏界面大小新增极小档（60%）',
+    ],
+  },
+  {
     ver: 'Alpha 7.0（正式版）', date: '2026-08-12',
     items: [
       '新增社区谱面库（lingyanspace 托管）：谱面库「社区」面板可浏览、搜索、筛选、排序并下载导入玩家分享的谱面',
@@ -274,8 +282,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 7.0</div>
-      <div className="about-ver about-ver-sub">v0.7.0</div>
+      <div className="about-ver">Alpha 7.1</div>
+      <div className="about-ver about-ver-sub">v0.7.1</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
@@ -346,7 +354,7 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
       <div className="ann-top">
         <button className="btn btn-primary ann-back" onClick={onClose}>{lang === 'zh' ? '返回' : 'Back'}</button>
         <h3 className="ann-title">{lang === 'zh' ? '关于' : 'About'}</h3>
-        <span className="ann-count">Alpha 7.0</span>
+        <span className="ann-count">Alpha 7.1</span>
       </div>
       <div className="ann-list about-list">
         {/* 宽屏：双栏布局 */}
