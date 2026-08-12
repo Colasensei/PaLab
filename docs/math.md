@@ -14,7 +14,7 @@
 | ----------- | ----------------------- | ------------- |
 | **Perfect** | $\lvert\text{offset}\rvert \le \text{j\_timeB}$ | 80 ms |
 | **Good**    | $\lvert\text{offset}\rvert \le \text{j\_timeA}$ 且不满足 Perfect | 160 ms |
-| **Bad**     | $\text{offset} < 0$ 且 $\lvert\text{offset}\rvert \le \text{j\_timeC}$ | 280 ms |
+| **Bad**     | $\text{offset} \lt 0$ 且 $\lvert\text{offset}\rvert \le \text{j\_timeC}$ | 280 ms |
 | **Miss**    | 其他情况（太晚或未按下）            | —             |
 
 **参数映射：**
@@ -120,7 +120,7 @@ $x = \frac{A \times 100 - 55}{45}$
 
 $ \text{songRKS} = x^2 \times \text{effectiveConst} $
 
-**若** $A < 0.70$：$\text{songRKS} = 0$（不达标不计分）。
+**若** $A \lt 0.70$：$\text{songRKS} = 0$（不达标不计分）。
 
 **最终 PP：** $\text{PP} = \text{Math.round}(\text{songRKS} \times 100) / 100$（保留两位小数）。
 
@@ -168,10 +168,10 @@ RKS 是最强 20 次游玩 PP 的平均值，类似 osu! 的 pp 系统或 Phigro
 
 | 定数范围              | 难度标签   | 分界参数      | 默认值  |
 | ----------------- | ------ | --------- | ---- |
-| $< c_1$           | **EZ** | `d_ezMax` | 5.0  |
-| $c_1 \le c < c_2$ | **NM** | `d_nmMax` | 9.0  |
-| $c_2 \le c < c_3$ | **HD** | `d_hdMax` | 12.5 |
-| $c_3 \le c < c_4$ | **IN** | `d_inMax` | 16.0 |
+| $\lt c_1$           | **EZ** | `d_ezMax` | 5.0  |
+| $c_1 \le c \lt c_2$ | **NM** | `d_nmMax` | 9.0  |
+| $c_2 \le c \lt c_3$ | **HD** | `d_hdMax` | 12.5 |
+| $c_3 \le c \lt c_4$ | **IN** | `d_inMax` | 16.0 |
 | $\ge c_4$         | **AT** | —         | —    |
 
 ### 7.2 定数范围
