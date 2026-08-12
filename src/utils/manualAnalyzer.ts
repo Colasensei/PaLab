@@ -217,7 +217,8 @@ export function estimateDifficulty(notes: Note[], durationMs: number, trackCount
     splitBonus = Math.min(2.0, (covered / Math.max(1, durationMs)) * 4.0);
   }
 
-  let finalScore = baseScore + doubleBonus + holdBonus + peakBonus + splitBonus;
+  // 校准：分析整体略偏高，统一 ×0.93（实际难度通常比分析低）
+  let finalScore = (baseScore + doubleBonus + holdBonus + peakBonus + splitBonus) * 0.93;
 
   // 夹一夹别爆了（
   finalScore = Math.max(1.0, Math.min(18.0, finalScore));

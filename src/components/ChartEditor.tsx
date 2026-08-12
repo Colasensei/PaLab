@@ -1,10 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { t, Lang } from '@/utils/lang';
-import { GameConfig, Note, constantToDifficulty, getDiffColor } from '@/types';
+import { GameConfig, Note, constantToDifficulty } from '@/types';
 import JSZip from 'jszip';
 import { saveZipBlob } from '@/utils/zipSave';
 import { loadCharts, saveCharts } from '@/utils/chartDB';
 import type { ChartPackage } from '@/components/ChartLibrary';
+
+/** 难度选项（导出时可自由选择，对应定数区间） */
+const DIFF_OPTIONS = ['EZ', 'NM', 'HD', 'IN', 'AT'];
+/** 选择难度时设定的推荐定数（各难度区间中值，与 constantToDifficulty 阈值一致） */
+const DIFF_RECOMMEND: Record<string, number> = {
+  EZ: 3.0, NM: 7.0, HD: 10.5, IN: 14.0, AT: 17.0,
+};
 
 interface Props {
   config: GameConfig;
@@ -26,7 +33,6 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
   const [songDataUrl, setSongDataUrl] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [chartConst, setChartConst] = useState(config.chartConstant);
-  const baseConst = config.chartConstant;
 
   // 预先将 blob URL 转为稳定的 data URL
   useEffect(() => {
@@ -59,8 +65,7 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
   const coverRef = useRef<HTMLInputElement>(null);
   const illusRef = useRef<HTMLInputElement>(null);
 
-  const diffLabel = constantToDifficulty(config.chartConstant);
-  const diffColor = getDiffColor(diffLabel) || '#FFF';
+  const diffLabel = constantToDifficulty(chartConst);
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -235,20 +240,24 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
               placeholder={lang === 'zh' ? '谱面说明...' : 'Description...'} /></div>
         </div>
 
-        {/* 难度调节（±5） */}
+        {/* 难度与定数（可自由编辑） */}
         <div className="st-card ce-locked">
-          <div className="ce-locked-row"><span className="st-label">{lang === 'zh' ? '难度' : 'Difficulty'}</span><span className="ce-locked-val" style={{ color: diffColor, fontWeight: 700 }}>{constantToDifficulty(chartConst)}</span></div>
+          <div className="ce-locked-row"><span className="st-label">{lang === 'zh' ? '难度' : 'Difficulty'}</span>
+            <select className="ce-select" value={diffLabel} onChange={e => setChartConst(DIFF_RECOMMEND[e.target.value])}>
+              {DIFF_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
           <div className="ce-locked-row">
             <span className="st-label">{lang === 'zh' ? '定数' : 'Const'}</span>
             <div className="ce-const-adj">
-              <button className="ce-const-btn" onClick={() => setChartConst(c => Math.max(1, c - 0.5))} disabled={chartConst <= Math.max(1, baseConst - 5)}>−</button>
+              <button className="ce-const-btn" onClick={() => setChartConst(c => Math.max(1, c - 0.5))} disabled={chartConst <= 1}>−</button>
               <span className="ce-const-val">{chartConst.toFixed(1)}</span>
-              <button className="ce-const-btn" onClick={() => setChartConst(c => Math.min(25, c + 0.5))} disabled={chartConst >= Math.min(25, baseConst + 5)}>+</button>
+              <button className="ce-const-btn" onClick={() => setChartConst(c => Math.min(25, c + 0.5))} disabled={chartConst >= 25}>+</button>
             </div>
           </div>
           <div className="ce-locked-row"><span className="st-label">BPM</span><span className="ce-locked-val">{config.bpm}</span></div>
           <div className="ce-locked-row ce-locked-row-last"><span className="st-label">{lang === 'zh' ? '轨道' : 'Tracks'}</span><span className="ce-locked-val">{config.trackCount}K</span></div>
-          <p className="ce-locked-hint">{lang === 'zh' ? '难度和参数不可更改' : 'Difficulty & params are locked'}</p>
+          <p className="ce-locked-hint">{lang === 'zh' ? '难度与定数可自由调整' : 'Difficulty & const are editable'}</p>
         </div>
 
         <button className="btn btn-primary" onClick={handleExport} disabled={exporting}
