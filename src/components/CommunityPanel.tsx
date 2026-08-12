@@ -249,7 +249,6 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
             const owned = isOwned(c);
             return (
               <div className={`cp-item${sel && sel.id === c.id ? ' selected' : ''}`} key={c.id} onClick={() => select(c)}>
-                <div className="cp-cover" />
                 <div className="cp-info">
                   <div className="cp-item-title">
                     {c.title}
