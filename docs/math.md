@@ -18,6 +18,7 @@
 | **Miss**    | 其他情况（太晚或未按下）            | —             |
 
 **参数映射：**
+
 | 参数 key | 默认值 | 说明 |
 |-----------|--------|------|
 | `j_timeB` | 80 | Perfect 窗口 |
@@ -85,6 +86,7 @@ $\text{ACC} = \frac{P \times 1.0 + G \times w}{N}$
 | **C**  | C           | 其余                                                       |
 
 **参数映射：**
+
 | 参数 key | 默认值 | 说明 |
 |-----------|--------|------|
 | `s_rankS` | 95,000 | S 评级门槛 |
@@ -125,6 +127,7 @@ $ \text{songRKS} = x^2 \times \text{effectiveConst} $
 **最终 PP：** $\text{PP} = \text{Math.round}(\text{songRKS} \times 100) / 100$（保留两位小数）。
 
 **参数映射：**
+
 | 参数 key | 默认值 | 说明 |
 |-----------|--------|------|
 | `s_rksAccFloor` | 0.70 | ACC 最低门槛 |
