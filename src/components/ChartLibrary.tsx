@@ -66,7 +66,9 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   }, []);
 
   // 选曲预览：挂载 & 选中变化 → 上报 App 播放对应歌曲预览
+  // 社区打开时跳过：避免导入谱面 charts 变化触发自动播放（音乐停不下来）
   useEffect(() => {
+    if (communityOpenRef.current) return;
     const pkg = selected >= 0 && selected < charts.length ? charts[selected] : null;
     onPreview(pkg?.songUrl ?? null);
   }, [selected, charts, onPreview]);
@@ -80,6 +82,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   const fileRef = useRef<HTMLInputElement>(null);
   // 社区谱面面板开关
   const [showCommunity, setShowCommunity] = useState(false);
+  // 社区打开标记：打开期间屏蔽选曲预览自动播放（避免导入/关闭时音乐停不下来）
+  const communityOpenRef = useRef(false);
 
   // 列表选择框：绝对定位高亮条，随选中项平滑滑动。
   // 关键：用 useEffect（paint 后）测量 + React state 驱动 transform。若用
@@ -242,7 +246,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
       <div className="cl-wheel-header">
         <h3 className="cl2-list-title">{lang === 'zh' ? '谱面库' : 'Chart Library'}</h3>
         <div className="cl-header-actions">
-          <button className="btn btn-primary" onClick={() => { onPreview(null); setShowCommunity(true); }}
+          <button className="btn btn-primary" onClick={() => { communityOpenRef.current = true; onPreview(null); setShowCommunity(true); }}
             style={{ cursor: 'pointer', padding: '7px 16px', fontSize: 12, background: 'transparent', border: '1px solid rgba(255,255,255,0.14)', color: '#ccc', boxShadow: 'none' }}>{lang === 'zh' ? '社区' : 'Community'}</button>
           <input ref={fileRef} type="file" accept=".zip" onChange={handleImport} style={{ display: 'none' }} id="cl-import" />
           <label htmlFor="cl-import" className="btn btn-primary" style={{ cursor: 'pointer', padding: '7px 16px', fontSize: 12, background: 'transparent', border: '1px solid rgba(255,255,255,0.14)', color: '#ccc', boxShadow: 'none' }}>{lang === 'zh' ? '导入' : 'Import'}</label>
@@ -684,7 +688,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
       </div>
       {showCommunity && (
         <CommunityPanel
-          onClose={() => { setShowCommunity(false); onPreview(sel?.songUrl ?? null); }}
+          onClose={() => { communityOpenRef.current = false; setShowCommunity(false); onPreview(sel?.songUrl ?? null); }}
           onImported={onCommunityImported}
           localCharts={charts}
           lang={lang}

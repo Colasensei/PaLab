@@ -67,6 +67,9 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
   const [landscape, setLandscape] = useState(window.innerWidth > window.innerHeight);
   const pageSize = 15;
   const listRef = useRef<HTMLDivElement>(null);
+  // 详情预览音频：卸载时停止，防止声音残留
+  const audioRef = useRef<HTMLAudioElement>(null);
+  useEffect(() => () => { audioRef.current?.pause(); }, []);
 
   // 横竖屏自适应
   useEffect(() => {
@@ -189,7 +192,7 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
           </div>
           <div className="cp-detail-sub">{lang === 'zh' ? '下载' : 'DL'} {c.downloads}{c.fileSize ? ` · ${fmtSize(c.fileSize)}` : ''}</div>
           {(pkg?.description || c.desc) && <p className="cp-detail-desc">{pkg?.description || c.desc}</p>}
-          {pkg?.songUrl && <audio controls preload="none" src={pkg.songUrl} className="cp-audio" />}
+          {pkg?.songUrl && <audio ref={audioRef} controls preload="none" src={pkg.songUrl} className="cp-audio" />}
           <div className="cp-detail-actions">
             <button className="btn btn-primary cp-dl" disabled={downloading !== null || owned || loadingDetail} onClick={() => download(c)} style={btnStyle}>
               {owned ? (lang === 'zh' ? '已拥有' : 'Owned')
