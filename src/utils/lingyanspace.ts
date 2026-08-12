@@ -38,6 +38,16 @@ export async function getAllPackages(softwareId: string): Promise<LsPackage[]> {
   return (json.data || []).filter((d: LsPackage) => !d.isDeleted);
 }
 
+/** 下载地址：dev 走 vite /api/unauth 代理绕过 CORS；生产直连（同 SettingsPanel 素材修复） */
+export function resolveDownloadUrl(fileUrl: string | null): string | null {
+  if (!fileUrl) return null;
+  if (import.meta.env.DEV) {
+    const m = fileUrl.match(/^https?:\/\/yarp\.lingyanspace\.com\/UpgradeServer\/UnauthorFolder\/UpgradeProxy\/(.+)$/);
+    if (m) return '/api/unauth/' + m[1];
+  }
+  return fileUrl;
+}
+
 // ── 谱面元数据键值对解析（versionDes 字符串：曲师/谱师/难度/定级/简介） ──
 export interface ChartMeta {
   artist: string;
