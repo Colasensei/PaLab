@@ -7222,6 +7222,9 @@ body::after {
   text-align: center;
 }
 
+/* About 复用公告叠加页框架：顶部返回 + 标题 + 内容滚动（同 .ann-overlay） */
+.about-overlay .about-list { align-items: center; }
+
 .about-logo {
   font-size: 42px;
   font-weight: 900;

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Lang } from '@/utils/lang';
 
 interface Props {
@@ -328,37 +329,42 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
     </div>
   );
 
-  return (
-    <div className="screen about-screen">
-      {/* 关闭按钮 */}
-      <button className="about-close" onClick={onClose}>✕</button>
-
-      {/* 宽屏：双栏布局 */}
-      <div className="about-layout about-wide">
-        <div className="about-left">{infoContent}</div>
-        <div className="about-right">{changelogContent}</div>
+  return createPortal(
+    <div className="ann-overlay about-overlay">
+      <div className="ann-top">
+        <button className="btn btn-primary ann-back" onClick={onClose}>{lang === 'zh' ? '返回' : 'Back'}</button>
+        <h3 className="ann-title">{lang === 'zh' ? '关于' : 'About'}</h3>
+        <span className="ann-count">Alpha 6.1</span>
       </div>
-
-      {/* 竖屏：标签切换 */}
-      <div className="about-tabs about-narrow">
-        <div className="about-tab-bar">
-          <button
-            className={`about-tab ${tab === 'info' ? 'active' : ''}`}
-            onClick={() => setTab('info')}
-          >
-            {lang === 'zh' ? '关于' : 'About'}
-          </button>
-          <button
-            className={`about-tab ${tab === 'changelog' ? 'active' : ''}`}
-            onClick={() => setTab('changelog')}
-          >
-            {lang === 'zh' ? '更新日志' : 'Changelog'}
-          </button>
+      <div className="ann-list about-list">
+        {/* 宽屏：双栏布局 */}
+        <div className="about-layout about-wide">
+          <div className="about-left">{infoContent}</div>
+          <div className="about-right">{changelogContent}</div>
         </div>
-        <div className="about-tab-content">
-          {tab === 'info' ? infoContent : changelogContent}
+
+        {/* 竖屏：标签切换 */}
+        <div className="about-tabs about-narrow">
+          <div className="about-tab-bar">
+            <button
+              className={`about-tab ${tab === 'info' ? 'active' : ''}`}
+              onClick={() => setTab('info')}
+            >
+              {lang === 'zh' ? '关于' : 'About'}
+            </button>
+            <button
+              className={`about-tab ${tab === 'changelog' ? 'active' : ''}`}
+              onClick={() => setTab('changelog')}
+            >
+              {lang === 'zh' ? '更新日志' : 'Changelog'}
+            </button>
+          </div>
+          <div className="about-tab-content">
+            {tab === 'info' ? infoContent : changelogContent}
+          </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
