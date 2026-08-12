@@ -17,7 +17,7 @@ interface MainMenuProps {
   onUpdate: () => void;
   /** 打开公告 / 关于 */
   onAnnouncement: () => void;
-  /** 是否有未读公告（首页“关于”黄色标记） */
+  /** 是否有未读公告（首页“公告”黄色标记） */
   hasUnreadAnn: boolean;
   onDev: () => void;
   onOpenMusicPlayer: () => void;
@@ -132,7 +132,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           <span className="menu-credit-item" onClick={handleAuthorClick}>by ColaSensei</span>
           <span className="menu-credit-dot">·</span>
           <span className={`menu-credit-item${hasUnreadAnn ? ' menu-credit-unread' : ''}`} onClick={onAnnouncement}>
-            {lang === 'zh' ? '关于' : 'About'}
+            {lang === 'zh' ? '公告' : 'Announcements'}
           </span>
           <span className="menu-credit-dot">·</span>
           <span className="menu-credit-item" onClick={() => setShowDonate(true)}>

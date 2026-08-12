@@ -22,7 +22,7 @@ import {
   MusicPlayer,
 } from '@/components';
 import { checkUpdate, getLocalVersion, UpdateInfo } from '@/utils/updateChecker';
-import { getAllPackages, getReadAnnouncements, markAllAnnouncementsRead, SW_ANNOUNCEMENT, LsPackage } from '@/utils/lingyanspace';
+import { getAllPackages, getReadAnnouncements, markAnnouncementRead, SW_ANNOUNCEMENT, LsPackage } from '@/utils/lingyanspace';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { App as CapacitorApp } from '@capacitor/app';
 import '@/styles/global.css';
@@ -193,10 +193,13 @@ const App: React.FC = () => {
     });
   }, []);
 
-  // 关闭公告：全部标记已读
+  // 关闭公告：仅置顶(release)标记已读（逐条记录）；beta 未读保留，首页“公告”仍标黄
   const closeAnnouncement = useCallback(() => {
-    markAllAnnouncementsRead(announcements.map(a => a.id));
-    setHasUnreadAnn(false);
+    announcements.forEach(a => {
+      if (a.packageStatus === 'release') markAnnouncementRead(a.id);
+    });
+    const read = getReadAnnouncements();
+    setHasUnreadAnn(announcements.some(a => !read.has(a.id) && a.packageStatus !== 'release'));
     setShowAnnouncement('none');
   }, [announcements]);
 
@@ -438,14 +441,15 @@ const App: React.FC = () => {
     }
   }, []); // 仅挂载时执行一次
 
-  // 拉取公告（EULA 同意后才弹）：有未读 release 自动弹窗；beta 未读只标黄首页“关于”
+  // 拉取公告（EULA 同意后才弹）：有未读置顶(release)自动弹窗，置顶已读则不弹；未读的其他公告首页“公告”标黄
   useEffect(() => {
     if (!eulaAccepted) return;
     getAllPackages(SW_ANNOUNCEMENT).then(list => {
       setAnnouncements(list);
       const read = getReadAnnouncements();
       const unread = list.filter(a => !read.has(a.id));
-      setHasUnreadAnn(unread.length > 0);
+      // 黄色：存在未读的非置顶公告（置顶未读走弹窗提示）
+      setHasUnreadAnn(unread.some(a => a.packageStatus !== 'release'));
       if (unread.some(a => a.packageStatus === 'release')) setShowAnnouncement('auto');
     }).catch(() => { /* 网络失败不打扰 */ });
   }, [eulaAccepted]);
@@ -1038,7 +1042,7 @@ const App: React.FC = () => {
 
       {/* 公告 / 关于：启动检测到未读 release 自动弹出；手动从首页“关于”进入 */}
       {showAnnouncement !== 'none' && (
-        <AnnouncementModal announcements={announcements} onClose={closeAnnouncement} lang={lang} />
+        <AnnouncementModal announcements={announcements} readSet={getReadAnnouncements()} onClose={closeAnnouncement} lang={lang} />
       )}
     </div>
   );
