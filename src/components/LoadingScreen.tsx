@@ -3,6 +3,7 @@ import { Lang } from '@/utils/lang';
 import { getRandomTip } from '@/utils/tips';
 import { generateBlurredBg } from '@/utils/blurImage';
 import { runWithLoading } from '@/utils/loading';
+import { getMlProgress } from '@/utils/mlLearner';
 
 interface Props {
   onComplete: () => void;
@@ -15,11 +16,25 @@ interface Props {
   task?: () => Promise<void>;
   /** 最小时长 ms（默认 2500） */
   minDuration?: number;
+  /** 机器学习学习进行中（显示学习进度） */
+  mlLearning?: boolean;
 }
 
-export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true, chartInfo, coverOverride, pageTitle, task, minDuration }) => {
+export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true, chartInfo, coverOverride, pageTitle, task, minDuration, mlLearning = false }) => {
   const [tip] = useState(() => getRandomTip(lang));
   const [staticBg, setStaticBg] = useState<string | null>(null);
+  // 机器学习学习进度
+  const [mlText, setMlText] = useState('');
+  useEffect(() => {
+    if (!mlLearning) return;
+    const iv = setInterval(() => {
+      const p = getMlProgress();
+      setMlText(p.total > 0
+        ? `${lang === 'zh' ? '机器学习：分析谱面' : 'ML: learning chart'} ${p.cur}/${p.total}`
+        : (lang === 'zh' ? '机器学习：学习中...' : 'ML: learning...'));
+    }, 120);
+    return () => clearInterval(iv);
+  }, [mlLearning, lang]);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   // 背景：优先曲绘，无曲绘回退封面（模糊背景），再回退封面覆盖参数
@@ -83,6 +98,7 @@ export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true
           <span className="ld-loading-text">LOADING</span>
           <div className="ld-loading-bar" />
         </div>
+        {mlLearning && <div className="ld-ml">{mlText}</div>}
       </div>
     </div>
   );

@@ -27,7 +27,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onConfirm, onBack, lan
   const [trackCount, setTrackCount] = useState<TrackCount>(4);
   const [chartConstant, setChartConstant] = useState(8.0);
   const [enableHolds, setEnableHolds] = useState(true);
-  const [enableSplit, setEnableSplit] = useState(true);
+  const [enableSplit, setEnableSplit] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [songFile, setSongFile] = useState<File | null>(null);
   const [songName, setSongName] = useState<string>('');
@@ -184,13 +184,13 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onConfirm, onBack, lan
 
         <div className="cp-section">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span className="cp-label">{lang === 'zh' ? '脑裂（16+ 定数）' : 'Brain split (16+ const)'}</span>
+            <span className="cp-label">{lang === 'zh' ? '脑裂' : 'Brain split'}</span>
             <label className="toggle-switch">
               <input type="checkbox" checked={enableSplit} onChange={e => setEnableSplit(e.target.checked)} />
               <span className="toggle-slider"></span>
             </label>
           </div>
-          <p className="cp-hint">{lang === 'zh' ? '16 以上定数时可能生成一段 2~4 小节的部分轨道反转（大幅提升难度）' : 'At 16+ const, may insert a 2~4 bar partial track reverse (big difficulty boost)'}</p>
+          <p className="cp-hint">{lang === 'zh' ? '开启后自动生成一定会插入一段部分轨道反转；关闭则不生成（默认关闭）' : 'On: auto-gen always inserts a partial track reverse; Off: never (default off)'}</p>
         </div>
 
         <div className="cp-section">

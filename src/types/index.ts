@@ -81,8 +81,10 @@ export interface GameConfig {
   videoBlur?: boolean;
   /** 背景视频是否播放声音（默认静音） */
   videoSound?: boolean;
-  /** 自动生成时是否可能产生脑裂（16+ 定数且开启） */
+  /** 自动生成时是否生成脑裂：开启必生成、关闭不生成（默认关闭） */
   enableSplit?: boolean;
+  /** 机器学习：进入加载界面时后台学习谱面库编排（默认关闭） */
+  machineLearning?: boolean;
   /** 编辑器元数据（OSU 导入预填） */
   chartTitle?: string;
   chartArtist?: string;

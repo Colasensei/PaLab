@@ -23,6 +23,7 @@ import {
 } from '@/components';
 import { checkUpdate, getLocalVersion, UpdateInfo } from '@/utils/updateChecker';
 import { getAllPackages, getReadAnnouncements, markAllAnnouncementsRead, SW_ANNOUNCEMENT, LsPackage } from '@/utils/lingyanspace';
+import { learnFromLibrary, resetMlProgress } from '@/utils/mlLearner';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { App as CapacitorApp } from '@capacitor/app';
 import '@/styles/global.css';
@@ -633,15 +634,18 @@ const App: React.FC = () => {
       if (generated.splits.length > 0) setConfig(prev => ({ ...prev, splits: generated.splits }));
     }
     chartGeneratedRef.current = true;
-    // 设置加载任务：如果之前没有预加载过音频，则在加载画面期间加载
+    // 加载任务：音频预加载 +（可选）机器学习后台学习谱面库
+    const tasks: (() => Promise<void>)[] = [];
     if (config.songUrl) {
-      loadingTaskRef.current = async () => {
-        const d = await audioManager.load(config.songUrl!);
-        setDuration(d);
-      };
-    } else {
-      loadingTaskRef.current = undefined;
+      tasks.push(async () => { const d = await audioManager.load(config.songUrl!); setDuration(d); });
     }
+    if (config.machineLearning) {
+      resetMlProgress();
+      tasks.push(async () => { await learnFromLibrary(); });
+    }
+    loadingTaskRef.current = tasks.length > 0
+      ? async () => { await Promise.all(tasks.map(t => t())); }
+      : undefined;
     navigateTo('loading');
   }, [config, duration, navigateTo, fromEditor]);
 
@@ -936,7 +940,7 @@ const App: React.FC = () => {
       case 'page-loading':
         return <LoadingScreen onComplete={handlePageLoadingComplete} lang={lang} chartInfo={null} uiBlur={settings.uiBlur} coverOverride={pageLoadingBg} pageTitle={pageLoadingLabel} />;
       case 'loading':
-        return <LoadingScreen onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={settings.uiBlur} task={loadingTaskRef.current} />;
+        return <LoadingScreen onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={settings.uiBlur} task={loadingTaskRef.current} mlLearning={!!config.machineLearning} />;
       case 'gameplay':
         return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={settings.uiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} showFPS={settings.showFPS ?? false} keyBindings={settings.keyBindings} gameUiScale={settings.gameUiScale} videoBg={settings.videoBg ?? true} />;
       case 'results':

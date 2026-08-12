@@ -137,6 +137,13 @@ export const SongPanel: React.FC<SongPanelProps> = ({
                   </label>
                 </div>
               )}
+              <div className="sp-card-row">
+                <span className="sp-card-label">{lang === 'zh' ? '机器学习' : 'ML'}</span>
+                <label className="toggle-switch">
+                  <input type="checkbox" checked={config.machineLearning ?? false} onChange={e => onConfigChange({ ...config, machineLearning: e.target.checked })} />
+                  <span className="toggle-slider"></span>
+                </label>
+              </div>
             </div>
 
             {/* 高级，折叠的 */}

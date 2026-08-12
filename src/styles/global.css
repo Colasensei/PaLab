@@ -2138,6 +2138,12 @@ body::after {
 .ld-loading-wrap {
   position: relative; display: inline-block;
 }
+/* 机器学习学习进度 */
+.ld-ml {
+  margin-top: 10px; font-size: 11px; letter-spacing: 1px;
+  color: rgba(255,255,255,0.55); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 .ld-loading-text {
   position: relative; z-index: 2;
   font-size: clamp(20px, 5vw, 32px);

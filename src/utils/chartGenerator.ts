@@ -93,10 +93,9 @@ export function generateChart(config: GameConfig, durationMs: number | null, ena
   return { notes, splits };
 }
 
-/** 自动生成脑裂段：定数 ≥16 + enableSplit 开关，约 55% 概率插入一段 4~8 小节脑裂（通常两个轨道） */
+/** 自动生成脑裂段：开启必生成、关闭不生成（0.7.1+）；插入一段 4~8 小节脑裂（通常两个轨道） */
 function generateSplits(config: GameConfig, durationMs: number): BrainSplitSection[] {
-  if (!config.enableSplit || config.chartConstant < 16 || durationMs <= 4000) return [];
-  if (Math.random() > 0.55) return [];
+  if (!config.enableSplit || durationMs <= 4000) return [];
   const beatMs = 60000 / Math.max(30, config.bpm);
   const [beatsPerMeasure] = config.timeSignature.split('/').map(Number);
   const measureMs = beatMs * Math.max(2, beatsPerMeasure);
