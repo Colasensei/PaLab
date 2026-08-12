@@ -2,17 +2,23 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import { Lang } from '@/utils/lang';
 import { parseChartZip } from '@/utils/chartParser';
+import { getAllPackages, parseChartMeta, ownedKey, SW_CHART_LIBRARY } from '@/utils/lingyanspace';
 import type { ChartPackage } from './ChartLibrary';
 
-/** 社区服务地址：暂用本地 PalabHub（localhost），内网穿透后再改为公网域名 */
-const COMMUNITY_API = 'http://localhost:8787';
-
 interface CommunityChart {
-  id: number; title: string; artist: string; author: string;
-  difficulty: string; chart_constant: number; description: string;
-  size: number; downloads: number; cover_url: string | null;
-  illustration_url: string | null; audio_url: string | null;
-  file_name: string; created_at: string;
+  id: string;
+  title: string;
+  artist: string;
+  author: string;
+  difficulty: string;
+  constant: number;
+  desc: string;
+  downloads: number;
+  fileUrl: string | null;
+  fileSize: string;
+  createTime: number;
+  /** 详情 zip 解压后的谱面包（undefined=未加载 / null=加载失败） */
+  pkg?: ChartPackage | null;
 }
 
 const DIFFS = ['EZ', 'NM', 'HD', 'IN', 'AT'];
@@ -31,12 +37,14 @@ const SORTS = [
 ];
 const btnStyle: React.CSSProperties = { cursor: 'pointer', padding: '6px 14px', fontSize: 12, background: 'transparent', border: '1px solid rgba(255,255,255,0.14)', color: '#ccc', boxShadow: 'none', whiteSpace: 'nowrap' };
 
-function fmtSize(n: number) {
+function fmtSize(s: string) {
+  const n = parseInt(s, 10);
+  if (!n) return '';
+  if (n >= 1024 * 1024 * 1024) return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB';
   if (n >= 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
   if (n >= 1024) return (n / 1024).toFixed(0) + ' KB';
   return n + ' B';
 }
-const assetUrl = (p: string | null) => (p ? `${COMMUNITY_API}${p}` : '');
 
 interface Props {
   onClose: () => void;
@@ -47,15 +55,14 @@ interface Props {
 }
 
 export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localCharts, lang }) => {
-  const [items, setItems] = useState<CommunityChart[]>([]);
+  const [all, setAll] = useState<CommunityChart[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
   const [q, setQ] = useState('');
   const [diff, setDiff] = useState('');
   const [sort, setSort] = useState('latest');
-  const [downloading, setDownloading] = useState<number | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
   const [sel, setSel] = useState<CommunityChart | null>(null);
   const [landscape, setLandscape] = useState(window.innerWidth > window.innerHeight);
   const pageSize = 15;
@@ -70,72 +77,123 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
 
   // 已拥有：完全匹配 标题 + 曲师 + 谱师 + 难度
   const ownedKeys = useMemo(
-    () => new Set(localCharts.map(c => `${c.title}||${c.artist}||${c.author}||${c.difficulty}`)),
+    () => new Set(localCharts.map(c => ownedKey(c.title, c.artist, c.author, c.difficulty))),
     [localCharts],
   );
   const isOwned = useCallback((c: { title: string; artist: string; author: string; difficulty: string }) =>
-    ownedKeys.has(`${c.title}||${c.artist}||${c.author}||${c.difficulty}`), [ownedKeys]);
+    ownedKeys.has(ownedKey(c.title, c.artist, c.author, c.difficulty)), [ownedKeys]);
 
-  const load = useCallback((p = page) => {
+  // 拉取 lingyanspace 谱面库全部版本列表
+  useEffect(() => {
     setLoading(true); setError('');
-    const params = new URLSearchParams({ page: String(p), size: String(pageSize), sort });
-    if (q.trim()) params.set('q', q.trim());
-    if (diff) params.set('diff', diff);
-    fetch(`${COMMUNITY_API}/api/charts?${params}`)
-      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(d => { setItems(d.items || []); setTotal(d.total || 0); setPage(d.page || 1); })
+    getAllPackages(SW_CHART_LIBRARY)
+      .then(list => {
+        setAll(list.map(p => {
+          const m = parseChartMeta(p.versionDes);
+          return {
+            id: p.id,
+            title: p.versionNum || '未知谱面',
+            artist: m.artist, author: m.author, difficulty: m.difficulty,
+            constant: m.constant, desc: m.desc,
+            downloads: p.downloadCount || 0,
+            fileUrl: p.fileUrl, fileSize: p.fileSize,
+            createTime: parseInt(p.createTimeStamp, 10) || 0,
+          };
+        }));
+      })
       .catch(e => setError(e.message || '网络错误'))
       .finally(() => setLoading(false));
-    if (listRef.current) listRef.current.scrollTop = 0;
-  }, [page, q, diff, sort]);
+  }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // 客户端搜索 / 筛选 / 排序
+  const filtered = useMemo(() => {
+    let list = all;
+    if (q.trim()) {
+      const t = q.trim().toLowerCase();
+      list = list.filter(c =>
+        c.title.toLowerCase().includes(t) || c.artist.toLowerCase().includes(t) || c.author.toLowerCase().includes(t));
+    }
+    if (diff) list = list.filter(c => c.difficulty === diff);
+    const arr = [...list];
+    if (sort === 'downloads') arr.sort((a, b) => b.downloads - a.downloads);
+    else if (sort === 'constant') arr.sort((a, b) => b.constant - a.constant);
+    else if (sort === 'title') arr.sort((a, b) => a.title.localeCompare(b.title));
+    else arr.sort((a, b) => b.createTime - a.createTime);
+    return arr;
+  }, [all, q, diff, sort]);
+
+  const total = filtered.length;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const items = filtered.slice((page - 1) * pageSize, page * pageSize);
+  useEffect(() => { if (page > pages && pages >= 1) setPage(pages); }, [page, pages]);
+  useEffect(() => { if (listRef.current) listRef.current.scrollTop = 0; }, [page, q, diff, sort]);
 
   const apply = () => { setPage(1); };
 
-  const download = async (id: number) => {
-    setDownloading(id);
+  // 详情：点进后下载 zip 实时解压
+  const loadDetail = useCallback((c: CommunityChart) => {
+    if (!c.fileUrl) { setSel(prev => prev && prev.id === c.id ? { ...prev, pkg: null } : prev); return; }
+    fetch(c.fileUrl)
+      .then(r => { if (!r.ok) throw new Error('下载失败'); return r.blob(); })
+      .then(blob => parseChartZip(blob, `${c.title}.zip`))
+      .then(pkg => setSel(prev => prev && prev.id === c.id ? { ...prev, pkg } : prev))
+      .catch(() => setSel(prev => prev && prev.id === c.id ? { ...prev, pkg: null } : prev));
+  }, []);
+
+  const select = useCallback((c: CommunityChart) => {
+    if (c.pkg === undefined) { setSel({ ...c, pkg: null }); loadDetail(c); }
+    else setSel(c);
+  }, [loadDetail]);
+
+  // 导入本地库（用已解压的 pkg，或先下载）
+  const download = useCallback(async (c: CommunityChart) => {
+    setDownloading(c.id);
     try {
-      const resp = await fetch(`${COMMUNITY_API}/api/charts/${id}/download`);
-      if (!resp.ok) throw new Error('下载失败');
-      const blob = await resp.blob();
-      const pkg = await parseChartZip(blob, `community-${id}.zip`);
+      let pkg = c.pkg ?? null;
+      if (!pkg && c.fileUrl) {
+        const r = await fetch(c.fileUrl);
+        if (!r.ok) throw new Error('下载失败');
+        pkg = await parseChartZip(await r.blob(), `${c.title}.zip`);
+      }
+      if (!pkg) throw new Error('无法获取谱面');
       onImported(pkg);
       alert(lang === 'zh' ? '已下载并导入谱面库' : 'Downloaded & added to library');
     } catch (e: any) {
       alert((lang === 'zh' ? '导入失败：' : 'Import failed: ') + (e?.message || ''));
     }
     setDownloading(null);
-  };
+  }, [onImported, lang]);
 
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-
-  // 详情内容（横屏右侧面板 / 竖屏全屏共用）
+  // 详情内容（横屏右侧面板 / 竖屏全屏共用）：基于已解压的 zip 预览
   const renderDetail = (c: CommunityChart) => {
     const ds = DIFF_STYLE[c.difficulty] || { bg: 'rgba(255,255,255,0.15)', fg: '#fff' };
     const owned = isOwned(c);
+    const pkg = c.pkg;
+    const loadingDetail = pkg === null;
+    const cover = pkg ? (pkg.illustrationUrl || pkg.coverUrl) : null;
     return (
       <div className="cp-detail-inner">
         <div className="cp-detail-coverwrap">
-          {c.illustration_url || c.cover_url ? (
-            <img className="cp-detail-cover" src={assetUrl(c.illustration_url || c.cover_url)} alt="" />
+          {cover ? (
+            <img className="cp-detail-cover" src={cover} alt="" />
           ) : (
-            <div className="cp-detail-cover cp-detail-cover-empty" />
+            <div className="cp-detail-cover cp-detail-cover-empty">{loadingDetail ? (lang === 'zh' ? '加载中...' : 'Loading...') : ''}</div>
           )}
         </div>
         <div className="cp-detail-info">
           <h2 className="cp-detail-title">{c.title}</h2>
           <div className="cp-detail-meta">{lang === 'zh' ? '曲师' : 'Artist'}：{c.artist || '—'} · {lang === 'zh' ? '谱师' : 'Mapper'}：{c.author || '—'}</div>
           <div className="cp-detail-meta">
-            <span className="cp-diff" style={{ background: ds.bg, color: ds.fg }}>{c.difficulty}</span>
-            <span style={{ marginLeft: 8 }}>{lang === 'zh' ? '定数' : 'Const'} {c.chart_constant.toFixed(1)}</span>
+            {c.difficulty && <span className="cp-diff" style={{ background: ds.bg, color: ds.fg }}>{c.difficulty}</span>}
+            {c.constant > 0 && <span style={{ marginLeft: 8 }}>{lang === 'zh' ? '定级' : 'Const'} {c.constant.toFixed(1)}</span>}
           </div>
-          <div className="cp-detail-sub">{lang === 'zh' ? '下载' : 'DL'} {c.downloads} · {fmtSize(c.size)} · {c.created_at}</div>
-          {c.description && <p className="cp-detail-desc">{c.description}</p>}
-          {c.audio_url && <audio controls preload="none" src={assetUrl(c.audio_url)} className="cp-audio" />}
+          <div className="cp-detail-sub">{lang === 'zh' ? '下载' : 'DL'} {c.downloads}{c.fileSize ? ` · ${fmtSize(c.fileSize)}` : ''}</div>
+          {(pkg?.description || c.desc) && <p className="cp-detail-desc">{pkg?.description || c.desc}</p>}
+          {pkg?.songUrl && <audio controls preload="none" src={pkg.songUrl} className="cp-audio" />}
           <div className="cp-detail-actions">
-            <button className="btn btn-primary cp-dl" disabled={downloading !== null || owned} onClick={() => download(c.id)} style={btnStyle}>
+            <button className="btn btn-primary cp-dl" disabled={downloading !== null || owned || loadingDetail} onClick={() => download(c)} style={btnStyle}>
               {owned ? (lang === 'zh' ? '已拥有' : 'Owned')
+                : loadingDetail ? (lang === 'zh' ? '加载中...' : '...')
                 : downloading === c.id ? (lang === 'zh' ? '导入中...' : '...')
                 : (lang === 'zh' ? '下载并导入' : 'Get & Import')}
             </button>
@@ -190,8 +248,8 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
             const ds = DIFF_STYLE[c.difficulty] || { bg: 'rgba(255,255,255,0.15)', fg: '#fff' };
             const owned = isOwned(c);
             return (
-              <div className={`cp-item${sel && sel.id === c.id ? ' selected' : ''}`} key={c.id} onClick={() => setSel(c)}>
-                {c.cover_url ? <img className="cp-cover" src={assetUrl(c.cover_url)} alt="" /> : <div className="cp-cover" />}
+              <div className={`cp-item${sel && sel.id === c.id ? ' selected' : ''}`} key={c.id} onClick={() => select(c)}>
+                <div className="cp-cover" />
                 <div className="cp-info">
                   <div className="cp-item-title">
                     {c.title}
@@ -200,13 +258,13 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
                   <div className="cp-item-meta">
                     {c.artist || (lang === 'zh' ? '未知曲师' : 'Unknown')}<span className="cp-sep">/</span>
                     {c.author || (lang === 'zh' ? '未知谱师' : 'Unknown')}
-                    <span className="cp-diff" style={{ background: ds.bg, color: ds.fg }}>{c.difficulty}</span>
-                    <span style={{ opacity: 0.5 }}>{c.chart_constant.toFixed(1)}</span>
+                    {c.difficulty && <span className="cp-diff" style={{ background: ds.bg, color: ds.fg }}>{c.difficulty}</span>}
+                    {c.constant > 0 && <span style={{ opacity: 0.5 }}>{c.constant.toFixed(1)}</span>}
                   </div>
-                  <div className="cp-item-sub">{lang === 'zh' ? '下载' : 'DL'} {c.downloads} · {fmtSize(c.size)}</div>
+                  <div className="cp-item-sub">{lang === 'zh' ? '下载' : 'DL'} {c.downloads}{c.fileSize ? ` · ${fmtSize(c.fileSize)}` : ''}</div>
                 </div>
                 <button className="btn btn-primary cp-dl" disabled={downloading !== null || owned}
-                  onClick={e => { e.stopPropagation(); download(c.id); }} style={btnStyle}>
+                  onClick={e => { e.stopPropagation(); download(c); }} style={btnStyle}>
                   {owned ? (lang === 'zh' ? '已拥有' : 'Owned')
                     : downloading === c.id ? (lang === 'zh' ? '导入中...' : '...')
                     : (lang === 'zh' ? '下载导入' : 'Get')}

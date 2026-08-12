@@ -15,6 +15,10 @@ interface MainMenuProps {
   onAbout: () => void;
   onHelp: () => void;
   onUpdate: () => void;
+  /** 打开公告 / 关于 */
+  onAnnouncement: () => void;
+  /** 是否有未读公告（首页“关于”黄色标记） */
+  hasUnreadAnn: boolean;
   onDev: () => void;
   onOpenMusicPlayer: () => void;
   rks: number;
@@ -28,7 +32,7 @@ interface MainMenuProps {
 }
 
 export const MainMenu: React.FC<MainMenuProps> = ({
-  onChartLibrary, onCreateChart, onSettings, onAbout, onRecords, onHelp, onUpdate, onDev, onOpenMusicPlayer, rks, lang, devMode, onToggleDev,
+  onChartLibrary, onCreateChart, onSettings, onAbout, onRecords, onHelp, onUpdate, onAnnouncement, hasUnreadAnn, onDev, onOpenMusicPlayer, rks, lang, devMode, onToggleDev,
   account, onSaveAccount,
   showMascot, hasUpdate,
 }) => {
@@ -123,9 +127,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           <span className="brand-char">P</span><span className="brand-char">alab</span>
         </div>
 
-        {/* by + 捐赠 */}
+        {/* by + 关于 + 捐赠 */}
         <div className="menu-credit-bar">
           <span className="menu-credit-item" onClick={handleAuthorClick}>by ColaSensei</span>
+          <span className="menu-credit-dot">·</span>
+          <span className={`menu-credit-item${hasUnreadAnn ? ' menu-credit-unread' : ''}`} onClick={onAnnouncement}>
+            {lang === 'zh' ? '关于' : 'About'}
+          </span>
           <span className="menu-credit-dot">·</span>
           <span className="menu-credit-item" onClick={() => setShowDonate(true)}>
             {lang === 'zh' ? '捐赠感谢' : 'Donate'}

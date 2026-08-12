@@ -22,6 +22,8 @@ import {
   MusicPlayer,
 } from '@/components';
 import { checkUpdate, getLocalVersion, UpdateInfo } from '@/utils/updateChecker';
+import { getAllPackages, getReadAnnouncements, markAllAnnouncementsRead, SW_ANNOUNCEMENT, LsPackage } from '@/utils/lingyanspace';
+import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { App as CapacitorApp } from '@capacitor/app';
 import '@/styles/global.css';
 
@@ -174,6 +176,11 @@ const App: React.FC = () => {
   const [pendingUpdate, setPendingUpdate] = useState<UpdateInfo | null>(null);
   const [showUpdateBar, setShowUpdateBar] = useState(false);
 
+  // 公告 / 关于（lingyanspace 版本列表）
+  const [announcements, setAnnouncements] = useState<LsPackage[]>([]);
+  const [showAnnouncement, setShowAnnouncement] = useState<'none' | 'auto' | 'manual'>('none');
+  const [hasUnreadAnn, setHasUnreadAnn] = useState(false);
+
   const devMode = settings.devMode;
 
   // 启动时自动检查更新
@@ -185,6 +192,13 @@ const App: React.FC = () => {
       }
     });
   }, []);
+
+  // 关闭公告：全部标记已读
+  const closeAnnouncement = useCallback(() => {
+    markAllAnnouncementsRead(announcements.map(a => a.id));
+    setHasUnreadAnn(false);
+    setShowAnnouncement('none');
+  }, [announcements]);
 
   // 手动制作流程状态
   const [manualConfig, setManualConfig] = useState<GameConfig | null>(null);
@@ -423,6 +437,18 @@ const App: React.FC = () => {
       setScreenStack(['menu', 'profile']);
     }
   }, []); // 仅挂载时执行一次
+
+  // 拉取公告（EULA 同意后才弹）：有未读 release 自动弹窗；beta 未读只标黄首页“关于”
+  useEffect(() => {
+    if (!eulaAccepted) return;
+    getAllPackages(SW_ANNOUNCEMENT).then(list => {
+      setAnnouncements(list);
+      const read = getReadAnnouncements();
+      const unread = list.filter(a => !read.has(a.id));
+      setHasUnreadAnn(unread.length > 0);
+      if (unread.some(a => a.packageStatus === 'release')) setShowAnnouncement('auto');
+    }).catch(() => { /* 网络失败不打扰 */ });
+  }, [eulaAccepted]);
 
   // ============ 设置 ============
   const handleSettingsSave = useCallback((s: AppSettings) => {
@@ -889,7 +915,7 @@ const App: React.FC = () => {
   const renderScreen = (s: AppScreen) => {
     switch (s) {
       case 'menu':
-        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onDev={goToDev} onOpenMusicPlayer={handleOpenMusicPlayer} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={false} hasUpdate={pendingUpdate !== null} />;
+        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onAnnouncement={() => setShowAnnouncement('manual')} hasUnreadAnn={hasUnreadAnn} onDev={goToDev} onOpenMusicPlayer={handleOpenMusicPlayer} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={false} hasUpdate={pendingUpdate !== null} />;
       case 'chart-library':
         return <ChartLibrary key={chartListKey} onPlay={handleChartPlay} onSettings={goToSettings} onPreview={handlePreview} lang={lang} highScores={chartScores} uiBlur={settings.uiBlur} />;
       case 'settings':
@@ -1010,6 +1036,10 @@ const App: React.FC = () => {
 
       {/* 返回键已移至顶栏 Logo 左侧 */}
 
+      {/* 公告 / 关于：启动检测到未读 release 自动弹出；手动从首页“关于”进入 */}
+      {showAnnouncement !== 'none' && (
+        <AnnouncementModal announcements={announcements} onClose={closeAnnouncement} lang={lang} />
+      )}
     </div>
   );
 };
