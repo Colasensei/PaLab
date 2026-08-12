@@ -1,6 +1,6 @@
 # Palab 数值计算文档
 
-> 最后更新：2026-07-26 | 版本 0.3.5
+> 最后更新：2026-08-12 | 版本 0.7.1
 
 本文档详述 Palab 中所有数值计算公式、参数与逻辑。所有可调参数存储在 `src/utils/devOverrides.ts` 中，通过 `getDevOverride(key)` 读取。
 
@@ -12,9 +12,9 @@
 
 | 判定          | 条件                      | 默认窗口          |
 | ----------- | ----------------------- | ------------- |
-| **Perfect** | $                       | \text{offset} |
-| **Good**    | $                       | \text{offset} |
-| **Bad**     | $\text{offset} < 0$ 且 $ | \text{offset} |
+| **Perfect** | $\lvert\text{offset}\rvert \le \text{j\_timeB}$ | 80 ms |
+| **Good**    | $\lvert\text{offset}\rvert \le \text{j\_timeA}$ 且不满足 Perfect | 160 ms |
+| **Bad**     | $\text{offset} < 0$ 且 $\lvert\text{offset}\rvert \le \text{j\_timeC}$ | 280 ms |
 | **Miss**    | 其他情况（太晚或未按下）            | —             |
 
 **参数映射：**
@@ -218,10 +218,14 @@ $\text{baseScore} \mathrel{*}= \text{trackFactor}$
 | 双押加成    | $\text{doubleRatio} \times 1.2$                | 0 ~ 1.2 |
 | Hold 加成 | $\text{holdRatio} \times 0.6$                  | 0 ~ 0.6 |
 | 峰值加成    | $\max(0, \text{maxWindowNps} - 8) \times 0.25$ | 0 ~ 1.0 |
+| 脑裂加成    | $\min(2.0, \text{splitCoverage} \times 4.0)$   | 0 ~ 2.0 |
 
-$\text{chartConstant} = \text{clamp}(\text{baseScore} + \text{doubleBonus} + \text{holdBonus} + \text{peakBonus},\ 1.0,\ 18.0)$
+$\text{chartConstant} = \text{clamp}((\text{baseScore} + \text{doubleBonus} + \text{holdBonus} + \text{peakBonus} + \text{splitBonus}) \times 0.93,\ 1.0,\ 18.0)$
 
 最终保留一位小数。
+
+> **0.93 校准（2026-08 新增）：** 实测分析定级整体偏高，统一 ×0.93 下调（实际难度通常低于分析值）。
+> `splitCoverage` 为脑裂段覆盖时长占全曲比例，仅在有脑裂段（`splits`）时生效。
 
 > **自洽保证：** 自动生成器 (`src/utils/chartGenerator.ts`) 与手动分析器共用同一 NPS↔定数映射
 > (`npsToConstant` / `constantToNps`)，因此「选定定数生成 → 丢进编辑器分析」的 round-trip 结果 ≈ 原定数。
