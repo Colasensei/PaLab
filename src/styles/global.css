@@ -8272,7 +8272,7 @@ body::after {
 .mp-item.active .mp-item-title { color: #fff; }
 .mp-item-artist { color: rgba(255,255,255,0.4); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mp-item-dur { color: rgba(255,255,255,0.4); font-size: 11px; flex-shrink: 0; }
-.mp-favonly { position: relative; display: inline-flex; align-items: center; gap: 6px; margin-left: auto; cursor: pointer; user-select: none; }
+.mp-favonly { position: relative; display: inline-flex; align-items: center; gap: 6px; margin-left: auto; margin-right: 16px; cursor: pointer; user-select: none; }
 .mp-favonly input { position: absolute; opacity: 0; width: 0; height: 0; }
 .mp-favonly-box { width: 15px; height: 15px; border: 1.5px solid rgba(255,255,255,0.32); border-radius: 4px; background: transparent; position: relative; flex-shrink: 0; transition: all 0.15s; box-sizing: border-box; }
 .mp-favonly input:checked + .mp-favonly-box { background: #FFD700; border-color: #FFD700; box-shadow: 0 0 6px rgba(255,215,0,0.35); }
