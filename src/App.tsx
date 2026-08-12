@@ -22,7 +22,7 @@ import {
   MusicPlayer,
 } from '@/components';
 import { checkUpdate, getLocalVersion, UpdateInfo } from '@/utils/updateChecker';
-import { getAllPackages, getReadAnnouncements, markAnnouncementRead, SW_ANNOUNCEMENT, LsPackage } from '@/utils/lingyanspace';
+import { getAllPackages, getReadAnnouncements, markAllAnnouncementsRead, SW_ANNOUNCEMENT, LsPackage } from '@/utils/lingyanspace';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { App as CapacitorApp } from '@capacitor/app';
 import '@/styles/global.css';
@@ -193,13 +193,10 @@ const App: React.FC = () => {
     });
   }, []);
 
-  // 关闭公告：仅置顶(release)标记已读（逐条记录）；beta 未读保留，首页“公告”仍标黄
+  // 关闭公告：打开看过即视为已读，全部标记；首页“公告”不再标黄、下次不再弹
   const closeAnnouncement = useCallback(() => {
-    announcements.forEach(a => {
-      if (a.packageStatus === 'release') markAnnouncementRead(a.id);
-    });
-    const read = getReadAnnouncements();
-    setHasUnreadAnn(announcements.some(a => !read.has(a.id) && a.packageStatus !== 'release'));
+    markAllAnnouncementsRead(announcements.map(a => a.id));
+    setHasUnreadAnn(false);
     setShowAnnouncement('none');
   }, [announcements]);
 
