@@ -10,12 +10,12 @@
 
 音符判定基于按下时间与音符起始时间的偏差 `offset = pressTime - noteStartTime`（单位 ms）。
 
-| 判定 | 条件 | 默认窗口 |
-|------|------|----------|
-| **Perfect** | $|\text{offset}| \le \text{j\_timeB}$ | 80 ms |
-| **Good** | $|\text{offset}| \le \text{j\_timeA}$ 且不满足 Perfect | 160 ms |
-| **Bad** | $\text{offset} < 0$ 且 $|\text{offset}| \le \text{j\_timeC}$ | 280 ms |
-| **Miss** | 其他情况（太晚或未按下） | — |
+| 判定          | 条件                      | 默认窗口          |
+| ----------- | ----------------------- | ------------- |
+| **Perfect** | $                       | \text{offset} |
+| **Good**    | $                       | \text{offset} |
+| **Bad**     | $\text{offset} < 0$ 且 $ | \text{offset} |
+| **Miss**    | 其他情况（太晚或未按下）            | —             |
 
 **参数映射：**
 | 参数 key | 默认值 | 说明 |
@@ -37,20 +37,20 @@
 
 ### 2.1 单音符分值
 
-$$\text{maxScorePerNote} = \frac{\text{s\_maxScore}}{\text{totalNotes}} = \frac{100,000}{N}$$
+$\text{maxScorePerNote} = \frac{\text{s\_maxScore}}{\text{totalNotes}} = \frac{100,000}{N}$
 
 ### 2.2 判定倍率
 
-| 判定 | 倍率 (`s_perfectRatio` / `s_goodRatio`) | 得分 |
-|------|------------------------------------------|------|
-| Perfect | 1.0 | $\text{maxScorePerNote} \times 1.0$ |
-| Good | 0.8 | $\text{maxScorePerNote} \times 0.8$ |
-| Bad | — | 0 |
-| Miss | — | 0 |
+| 判定      | 倍率 (`s_perfectRatio` / `s_goodRatio`) | 得分                                  |
+| ------- | ------------------------------------- | ----------------------------------- |
+| Perfect | 1.0                                   | $\text{maxScorePerNote} \times 1.0$ |
+| Good    | 0.8                                   | $\text{maxScorePerNote} \times 0.8$ |
+| Bad     | —                                     | 0                                   |
+| Miss    | —                                     | 0                                   |
 
 ### 2.3 总分
 
-$$\text{Score} = \sum_{i=1}^{N} \text{noteScore}_i$$
+$\text{Score} = \sum_{i=1}^{N} \text{noteScore}_i$
 
 最终取整：$\text{Math.round}(\text{Score})$。
 
@@ -60,9 +60,10 @@ $$\text{Score} = \sum_{i=1}^{N} \text{noteScore}_i$$
 
 ACC 是 Good 判定打折扣后的命中率，范围 0~1。
 
-$$\text{ACC} = \frac{P \times 1.0 + G \times w}{N}$$
+$\text{ACC} = \frac{P \times 1.0 + G \times w}{N}$
 
 其中：
+
 - $P$ = Perfect 数量
 - $G$ = Good 数量
 - $N$ = totalNotes
@@ -74,14 +75,14 @@ $$\text{ACC} = \frac{P \times 1.0 + G \times w}{N}$$
 
 ## 4. 评级 (Rating)
 
-| 评级 | 图标 | 条件 |
-|------|------|------|
+| 评级     | 图标          | 条件                                                       |
+| ------ | ----------- | -------------------------------------------------------- |
 | **AP** | All Perfect | $P = N$ 且 $G = 0$ 且 $\text{Bad} = 0$ 且 $\text{Miss} = 0$ |
-| **V** | Full Combo | $\text{Bad} = 0$ 且 $\text{Miss} = 0$ |
-| **S** | S | $\text{Score} \ge 95,000$ |
-| **A** | A | $\text{Score} \ge 90,000$ |
-| **B** | B | $\text{Score} \ge 80,000$ |
-| **C** | C | 其余 |
+| **V**  | Full Combo  | $\text{Bad} = 0$ 且 $\text{Miss} = 0$                     |
+| **S**  | S           | $\text{Score} \ge 95,000$                                |
+| **A**  | A           | $\text{Score} \ge 90,000$                                |
+| **B**  | B           | $\text{Score} \ge 80,000$                                |
+| **C**  | C           | 其余                                                       |
 
 **参数映射：**
 | 参数 key | 默认值 | 说明 |
@@ -98,14 +99,14 @@ $$\text{ACC} = \frac{P \times 1.0 + G \times w}{N}$$
 
 ### 5.1 有效定数
 
-$$\text{effectiveConst} = \text{chartConstant} \times \text{kFactor}(\text{trackCount})$$
+$ \text{effectiveConst} = \text{chartConstant} \times \text{kFactor}(\text{trackCount})$
 
-| 轨道数 | `kFactor` key | 默认值 | 说明 |
-|--------|---------------|--------|------|
-| 2K | `s_kFactor2K` | 0.35 | 大幅降低 |
-| 4K | `s_kFactor4K` | 1.00 | 基准 |
-| 6K | `s_kFactor6K` | 2.20 | 大幅提高 |
-| 8K | `s_kFactor8K` | 3.50 | 大幅提高 |
+| 轨道数 | `kFactor` key | 默认值  | 说明   |
+| --- | ------------- | ---- | ---- |
+| 2K  | `s_kFactor2K` | 0.35 | 大幅降低 |
+| 4K  | `s_kFactor4K` | 1.00 | 基准   |
+| 6K  | `s_kFactor6K` | 2.20 | 大幅提高 |
+| 8K  | `s_kFactor8K` | 3.50 | 大幅提高 |
 
 **设计意图：** 同定数下，更多轨道 = 更高难度 = 更高有效定数。X 轨道的 K 因子大致按 $\frac{X}{4}$ 的比例缩放。
 
@@ -115,9 +116,9 @@ $$\text{effectiveConst} = \text{chartConstant} \times \text{kFactor}(\text{track
 
 **若** $A \ge a_0$（`s_rksAccFloor` = 0.70，即 ACC ≥ 70%）：
 
-$$x = \frac{A \times 100 - 55}{45}$$
+$x = \frac{A \times 100 - 55}{45}$
 
-$$\text{songRKS} = x^2 \times \text{effectiveConst}$$
+$ \text{songRKS} = x^2 \times \text{effectiveConst} $
 
 **若** $A < 0.70$：$\text{songRKS} = 0$（不达标不计分）。
 
@@ -146,9 +147,10 @@ RKS 是所有游玩记录的综合评分。
 
 ### 6.1 公式
 
-$$\text{RKS} = \frac{1}{K}\sum_{i=1}^{K} \text{PP}_i$$
+$\text{RKS} = \frac{1}{K}\sum_{i=1}^{K} \text{PP}_i$
 
 其中：
+
 - $K$ = `s_rksTopN` = **20**（取前 20 个最高 PP）
 - $\text{PP}_i$ = 第 $i$ 高的单曲 PP（过滤 PP > 0 的记录）
 
@@ -164,13 +166,13 @@ RKS 是最强 20 次游玩 PP 的平均值，类似 osu! 的 pp 系统或 Phigro
 
 ### 7.1 定数 → 难度标签
 
-| 定数范围 | 难度标签 | 分界参数 | 默认值 |
-|----------|----------|----------|--------|
-| $< c_1$ | **EZ** | `d_ezMax` | 5.0 |
-| $c_1 \le c < c_2$ | **NM** | `d_nmMax` | 9.0 |
+| 定数范围              | 难度标签   | 分界参数      | 默认值  |
+| ----------------- | ------ | --------- | ---- |
+| $< c_1$           | **EZ** | `d_ezMax` | 5.0  |
+| $c_1 \le c < c_2$ | **NM** | `d_nmMax` | 9.0  |
 | $c_2 \le c < c_3$ | **HD** | `d_hdMax` | 12.5 |
 | $c_3 \le c < c_4$ | **IN** | `d_inMax` | 16.0 |
-| $\ge c_4$ | **AT** | — | — |
+| $\ge c_4$         | **AT** | —         | —    |
 
 ### 7.2 定数范围
 
@@ -184,40 +186,40 @@ chartConstant 有效范围：**1.0 ~ 18.0**（普通模式）/ **0 ~ 25.0**（�
 
 ### 8.1 输入指标
 
-| 指标 | 符号 | 计算方式 |
-|------|------|----------|
-| 音符密度 | NPS | $\text{notes.length} / \text{durationSec}$ |
-| 峰值密度 | maxWindowNps | 1 秒滑动窗口最大音符数 |
-| 双押比例 | doubleRatio | $\text{doubleNotes} / \text{totalNotes}$ |
-| Hold 比例 | holdRatio | $\text{holdNotes} / \text{totalNotes}$ |
+| 指标      | 符号           | 计算方式                                       |
+| ------- | ------------ | ------------------------------------------ |
+| 音符密度    | NPS          | $\text{notes.length} / \text{durationSec}$ |
+| 峰值密度    | maxWindowNps | 1 秒滑动窗口最大音符数                               |
+| 双押比例    | doubleRatio  | $\text{doubleNotes} / \text{totalNotes}$   |
+| Hold 比例 | holdRatio    | $\text{holdNotes} / \text{totalNotes}$     |
 
 ### 8.2 轨道补偿
 
-$$\text{trackFactor} = \left(\frac{4}{\max(2, \text{trackCount})}\right)^{0.25}$$
+$\text{trackFactor} = \left(\frac{4}{\max(2, \text{trackCount})}\right)^{0.25}$
 
 ### 8.3 基础分（NPS → 定数，对标 Phigros）
 
-| NPS 区间 | 公式 |
-|----------|------|
-| $[0, 1.0]$ | $1.0 + \text{NPS} \times 2.0$ |
-| $(1.0, 3.0]$ | $3.0 + (\text{NPS} - 1.0) \times 2.5$ |
-| $(3.0, 5.0]$ | $8.0 + (\text{NPS} - 3.0) \times 1.75$ |
-| $(5.0, 8.0]$ | $11.5 + (\text{NPS} - 5.0) \times 1.5$ |
+| NPS 区间          | 公式                                                        |
+| --------------- | --------------------------------------------------------- |
+| $[0, 1.0]$      | $1.0 + \text{NPS} \times 2.0$                             |
+| $(1.0, 3.0]$    | $3.0 + (\text{NPS} - 1.0) \times 2.5$                     |
+| $(3.0, 5.0]$    | $8.0 + (\text{NPS} - 3.0) \times 1.75$                    |
+| $(5.0, 8.0]$    | $11.5 + (\text{NPS} - 5.0) \times 1.5$                    |
 | $(8.0, \infty)$ | $16.0 + \min(1, \frac{\text{NPS} - 8.0}{2.0}) \times 2.0$ |
 
-$$\text{baseScore} \mathrel{*}= \text{trackFactor}$$
+$\text{baseScore} \mathrel{*}= \text{trackFactor}$
 
 > 参考点：NPS 1→3 (EZ)，NPS 3→8 (HD)，NPS 5→11.5 (IN)，NPS 8→16 (AT)。
 
 ### 8.4 加成
 
-| 加成项 | 公式 | 范围 |
-|--------|------|------|
-| 双押加成 | $\text{doubleRatio} \times 1.2$ | 0 ~ 1.2 |
-| Hold 加成 | $\text{holdRatio} \times 0.6$ | 0 ~ 0.6 |
-| 峰值加成 | $\max(0, \text{maxWindowNps} - 8) \times 0.25$ | 0 ~ 1.0 |
+| 加成项     | 公式                                             | 范围      |
+| ------- | ---------------------------------------------- | ------- |
+| 双押加成    | $\text{doubleRatio} \times 1.2$                | 0 ~ 1.2 |
+| Hold 加成 | $\text{holdRatio} \times 0.6$                  | 0 ~ 0.6 |
+| 峰值加成    | $\max(0, \text{maxWindowNps} - 8) \times 0.25$ | 0 ~ 1.0 |
 
-$$\text{chartConstant} = \text{clamp}(\text{baseScore} + \text{doubleBonus} + \text{holdBonus} + \text{peakBonus},\ 1.0,\ 18.0)$$
+$\text{chartConstant} = \text{clamp}(\text{baseScore} + \text{doubleBonus} + \text{holdBonus} + \text{peakBonus},\ 1.0,\ 18.0)$
 
 最终保留一位小数。
 
@@ -230,7 +232,7 @@ $$\text{chartConstant} = \text{clamp}(\text{baseScore} + \text{doubleBonus} + \t
 
 ### 9.1 基础关系
 
-$$\text{beatInterval} = \frac{60,000}{\text{BPM}} \ \text{ms}$$
+$\text{beatInterval} = \frac{60,000}{\text{BPM}} \ \text{ms}$
 
 例如 BPM 120 → 每拍 500ms，BPM 180 → 每拍 333ms。
 
@@ -248,12 +250,12 @@ $$\text{beatInterval} = \frac{60,000}{\text{BPM}} \ \text{ms}$$
 
 ## 10. Hold 长条规则
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `h_minLength` | 100 ms | 最短 Hold 时长 |
-| `h_releaseRatio` | 0.78 | 松手合格比例（≥78% 即合格） |
-| `h_releaseForgiveness` | 40 ms | 松手宽恕窗口 |
-| `h_completeBuffer` | 600 ms | 自动完成缓冲 |
+| 参数                     | 默认值    | 说明               |
+| ---------------------- | ------ | ---------------- |
+| `h_minLength`          | 100 ms | 最短 Hold 时长       |
+| `h_releaseRatio`       | 0.78   | 松手合格比例（≥78% 即合格） |
+| `h_releaseForgiveness` | 40 ms  | 松手宽恕窗口           |
+| `h_completeBuffer`     | 600 ms | 自动完成缓冲           |
 
 手动录制中：按下 > 120ms 识别为 Hold，> 2000ms 自动截断。
 
@@ -271,13 +273,13 @@ PP 计算时 `autoPlay === true` → PP = 0。
 
 ## 12. 汇总速查表
 
-| 公式 | 表达式 |
-|------|--------|
-| 单个 Perfect 得分 | $100,000 / N$ |
-| 单个 Good 得分 | $100,000 / N \times 0.8$ |
-| ACC | $(P + G \times 0.65) / N$ |
-| 有效定数 | $\text{chartConstant} \times \text{kFactor}$ |
+| 公式             | 表达式                                                                  |
+| -------------- | -------------------------------------------------------------------- |
+| 单个 Perfect 得分  | $100,000 / N$                                                        |
+| 单个 Good 得分     | $100,000 / N \times 0.8$                                             |
+| ACC            | $(P + G \times 0.65) / N$                                            |
+| 有效定数           | $\text{chartConstant} \times \text{kFactor}$                         |
 | PP (ACC ≥ 70%) | $((\text{ACC} \times 100 - 55) / 45)^2 \times \text{effectiveConst}$ |
-| PP (ACC < 70%) | 0 |
-| RKS | $\text{avg}(\text{top20 PP})$ |
-| Beat 间隔 (ms) | $60,000 / \text{BPM}$ |
+| PP (ACC < 70%) | 0                                                                    |
+| RKS            | $\text{avg}(\text{top20 PP})$                                        |
+| Beat 间隔 (ms)   | $60,000 / \text{BPM}$                                                |

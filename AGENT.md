@@ -1,6 +1,6 @@
 # Palab 项目 AI 开发指南
 
-> 当前版本：**0.6.1 (Alpha 6.1)** | 2026-08-11
+> 当前版本：**0.7.1 (Alpha 7.1)** | 2026-08-12
 > **每次改动前必须阅读本文件。**
 
 ---
@@ -90,6 +90,8 @@ git add -A; git commit -m "<本次改了什么>"; git push origin main
 | **数值计算** | [`docs/math.md`](docs/math.md) | 判定窗口、ACC、PP、RKS、难度定数、Hold 规则 |
 | **文件格式** | [`docs/file-formats.md`](docs/file-formats.md) | Zip 谱面包格式、localStorage 结构、版本信息 |
 | **手动制作** | [`docs/manual-chart.md`](docs/manual-chart.md) | 手动录入谱面完整教程 |
+| **lingyanspace 集成** | [`docs/lingyanspace.md`](docs/lingyanspace.md) | 升级托管/社区/公告 API、软件 ID、CORS 处理 |
+| **谱面库简介编写** | [`docs/谱面库简介编写指南.md`](docs/谱面库简介编写指南.md) | 社区谱面上传与 versionDes 简介格式 |
 | **Agent 指南** | `Agent.md` | 本文件 — 开发规范、UI 铁律、项目架构 |
 
 ## 2. 核心路径

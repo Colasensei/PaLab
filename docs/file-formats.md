@@ -1,6 +1,6 @@
 # Palab 文件格式文档
 
-> 最后更新：2026-07-26 | 版本 0.3.5
+> 最后更新：2026-08-12 | 版本 0.7.1
 
 ---
 
@@ -14,7 +14,8 @@ chart-name.zip
 ├── chart.json         # 音符数据
 ├── song.mp3           # 音频文件（或其他格式）
 ├── cover.png          # 封面图片（可选）
-└── illustration.png   # 曲绘/背景图（可选）
+├── illustration.png   # 曲绘/背景图（可选）
+└── video.mp4          # 背景视频（可选）
 ```
 
 ### 1.1 `info.json`
@@ -31,7 +32,11 @@ chart-name.zip
     "bpm": 174,
     "trackCount": 4,
     "chartConstant": 12.5,
-    "speed": 5.0
+    "speed": 5.0,
+    "videoUrl": "video.mp4",
+    "videoBlur": true,
+    "videoSound": false,
+    "splits": []
   }
 }
 ```
@@ -48,6 +53,10 @@ chart-name.zip
 | `config.trackCount` | number | 是 | 轨道数（2/4/6/8） |
 | `config.chartConstant` | number | 是 | 同顶层 chartConstant |
 | `config.speed` | number | 否 | 流速倍率（默认 5.0） |
+| `config.videoUrl` | string | 否 | 背景视频文件名（如 `video.mp4`，zip 内） |
+| `config.videoBlur` | boolean | 否 | 视频背景是否模糊（默认 true） |
+| `config.videoSound` | boolean | 否 | 视频背景是否播放声音（默认 false） |
+| `config.splits` | array | 否 | 脑裂段数组（`{track, startTime, endTime}`） |
 
 ### 1.2 `chart.json`
 
@@ -110,6 +119,7 @@ Zip 包导入
   → 查找 song.* 作为音频
   → 查找 cover.png 作为封面
   → 查找 illustration.png 作为曲绘
+  → 查找 video.* 作为背景视频（可选，由 config.videoUrl 指定）
   → chartConstant 以 chart.json 中配置值为准
 ```
 
@@ -174,6 +184,7 @@ Zip 包导入
 | `palab_playtime` | number | 累计游玩时长（ms） |
 | `palab_dev_overrides` | `DevOverrides` | 开发者参数覆盖 |
 | `palab_assets` | object | 自定义素材（`assetStore.ts`） |
+| `palab_ann_read_set` | string[] | 公告已读 id 集合（JSON 数组，`lingyanspace.ts`） |
 
 ---
 
@@ -199,5 +210,6 @@ localStorage['palab_charts'] → ChartPackage[]
 | `public/version.json` | 前端可读取的版本号 |
 | `AboutScreen.tsx` | 关于页面显示的版本 |
 | `HelpScreen.tsx` | 帮助页面显示的版本（中+英） |
+| `android/app/build.gradle` | Android `versionName` |
 
-**版本号同步铁律：** 以上 4 处必须一致。
+**版本号同步铁律：** 以上 5 处必须一致。
