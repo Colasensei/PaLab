@@ -449,7 +449,7 @@ export const DEFAULT_OVERRIDES: DevOverrides = {
   p_judgeLineOffset: 80,
   p_gameTopMargin: 120,
   p_noteLookahead: 10000,
-  p_noteLookbehind: 15000,
+  p_noteLookbehind: 3000,
   p_noteClipTop: 200,
   p_gameEndEarly: 500,
 
@@ -610,7 +610,7 @@ export const DEFAULT_OVERRIDES: DevOverrides = {
 
   // Performance
   perf_targetFPS: 0,
-  perf_maxVisibleNotes: 60,
+  perf_maxVisibleNotes: 300,
   perf_noteRenderWindow: 5000,
   perf_maxParticles: 30,
   perf_effectPoolSize: 20,
