@@ -113,14 +113,14 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '界面大小' : 'UI Scale'}</span>
             <div className="st-lang-toggle">
-              {([{ v: 0.8, l: lang === 'zh' ? '小' : 'S' }, { v: 1, l: lang === 'zh' ? '中' : 'M' }, { v: 1.2, l: lang === 'zh' ? '大' : 'L' }] as { v: number; l: string }[]).map(s => (
+              {([{ v: 0.6, l: lang === 'zh' ? '极小' : 'XS' }, { v: 0.8, l: lang === 'zh' ? '小' : 'S' }, { v: 1, l: lang === 'zh' ? '中' : 'M' }, { v: 1.2, l: lang === 'zh' ? '大' : 'L' }] as { v: number; l: string }[]).map(s => (
                 <button key={s.v} className={`st-lang-btn ${uiScale === s.v ? 'active' : ''}`} onClick={() => setUiScale(s.v)}>{s.l}</button>
               ))}
             </div>
           </div>
           <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '游戏界面大小' : 'Game UI Scale'}</span>
             <div className="st-lang-toggle">
-              {([{ v: 0.8, l: lang === 'zh' ? '小' : 'S' }, { v: 1, l: lang === 'zh' ? '中' : 'M' }, { v: 1.2, l: lang === 'zh' ? '大' : 'L' }] as { v: number; l: string }[]).map(s => (
+              {([{ v: 0.6, l: lang === 'zh' ? '极小' : 'XS' }, { v: 0.8, l: lang === 'zh' ? '小' : 'S' }, { v: 1, l: lang === 'zh' ? '中' : 'M' }, { v: 1.2, l: lang === 'zh' ? '大' : 'L' }] as { v: number; l: string }[]).map(s => (
                 <button key={s.v} className={`st-lang-btn ${gameUiScale === s.v ? 'active' : ''}`} onClick={() => setGameUiScale(s.v)}>{s.l}</button>
               ))}
             </div>
