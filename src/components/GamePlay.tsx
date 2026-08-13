@@ -1100,8 +1100,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           }
 
           // 无独立头部方块：长条整体四边描边，全包住整个长条；
-          // 双押时黄色描边全包住；按住后头部流下判定线，描边随之消失
-          if (!isHolding) {
+          // 双押时黄色描边全包住；按下与判定完成后描边消失，不再出现
+          if (!isHolding && !isHoldDone) {
             const isDoubleEdge = note.isDouble && showDoubleGlow && !isRed;
             ctx.strokeStyle = isDoubleEdge ? doubleGlowColor : 'rgba(255,255,255,0.18)';
             ctx.lineWidth = isDoubleEdge ? 3 : 2;
