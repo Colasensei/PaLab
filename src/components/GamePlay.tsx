@@ -1083,11 +1083,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           const yTop = ny, yBot = ny + nh;
           const nearJudge = Math.abs(noteJy - yTop) <= Math.abs(noteJy - yBot) ? yTop : yBot;
           const farJudge = nearJudge === yTop ? yBot : yTop;
-          // 头部区域（判定线端 tap 高）：朝判定线方向延伸（与 tap 方块位置一致，双押时头部对齐）
-          const tapH = tapHeight * gameScale;
-          const headEnd = nearJudge + Math.sign(noteJy - nearJudge) * tapH;
-          const headTop = Math.min(nearJudge, headEnd);
-          const headBot = Math.max(nearJudge, headEnd);
 
           if (holdGradient) {
             // 渐变长条：头部（判定线端）实色 → 尾部保留下限透明度（尾部仍有锐利形状）
@@ -1104,25 +1099,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             ctx.fillRect(nx, ny, noteW, nh);
           }
 
-          // 头部就是一个普通 tap 方块：判定线端实色方块 + 三边描边（左/右/判定线端横边），
-          // 长条从方块远离判定线的开口端延伸；按下后头部已流下判定线，不再显示
+          // 无独立头部方块：长条整体四边描边，全包住整个长条；
+          // 双押时黄色描边全包住；按住后头部流下判定线，描边随之消失
           if (!isHolding) {
-            ctx.globalAlpha = baseAlpha;
-            ctx.fillStyle = holdColor;
-            ctx.fillRect(nx, headTop, noteW, tapH);
             const isDoubleEdge = note.isDouble && showDoubleGlow && !isRed;
             ctx.strokeStyle = isDoubleEdge ? doubleGlowColor : 'rgba(255,255,255,0.18)';
             ctx.lineWidth = isDoubleEdge ? 3 : 2;
-            ctx.beginPath();
-            // 判定线端横边（方块远离长条的那端）
-            ctx.moveTo(nx, headEnd);
-            ctx.lineTo(nx + noteW, headEnd);
-            // 左右短竖边（和 tap 一样长）
-            ctx.moveTo(nx, headTop);
-            ctx.lineTo(nx, headBot);
-            ctx.moveTo(nx + noteW, headTop);
-            ctx.lineTo(nx + noteW, headBot);
-            ctx.stroke();
+            ctx.strokeRect(nx, ny, noteW, nh);
           }
           // Hold 进度环已移入独立特效层（hold-ring-canvas，zIndex 9，判定环之上）
         }
