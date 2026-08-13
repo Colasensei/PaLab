@@ -252,6 +252,8 @@ export interface AppSettings {
   gameUiScale: number;
   /** 谱面背景视频：关闭后游玩回退到封面模糊背景 */
   videoBg: boolean;
+  /** 性能模式：关闭实时模糊、停用背景粒子（双端生效，低端设备更流畅） */
+  performanceMode?: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -274,6 +276,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   videoBg: true,
   uiScale: 1,
   gameUiScale: 1,
+  performanceMode: false,
 };
 
 // ============ 账号信息 ============

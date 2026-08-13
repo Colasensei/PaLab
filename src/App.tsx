@@ -920,7 +920,7 @@ const App: React.FC = () => {
   const renderScreen = (s: AppScreen) => {
     switch (s) {
       case 'menu':
-        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onAnnouncement={() => setShowAnnouncement('manual')} hasUnreadAnn={hasUnreadAnn} onDev={goToDev} onOpenMusicPlayer={handleOpenMusicPlayer} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={false} hasUpdate={pendingUpdate !== null} />;
+        return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onAnnouncement={() => setShowAnnouncement('manual')} hasUnreadAnn={hasUnreadAnn} onDev={goToDev} onOpenMusicPlayer={handleOpenMusicPlayer} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={false} hasUpdate={pendingUpdate !== null} performanceMode={settings.performanceMode ?? false} />;
       case 'chart-library':
         return <ChartLibrary key={chartListKey} onPlay={handleChartPlay} onSettings={goToSettings} onPreview={handlePreview} lang={lang} highScores={chartScores} uiBlur={effectiveUiBlur} />;
       case 'settings':
@@ -970,9 +970,8 @@ const App: React.FC = () => {
 
   const isFullscreen = FULLSCREEN_PAGES.includes(screen);
 
-  // 移动端性能模式：原生平台自动关闭实时 backdrop-filter（改用静态模糊背景），不改玩法/UI 布局
-  const isNative = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
-  const effectiveUiBlur = settings.uiBlur && !isNative;
+  // 性能模式（设置项，双端生效）：关闭实时 backdrop-filter（改用静态模糊背景）
+  const effectiveUiBlur = settings.uiBlur && !(settings.performanceMode ?? false);
 
   return (
     <div className={`app-root${effectiveUiBlur ? '' : ' no-ui-blur'}${!settings.showMascot && screen === 'menu' ? ' no-mascot' : ''}`} style={settings.uiScale !== 1 ? {

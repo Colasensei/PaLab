@@ -20,11 +20,30 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ApkInstallerPlugin.class);
         registerPlugin(MediaSessionPlugin.class);
         super.onCreate(savedInstanceState);
-        // 允许 WebView 混合内容（HTTPS 页面请求 HTTP 资源），修复 Android 端 fetch 失败
+        // WebView 底层渲染优化：硬件加速层 + 关闭干扰性 WebView 行为 + 高刷新率
         try {
             android.webkit.WebView wv = getBridge().getWebView();
             if (wv != null) {
-                wv.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                WebSettings ws = wv.getSettings();
+                ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                // 硬件加速渲染层
+                wv.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+                // 关闭系统暗色强制渲染（避免 WebView 暗色处理干扰颜色/性能）
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ws.setForceDark(WebSettings.FORCE_DARK_OFF);
+                }
+                // 禁用 WebView 缩放相关干扰
+                ws.setSupportZoom(false);
+                ws.setBuiltInZoomControls(false);
+                ws.setDisplayZoomControls(false);
+                // 音频播放不受手势限制（音游音效/音乐）
+                ws.setMediaPlaybackRequiresUserGesture(false);
+                // 解锁高刷新率（Android 11+）：请求 120Hz，设备支持则满刷（低延迟音游体验）
+                if (Build.VERSION.SDK_INT >= 30) {
+                    WindowManager.LayoutParams lp = getWindow().getAttributes();
+                    lp.preferredRefreshRate = 120f;
+                    getWindow().setAttributes(lp);
+                }
             }
         } catch (Throwable ignored) {}
         hideSystemUI();

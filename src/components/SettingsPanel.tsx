@@ -31,6 +31,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [uiScale, setUiScale] = useState(settings.uiScale ?? 1);
   const [gameUiScale, setGameUiScale] = useState(settings.gameUiScale ?? 1);
   const [videoBg, setVideoBg] = useState(settings.videoBg ?? true);
+  const [performanceMode, setPerformanceMode] = useState(settings.performanceMode ?? false);
   const [sub, setSub] = useState<Sub>('main');
 
   const build = (o: Partial<AppSettings> = {}): AppSettings => ({
@@ -43,6 +44,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     keyBindings,
     uiScale, gameUiScale,
     videoBg,
+    performanceMode,
     showMascot: false, // 立绘已移除，永远关闭
     ...o,
   });
@@ -124,6 +126,9 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
                 <button key={s.v} className={`st-lang-btn ${gameUiScale === s.v ? 'active' : ''}`} onClick={() => setGameUiScale(s.v)}>{s.l}</button>
               ))}
             </div>
+          </div>
+          <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '性能模式' : 'Performance Mode'}</span>
+            <label className="toggle-switch"><input type="checkbox" checked={performanceMode} onChange={e => setPerformanceMode(e.target.checked)} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '开发者模式' : 'Developer Mode'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={devMode} onChange={e => {

@@ -29,12 +29,14 @@ interface MainMenuProps {
   onSaveAccount: (info: AccountInfo) => void;
   showMascot: boolean;
   hasUpdate: boolean;
+  /** 性能模式：停用背景粒子 */
+  performanceMode?: boolean;
 }
 
 export const MainMenu: React.FC<MainMenuProps> = ({
   onChartLibrary, onCreateChart, onSettings, onAbout, onRecords, onHelp, onUpdate, onAnnouncement, hasUnreadAnn, onDev, onOpenMusicPlayer, rks, lang, devMode, onToggleDev,
   account, onSaveAccount,
-  showMascot, hasUpdate,
+  showMascot, hasUpdate, performanceMode = false,
 }) => {
   const [devClicks, setDevClicks] = useState(0);
   const [showDonate, setShowDonate] = useState(false);
@@ -58,8 +60,6 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   }, []);
   const bgName = bgLandscape ? '43.jpg' : '916.jpg';
   const bgSrc = getAssetUrl(bgName, '/' + bgName);
-  // 移动端性能模式：原生平台停用背景粒子动画
-  const isNative = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
 
   const handleDevClick = useCallback(() => {
     const next = devClicks + 1;
@@ -103,7 +103,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         onError={() => setBgLoaded(false)}
       />
 
-      {!isNative && (
+      {!performanceMode && (
       <div className="bg-particles">
         {Array.from({ length: 10 }).map((_, i) => <div key={i} className="bg-particle" />)}
       </div>
