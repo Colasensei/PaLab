@@ -1064,8 +1064,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
           // 长条区域：头部（判定线端）→ 尾部（远端 endY）
           let ny: number, nh: number;
-          if (isHolding) {
-            // 按住：头部锁定在判定线，画“尾部→判定线”这一段，随推进逐渐收拢。
+          if (isHolding || isHoldDone || isRed) {
+            // 按住 / 完成(松手) / miss(红)：头部锁定在判定线，画“尾部→判定线”这一段，
+            // 随推进逐渐收拢。若展开成完整 startY→endY，startY 已越过判定线跑到屏外，
+            // 渐变“远端透明”端点跟着出屏，屏幕内只剩实色 → 渐变突然消失。
+            // 统一收拢形状可让渐变始终「判定线端实 → 尾部透明」，不跳变。
             // 正常轨道判定线在底部、尾部在上方(ny=endY)；脑裂轨道判定线在顶部、
             // 尾部在下方(ny=判定线)。统一取上端 min(endY,noteJy)，高度为两者差。
             ny = Math.min(endY, noteJy);
