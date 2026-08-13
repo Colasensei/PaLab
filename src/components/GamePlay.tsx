@@ -1073,7 +1073,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             // 尾部在下方(ny=判定线)。统一取上端 min(endY,noteJy)，高度为两者差。
             ny = Math.min(endY, noteJy);
             nh = Math.abs(endY - noteJy);
-            if (nh <= 0) continue;
+            // 尾部过判定线即删除：正常轨道 endY 自上而下越过底部判定线(endY>=noteJy)，
+            // 脑裂轨道 endY 自下而上越过顶部判定线(endY<=noteJy)。避免长条画到判定线
+            // 外侧/屏外才消失。
+            const tailPassed = isSplit ? endY <= noteJy : endY >= noteJy;
+            if (nh <= 0 || tailPassed) continue;
           } else {
             ny = Math.min(startY, endY);
             nh = Math.abs(endY - startY);
