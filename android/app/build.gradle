@@ -32,6 +32,10 @@ android {
         }
     }
     buildTypes {
+        debug {
+            // 测试用：debug 也用 release 签名，可覆盖安装正式版、可调试
+            signingConfig signingConfigs.release
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
