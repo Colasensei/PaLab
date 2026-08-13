@@ -6,6 +6,7 @@ import {
   selectTrack, toggleMusicPlay, nextMusic, prevMusic, seekMusic, cycleMusicMode,
   closeMusicPlayer, setFavOnly, onToggleFav,
 } from '@/utils/musicPlayer';
+import { CoverThumb } from './CoverThumb';
 
 interface Props {
   lang: Lang;
@@ -59,7 +60,7 @@ export const MusicPlayer: React.FC<Props> = ({ lang, uiBlur, onClose }) => {
           {tracks.map((tr, i) => (
             <div key={i} className={`mp-item${i === index ? ' active' : ''}`} onClick={() => selectTrack(i)}>
               <div className="mp-item-cover">
-                {tr.coverUrl ? <img src={tr.coverUrl} alt="" /> : <span className="mp-item-ph">{i + 1}</span>}
+                <CoverThumb src={tr.coverUrl} placeholder={<span className="mp-item-ph">{i + 1}</span>} />
               </div>
               <div className="mp-item-info">
                 <span className="mp-item-title">{tr.title}</span>

@@ -7,6 +7,7 @@ import { PREVIEW_VOLUME, PREVIEW_LOW_VOLUME, setPreviewVolume } from '@/utils/pr
 import { isFav, toggleFav, subscribeFavs } from '@/utils/favStore';
 import { parseChartZip } from '@/utils/chartParser';
 import { CommunityPanel } from './CommunityPanel';
+import { CoverThumb } from './CoverThumb';
 
 export interface ChartPackage {
   fileName: string;
@@ -322,8 +323,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                   borderRadius: isSwiped ? '10px 0 0 10px' : 10,
                 }}
               >
-                {/* 封面 */}
-                <div className="cl2-item-cover">{c.coverUrl ? <img src={c.coverUrl} alt="" loading="lazy" decoding="async" /> : <span>::</span>}</div>
+                {/* 封面：列表用缩略图（完整大图卡顿元凶），详情才用完整图 */}
+                <div className="cl2-item-cover"><CoverThumb src={c.coverUrl} placeholder={<span>::</span>} imgProps={{ loading: 'lazy', decoding: 'async' }} /></div>
                 {/* 标题 + 作者 */}
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
