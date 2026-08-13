@@ -131,6 +131,21 @@ function generateTicks(
   const [beatsPerMeasure] = config.timeSignature.split('/').map(Number);
   const params = getDifficultyParams(config.chartConstant, config.trackCount as number, config.bpm, beatsPerMeasure);
 
+  // 休息段：中期/中后期插入一段 10~20 秒的低难度（约 5.0 定数），让人放松。
+  // 主谱面定数 <5.0 时休息段取谱面定数（随谱面更简单）；>=5.0 时固定 5.0，明显轻松。
+  const breakC = Math.min(config.chartConstant, 5.0);
+  const breakParams = getDifficultyParams(breakC, config.trackCount as number, config.bpm, beatsPerMeasure);
+  let breakStart = -1, breakEnd = -1;
+  if (durationMs >= 25000) {
+    const bLen = (10 + Math.random() * 10) * 1000; // 10~20 秒
+    const lo = durationMs * 0.45;                  // 中期起点下限
+    const hi = durationMs * 0.8 - bLen;            // 结束不贴尾部
+    if (hi > lo + 1000) {
+      breakStart = lo + Math.random() * (hi - lo);
+      breakEnd = breakStart + bLen;
+    }
+  }
+
   // 越难越密，tick 越多（
   const subdivision = Math.max(2, beatsPerMeasure + Math.floor(config.chartConstant / 3));
   const tickInterval = beatInterval / subdivision;
@@ -157,20 +172,23 @@ function generateTicks(
       strengthMod = 0.5 + 0.5 * s;
     }
 
+    // 休息段内改用低难度参数：落键稀疏、无双押三押等高难模式
+    const inBreak = breakStart >= 0 && time >= breakStart && time < breakEnd;
+    const p = inBreak ? breakParams : params;
     const posInMeasure = i % subdivision;
     const isDownbeat = posInMeasure === 0;
     const isMidBeat = subdivision >= 4 && posInMeasure === Math.floor(subdivision / 2);
     // 强拍加权，定数唯一话事（
-    const effProb = Math.min(1, params.noteProbability
+    const effProb = Math.min(1, p.noteProbability
       * (isDownbeat ? 2.0 : isMidBeat ? 1.5 : 1.0)
       * strengthMod);
     if (Math.random() > effProb) continue;
 
     const r = Math.random();
-    const sf = params.minSpacing;
+    const sf = p.minSpacing;
 
-    // 四押，定数 > 18 才给（
-    if (tk >= 4 && config.chartConstant > 18.0 && r < 0.008) {
+    // 四押，定数 > 18 才给（休息段不生成）
+    if (tk >= 4 && !inBreak && config.chartConstant > 18.0 && r < 0.008) {
       const trks = quadPress(tk);
       if (trks.every(t => time - lastNoteTime[t] >= sf)) {
         for (const t of trks) {
@@ -182,7 +200,7 @@ function generateTicks(
     }
 
     // 三押，15 起步（
-    if (tk >= 4 && params.tripleProbability > 0 && r < params.tripleProbability) {
+    if (tk >= 4 && p.tripleProbability > 0 && r < p.tripleProbability) {
       const trks = triplePress(tk);
       if (trks.every(t => time - lastNoteTime[t] >= sf)) {
         for (const t of trks) {
@@ -194,11 +212,11 @@ function generateTicks(
     }
 
     // 台阶，左右左右（
-    if (params.stairProbability > 0 && r < params.stairProbability && lastTrack >= 0 && tk >= 4) {
+    if (p.stairProbability > 0 && r < p.stairProbability && lastTrack >= 0 && tk >= 4) {
       if (stairLen === 0) stairDir = Math.random() > 0.5 ? 1 : -1;
       const nt = lastTrack + stairDir;
       if (nt >= 0 && nt < tk && time - lastNoteTime[nt] >= sf) {
-        const ntype = rHold(params.holdProbability, enableHolds);
+        const ntype = rHold(p.holdProbability, enableHolds);
         const hl = ntype === 'hold' ? beatInterval * 2 : 0;
         notes.push(mkN(noteId++, ntype, nt, time, hl, false, null));
         lastNoteTime[nt] = ntype === 'hold' ? time + hl : time + sf;
@@ -211,7 +229,7 @@ function generateTicks(
     }
 
     // 交互，左右左右左右（
-    if (params.trillProbability > 0 && r < params.trillProbability && tk >= 4) {
+    if (p.trillProbability > 0 && r < p.trillProbability && tk >= 4) {
       if (trillTrack < 0 || Math.random() < 0.3) trillTrack = Math.floor(Math.random() * (tk - 1));
       const tt = trillAlt ? trillTrack + 1 : trillTrack;
       trillAlt = !trillAlt;
@@ -222,7 +240,7 @@ function generateTicks(
     }
 
     // 叠键，同一轨连着敲（
-    if (params.jackProbability > 0 && r < params.jackProbability && lastTrack >= 0) {
+    if (p.jackProbability > 0 && r < p.jackProbability && lastTrack >= 0) {
       const mj = Math.max(sf * 0.6, 150);
       if (time - lastNoteTime[lastTrack] >= mj) {
         notes.push(mkN(noteId++, 'tap', lastTrack, time, 0, false, null));
@@ -231,11 +249,11 @@ function generateTicks(
     }
 
     // 双押
-    if (Math.random() < params.doubleProbability && tk >= 2) {
+    if (Math.random() < p.doubleProbability && tk >= 2) {
       const trks = selDbl(tk, time, lastNoteTime, sf);
       if (trks) {
         for (const t of trks) {
-          const ntype = rHold(params.holdProbability, enableHolds);
+          const ntype = rHold(p.holdProbability, enableHolds);
           const hl = ntype === 'hold' ? beatInterval * 2 : 0;
           notes.push(mkN(noteId++, ntype, t, time, hl, true, doubleGroupId));
           lastNoteTime[t] = ntype === 'hold' ? time + hl : time + sf;
@@ -247,7 +265,7 @@ function generateTicks(
     // 单押，选最近没用的轨（减少碰撞拒绝）
     const track = pickTrack(tk, time, lastNoteTime, sf, lastTrack);
     if (track < 0) { stairLen = 0; continue; }
-    const ntype = rHold(params.holdProbability, enableHolds);
+    const ntype = rHold(p.holdProbability, enableHolds);
     const hl = ntype === 'hold' ? beatInterval * 2 : 0;
     notes.push(mkN(noteId++, ntype, track, time, hl, false, null));
     lastNoteTime[track] = ntype === 'hold' ? time + hl : time + sf;
