@@ -922,7 +922,7 @@ const App: React.FC = () => {
       case 'menu':
         return <MainMenu onChartLibrary={goToChartLib} onCreateChart={goToConfig} onSettings={goToSettings} onAbout={goToAbout} onRecords={goToRecords} onHelp={goToHelp} onUpdate={goToUpdate} onAnnouncement={() => setShowAnnouncement('manual')} hasUnreadAnn={hasUnreadAnn} onDev={goToDev} onOpenMusicPlayer={handleOpenMusicPlayer} rks={rks} lang={lang} devMode={devMode} onToggleDev={toggleDevMode} account={account} onSaveAccount={handleSaveAccount} showMascot={false} hasUpdate={pendingUpdate !== null} />;
       case 'chart-library':
-        return <ChartLibrary key={chartListKey} onPlay={handleChartPlay} onSettings={goToSettings} onPreview={handlePreview} lang={lang} highScores={chartScores} uiBlur={settings.uiBlur} />;
+        return <ChartLibrary key={chartListKey} onPlay={handleChartPlay} onSettings={goToSettings} onPreview={handlePreview} lang={lang} highScores={chartScores} uiBlur={effectiveUiBlur} />;
       case 'settings':
         return <SettingsPanel settings={settings} onSave={handleSettingsSave} onBack={navigateBack} lang={lang} devMode={devMode} />;
       case 'config':
@@ -938,11 +938,11 @@ const App: React.FC = () => {
       case 'song-panel':
         return <SongPanel config={config} highScore={highScore} highPP={highPP} highRating={highRating} history={history} onStart={handleStart} onClearConfig={handleClearConfig} onConfigChange={handleConfigChange} onBack={navigateBack} onSettings={goToSettings} lang={lang} isTrial={isTrial} keyBindings={settings.keyBindings} />;
       case 'page-loading':
-        return <LoadingScreen onComplete={handlePageLoadingComplete} lang={lang} chartInfo={null} uiBlur={settings.uiBlur} coverOverride={pageLoadingBg} pageTitle={pageLoadingLabel} />;
+        return <LoadingScreen onComplete={handlePageLoadingComplete} lang={lang} chartInfo={null} uiBlur={effectiveUiBlur} coverOverride={pageLoadingBg} pageTitle={pageLoadingLabel} />;
       case 'loading':
-        return <LoadingScreen onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={settings.uiBlur} task={loadingTaskRef.current} mlLearning={!!config.machineLearning} />;
+        return <LoadingScreen onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={effectiveUiBlur} task={loadingTaskRef.current} mlLearning={!!config.machineLearning} />;
       case 'gameplay':
-        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={settings.uiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} showFPS={settings.showFPS ?? false} keyBindings={settings.keyBindings} gameUiScale={settings.gameUiScale} videoBg={settings.videoBg ?? true} />;
+        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={effectiveUiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} showFPS={settings.showFPS ?? false} keyBindings={settings.keyBindings} gameUiScale={settings.gameUiScale} videoBg={settings.videoBg ?? true} />;
       case 'results':
         return results ? <ResultsScreen results={results} onRestart={handleRestart} onBackToPanel={handleBackToPanel} rks={rks} rksChange={rksChange} lang={lang} isTrial={isTrial} onAdjustParams={handleTrialDiscard} onContinueToEditor={handleTrialContinue} chartInfo={chartSource} /> : null;
       case 'editor':
@@ -970,8 +970,12 @@ const App: React.FC = () => {
 
   const isFullscreen = FULLSCREEN_PAGES.includes(screen);
 
+  // 移动端性能模式：原生平台自动关闭实时 backdrop-filter（改用静态模糊背景），不改玩法/UI 布局
+  const isNative = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
+  const effectiveUiBlur = settings.uiBlur && !isNative;
+
   return (
-    <div className={`app-root${settings.uiBlur ? '' : ' no-ui-blur'}${!settings.showMascot && screen === 'menu' ? ' no-mascot' : ''}`} style={settings.uiScale !== 1 ? {
+    <div className={`app-root${effectiveUiBlur ? '' : ' no-ui-blur'}${!settings.showMascot && screen === 'menu' ? ' no-mascot' : ''}`} style={settings.uiScale !== 1 ? {
       // 全局缩放：容器反向放大(100%/scale)，transform:scale(scale) 后正好填满视口，无留白
       width: `${100 / settings.uiScale}%`,
       height: `${100 / settings.uiScale}%`,
@@ -985,7 +989,7 @@ const App: React.FC = () => {
 
       {/* 音乐播放器（主菜单长按谱面库卡片） */}
       {musicPlayerOpen && (
-        <MusicPlayer lang={lang} uiBlur={settings.uiBlur} onClose={() => setMusicPlayerOpen(false)} />
+        <MusicPlayer lang={lang} uiBlur={effectiveUiBlur} onClose={() => setMusicPlayerOpen(false)} />
       )}
 
       {/* ── 全局 Brand (字母+RKS) — 主页居中，子页移到顶栏 ── */}

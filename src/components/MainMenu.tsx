@@ -58,6 +58,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   }, []);
   const bgName = bgLandscape ? '43.jpg' : '916.jpg';
   const bgSrc = getAssetUrl(bgName, '/' + bgName);
+  // 移动端性能模式：原生平台停用背景粒子动画
+  const isNative = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
 
   const handleDevClick = useCallback(() => {
     const next = devClicks + 1;
@@ -101,9 +103,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         onError={() => setBgLoaded(false)}
       />
 
+      {!isNative && (
       <div className="bg-particles">
         {Array.from({ length: 10 }).map((_, i) => <div key={i} className="bg-particle" />)}
       </div>
+      )}
 
       {/* 左上区域 */}
       <div className="menu-header">
