@@ -119,7 +119,7 @@ function warmupAudioOnGesture() {
 async function preloadAudio() {
   if (audioPreloaded) return;
   try {
-    audioCtx = new AudioContext({ latencyHint: 'interactive' });
+    audioCtx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 });
     if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
 
     // 缓存 gain 参数（只在 preload 时读一次 localStorage）

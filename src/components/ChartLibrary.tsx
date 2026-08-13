@@ -323,7 +323,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                 }}
               >
                 {/* 封面 */}
-                <div className="cl2-item-cover">{c.coverUrl ? <img src={c.coverUrl} alt="" /> : <span>::</span>}</div>
+                <div className="cl2-item-cover">{c.coverUrl ? <img src={c.coverUrl} alt="" loading="lazy" decoding="async" /> : <span>::</span>}</div>
                 {/* 标题 + 作者 */}
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -393,6 +393,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
       display: 'flex', flexDirection: 'column',
       height: '100%',
       overflowY: 'auto',
+      // 固定滚动条槽位：避免内容高度变化时滚动条出现/消失导致布局左右跳动
+      scrollbarGutter: 'stable',
       padding: landscape ? 'clamp(14px,2vh,24px) clamp(18px,2vw,32px)' : '8px 10px',
       gap: 0,
     }}>
@@ -406,7 +408,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
           boxShadow: '0 6px 32px rgba(0,0,0,0.5)',
         }}>
           {sel.coverUrl
-            ? <img src={sel.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            ? <img src={sel.coverUrl} alt="" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'clamp(28px,3vw,48px)', opacity: 0.08, color: '#fff' }}>::</div>
           }
         </div>
