@@ -10,6 +10,13 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 7.4（正式版）', date: '2026-08-13',
+    items: [
+      '新增自动生成休息段：谱面中期/中后期插入一段 10~20 秒的低难度（约 5.0 定数）放松段落，低难度谱面则更简单',
+      '列表封面改用缩略图：谱面库与音乐播放器列表不再渲染完整大图，修复列表加载与滚动卡顿；详情面板封面仍为完整图',
+    ],
+  },
+  {
     ver: 'Alpha 7.3（正式版）', date: '2026-08-13',
     items: [
       '新增「性能模式」设置项：关闭实时模糊与背景粒子，Android 原生层启用硬件加速与 120Hz 高刷新率',
@@ -302,8 +309,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 7.3</div>
-      <div className="about-ver about-ver-sub">v0.7.3</div>
+      <div className="about-ver">Alpha 7.4</div>
+      <div className="about-ver about-ver-sub">v0.7.4</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
