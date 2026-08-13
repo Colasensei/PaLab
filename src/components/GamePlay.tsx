@@ -1104,14 +1104,20 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             ctx.fillRect(nx, ny, noteW, nh);
           }
 
-          // 头部三边描边：判定线端横边 + 左右短竖边（tap 高）；按下后头部已流下判定线，不再描边
+          // 头部就是一个普通 tap 方块：判定线端实色方块 + 三边描边（左/右/判定线端横边），
+          // 长条从方块远离判定线的开口端延伸；按下后头部已流下判定线，不再显示
           if (!isHolding) {
+            ctx.globalAlpha = baseAlpha;
+            ctx.fillStyle = holdColor;
+            ctx.fillRect(nx, headTop, noteW, tapH);
             const isDoubleEdge = note.isDouble && showDoubleGlow && !isRed;
             ctx.strokeStyle = isDoubleEdge ? doubleGlowColor : 'rgba(255,255,255,0.18)';
             ctx.lineWidth = isDoubleEdge ? 3 : 2;
             ctx.beginPath();
-            ctx.moveTo(nx, nearJudge);
-            ctx.lineTo(nx + noteW, nearJudge);
+            // 判定线端横边（方块远离长条的那端）
+            ctx.moveTo(nx, headEnd);
+            ctx.lineTo(nx + noteW, headEnd);
+            // 左右短竖边（和 tap 一样长）
             ctx.moveTo(nx, headTop);
             ctx.lineTo(nx, headBot);
             ctx.moveTo(nx + noteW, headTop);
