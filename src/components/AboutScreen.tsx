@@ -10,6 +10,17 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 7.3（正式版）', date: '2026-08-13',
+    items: [
+      '新增「性能模式」设置项：关闭实时模糊与背景粒子，Android 原生层启用硬件加速与 120Hz 高刷新率',
+      '新增「长条渐变透明」设置开关（默认开启，可关闭为实心长条）',
+      '长条渲染重构：双押黄色描边全包住长条、按住后描边不消失',
+      '修复长条渐变突然消失（松手/miss 后渐变始终保留）',
+      '长条尾部过判定线即删除；miss 长条整条直接掉下去，成功松手才收拢',
+      'Android 调试包改用正式签名（可覆盖安装正式版）',
+    ],
+  },
+  {
     ver: 'Alpha 7.2（正式版）', date: '2026-08-13',
     items: [
       '新增「机器学习」开关（自动生成歌曲面板）：开启后加载界面后台学习谱面库中谱面的音符编排并显示学习进度',
@@ -291,8 +302,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 7.2</div>
-      <div className="about-ver about-ver-sub">v0.7.2</div>
+      <div className="about-ver">Alpha 7.3</div>
+      <div className="about-ver about-ver-sub">v0.7.3</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
