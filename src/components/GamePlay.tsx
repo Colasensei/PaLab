@@ -1083,10 +1083,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           const yTop = ny, yBot = ny + nh;
           const nearJudge = Math.abs(noteJy - yTop) <= Math.abs(noteJy - yBot) ? yTop : yBot;
           const farJudge = nearJudge === yTop ? yBot : yTop;
-          // 头部区域（判定线端 tap 高）：仅用于三边描边定位，不单独填充
+          // 头部区域（判定线端 tap 高）：朝判定线方向延伸（与 tap 方块位置一致，双押时头部对齐）
           const tapH = tapHeight * gameScale;
-          const dir = nearJudge === yTop ? 1 : -1;
-          const headEnd = nearJudge + dir * tapH;
+          const headEnd = nearJudge + Math.sign(noteJy - nearJudge) * tapH;
           const headTop = Math.min(nearJudge, headEnd);
           const headBot = Math.max(nearJudge, headEnd);
 
@@ -1105,18 +1104,20 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             ctx.fillRect(nx, ny, noteW, nh);
           }
 
-          // 头部三边描边：判定线端横边 + 左右短竖边（tap 高），去掉与长条相接的外端横边
-          const isDoubleEdge = note.isDouble && showDoubleGlow && !isRed;
-          ctx.strokeStyle = isDoubleEdge ? doubleGlowColor : 'rgba(255,255,255,0.18)';
-          ctx.lineWidth = isDoubleEdge ? 3 : 2;
-          ctx.beginPath();
-          ctx.moveTo(nx, nearJudge);
-          ctx.lineTo(nx + noteW, nearJudge);
-          ctx.moveTo(nx, headTop);
-          ctx.lineTo(nx, headBot);
-          ctx.moveTo(nx + noteW, headTop);
-          ctx.lineTo(nx + noteW, headBot);
-          ctx.stroke();
+          // 头部三边描边：判定线端横边 + 左右短竖边（tap 高）；按下后头部已流下判定线，不再描边
+          if (!isHolding) {
+            const isDoubleEdge = note.isDouble && showDoubleGlow && !isRed;
+            ctx.strokeStyle = isDoubleEdge ? doubleGlowColor : 'rgba(255,255,255,0.18)';
+            ctx.lineWidth = isDoubleEdge ? 3 : 2;
+            ctx.beginPath();
+            ctx.moveTo(nx, nearJudge);
+            ctx.lineTo(nx + noteW, nearJudge);
+            ctx.moveTo(nx, headTop);
+            ctx.lineTo(nx, headBot);
+            ctx.moveTo(nx + noteW, headTop);
+            ctx.lineTo(nx + noteW, headBot);
+            ctx.stroke();
+          }
           // Hold 进度环已移入独立特效层（hold-ring-canvas，zIndex 9，判定环之上）
         }
       }
