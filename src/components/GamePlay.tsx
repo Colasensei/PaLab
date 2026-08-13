@@ -87,6 +87,17 @@ function assetBaseUrl(name: string): string {
   try { return new URL(name, document.baseURI || window.location.href).href; } catch { return '/' + name; }
 }
 
+/** hex 颜色 → rgba（用于长条渐变） */
+function hexToRgba(hex: string, alpha: number): string {
+  let h = String(hex || '').replace('#', '').trim();
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  if (h.length !== 6) return `rgba(255,255,255,${alpha})`;
+  const n = parseInt(h, 16);
+  if (isNaN(n)) return `rgba(255,255,255,${alpha})`;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function ensureHitPool() {
   if (hitPoolReady || hitPool.length > 0) return;
   try {
@@ -1064,8 +1075,17 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           }
           if (ny + nh < -noteClipTop || ny > h + noteClipTop) continue;
 
-          ctx.globalAlpha = isRed ? 0.7 : isHoldDone ? 0.4 : 1;
-          ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : isHoldDone ? config.holdNoteColor + '66' : config.holdNoteColor;
+          // 长条渐变：头部（判定线端）实色 → 尾部完全透明
+          const baseAlpha = isRed ? 0.7 : isHoldDone ? 0.4 : 1;
+          const holdColor = isFailed ? '#FF2222' : isRed ? '#FF3333' : config.holdNoteColor;
+          const yTop = ny, yBot = ny + nh;
+          const nearJudge = Math.abs(noteJy - yTop) <= Math.abs(noteJy - yBot) ? yTop : yBot;
+          const farJudge = nearJudge === yTop ? yBot : yTop;
+          const grad = ctx.createLinearGradient(0, nearJudge, 0, farJudge);
+          grad.addColorStop(0, hexToRgba(holdColor, baseAlpha));
+          grad.addColorStop(1, hexToRgba(holdColor, 0));
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = grad;
           ctx.fillRect(nx, ny, noteW, nh);
           if (note.isDouble && showDoubleGlow && !isRed) {
             // 双押 hold：明显的黄边
