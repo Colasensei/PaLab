@@ -1099,14 +1099,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             ctx.fillRect(nx, ny, noteW, nh);
           }
 
-          // 无独立头部方块：长条整体四边描边，全包住整个长条；
-          // 双押时黄色描边全包住；按下与判定完成后描边消失，不再出现
-          if (!isHolding && !isHoldDone) {
-            const isDoubleEdge = note.isDouble && showDoubleGlow && !isRed;
-            ctx.strokeStyle = isDoubleEdge ? doubleGlowColor : 'rgba(255,255,255,0.18)';
-            ctx.lineWidth = isDoubleEdge ? 3 : 2;
-            ctx.strokeRect(nx, ny, noteW, nh);
-          }
+          // 长条整体四边描边，全包住整个长条；双押时黄色描边全包住；
+          // 按住后长条逐渐收拢，描边始终跟随不消失
+          const isDoubleEdge = note.isDouble && showDoubleGlow && !isRed;
+          ctx.strokeStyle = isDoubleEdge ? doubleGlowColor : 'rgba(255,255,255,0.18)';
+          ctx.lineWidth = isDoubleEdge ? 3 : 2;
+          ctx.strokeRect(nx, ny, noteW, nh);
           // Hold 进度环已移入独立特效层（hold-ring-canvas，zIndex 9，判定环之上）
         }
       }
