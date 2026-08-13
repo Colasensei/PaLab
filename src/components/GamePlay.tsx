@@ -39,6 +39,8 @@ interface GamePlayProps {
   gameUiScale?: number;
   /** 谱面视频背景开关：关闭时回退到封面模糊背景 */
   videoBg?: boolean;
+  /** Hold 长条渐变透明 */
+  holdGradient?: boolean;
 }
 
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
@@ -414,7 +416,7 @@ const AccuracyBar: React.FC<{ lastOffset: number; scale?: number }> = ({ lastOff
 };
 
 export const GamePlay: React.FC<GamePlayProps> = ({
-  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings, gameUiScale = 1, videoBg = true,
+  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings, gameUiScale = 1, videoBg = true, holdGradient = true,
 }) => {
   // 键位：自定义优先，否则默认（useMemo 保证引用稳定，避免 useInput 监听重建）
   const keys = useMemo(() => resolveKeys(keyBindings, config.trackCount), [keyBindings, config.trackCount]);
@@ -1081,39 +1083,40 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           const yTop = ny, yBot = ny + nh;
           const nearJudge = Math.abs(noteJy - yTop) <= Math.abs(noteJy - yBot) ? yTop : yBot;
           const farJudge = nearJudge === yTop ? yBot : yTop;
-          // 头部方块：从判定线端朝尾部方向延伸一个 tap 高度（实色，不随长条收拢缩小）
-          const dir = nearJudge === yTop ? 1 : -1;
+          // 头部区域（判定线端 tap 高）：仅用于三边描边定位，不单独填充
           const tapH = tapHeight * gameScale;
+          const dir = nearJudge === yTop ? 1 : -1;
           const headEnd = nearJudge + dir * tapH;
           const headTop = Math.min(nearJudge, headEnd);
           const headBot = Math.max(nearJudge, headEnd);
 
-          // 长条渐变：头部方块外端实色 → 尾部完全透明（按住时只有透明尾部收拢，头部不拉伸）
-          const barH = Math.abs(farJudge - headEnd);
-          if (barH > 0.5) {
-            const barTop = Math.min(headEnd, farJudge);
-            const grad = ctx.createLinearGradient(0, headEnd, 0, farJudge);
+          if (holdGradient) {
+            // 渐变长条：头部（判定线端）实色 → 尾部保留下限透明度（尾部仍有锐利形状）
+            const grad = ctx.createLinearGradient(0, nearJudge, 0, farJudge);
             grad.addColorStop(0, hexToRgba(holdColor, baseAlpha));
-            grad.addColorStop(1, hexToRgba(holdColor, 0));
+            grad.addColorStop(1, hexToRgba(holdColor, 0.2));
             ctx.globalAlpha = 1;
             ctx.fillStyle = grad;
-            ctx.fillRect(nx, barTop, noteW, barH);
+            ctx.fillRect(nx, ny, noteW, nh);
+          } else {
+            // 实心长条（无渐变）
+            ctx.globalAlpha = baseAlpha;
+            ctx.fillStyle = holdColor;
+            ctx.fillRect(nx, ny, noteW, nh);
           }
 
-          // 头部方块（实色，像 tap；所有状态保持实色+长条渐变）
-          ctx.globalAlpha = baseAlpha;
-          ctx.fillStyle = holdColor;
-          ctx.fillRect(nx, headTop, noteW, tapH);
-          if (note.isDouble && showDoubleGlow && !isRed) {
-            // 双押：黄边只描头部方块（去掉尾部横线）
-            ctx.strokeStyle = doubleGlowColor;
-            ctx.lineWidth = 3;
-            ctx.strokeRect(nx, headTop, noteW, tapH);
-          } else {
-            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(nx, headTop, noteW, tapH);
-          }
+          // 头部三边描边：判定线端横边 + 左右短竖边（tap 高），去掉与长条相接的外端横边
+          const isDoubleEdge = note.isDouble && showDoubleGlow && !isRed;
+          ctx.strokeStyle = isDoubleEdge ? doubleGlowColor : 'rgba(255,255,255,0.18)';
+          ctx.lineWidth = isDoubleEdge ? 3 : 2;
+          ctx.beginPath();
+          ctx.moveTo(nx, nearJudge);
+          ctx.lineTo(nx + noteW, nearJudge);
+          ctx.moveTo(nx, headTop);
+          ctx.lineTo(nx, headBot);
+          ctx.moveTo(nx + noteW, headTop);
+          ctx.lineTo(nx + noteW, headBot);
+          ctx.stroke();
           // Hold 进度环已移入独立特效层（hold-ring-canvas，zIndex 9，判定环之上）
         }
       }
@@ -1124,7 +1127,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     return () => cancelAnimationFrame(raf);
   }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, TOP_JUDGE_Y, splits, trackWidth, notePadX, tapHeight, holdMinH, gameScale,
       doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop,
-      getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay]);
+      getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay, holdGradient]);
 
   // Hold 进度环 — 独立特效 canvas 层。与音符/判定共用 getCurrentTime() 时钟、
   // engine 实时 hold 状态（engineHoldsRef）；画在所有特效之上（zIndex 9）。

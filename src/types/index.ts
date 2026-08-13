@@ -254,6 +254,8 @@ export interface AppSettings {
   videoBg: boolean;
   /** 性能模式：关闭实时模糊、停用背景粒子（双端生效，低端设备更流畅） */
   performanceMode?: boolean;
+  /** Hold 长条渐变透明（开启后长条从头部实色渐变到尾部，默认开启） */
+  holdGradient?: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -277,6 +279,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   uiScale: 1,
   gameUiScale: 1,
   performanceMode: false,
+  holdGradient: true,
 };
 
 // ============ 账号信息 ============

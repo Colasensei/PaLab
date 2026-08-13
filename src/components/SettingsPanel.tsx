@@ -32,6 +32,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [gameUiScale, setGameUiScale] = useState(settings.gameUiScale ?? 1);
   const [videoBg, setVideoBg] = useState(settings.videoBg ?? true);
   const [performanceMode, setPerformanceMode] = useState(settings.performanceMode ?? false);
+  const [holdGradient, setHoldGradient] = useState(settings.holdGradient ?? true);
   const [sub, setSub] = useState<Sub>('main');
 
   const build = (o: Partial<AppSettings> = {}): AppSettings => ({
@@ -45,6 +46,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     uiScale, gameUiScale,
     videoBg,
     performanceMode,
+    holdGradient,
     showMascot: false, // 立绘已移除，永远关闭
     ...o,
   });
@@ -93,6 +95,9 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '谱面视频背景' : 'Video Background'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={videoBg} onChange={e => setVideoBg(e.target.checked)} /><span className="toggle-slider" /></label>
+          </div>
+          <div className="st-row"><span className="st-label">{lang === 'zh' ? '长条渐变透明' : 'Hold Gradient'}</span>
+            <label className="toggle-switch"><input type="checkbox" checked={holdGradient} onChange={e => setHoldGradient(e.target.checked)} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '关闭无用加载' : 'Skip Extra Loading'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={noPageLoading} onChange={e => setNoPageLoading(e.target.checked)} /><span className="toggle-slider" /></label>
