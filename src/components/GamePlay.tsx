@@ -1060,6 +1060,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           const noteW = (trackWidth - notePadX) * gameScale;
           const nx = note.track * scaledTrackW + scaledTrackW / 2 - noteW / 2;
 
+          // 长条区域：头部（判定线端）→ 尾部（远端 endY）
           let ny: number, nh: number;
           if (isHolding) {
             // 按住：头部锁定在判定线，画“尾部→判定线”这一段，随推进逐渐收拢。
@@ -1075,27 +1076,43 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           }
           if (ny + nh < -noteClipTop || ny > h + noteClipTop) continue;
 
-          // 长条渐变：头部（判定线端）实色 → 尾部完全透明
           const baseAlpha = isRed ? 0.7 : isHoldDone ? 0.4 : 1;
           const holdColor = isFailed ? '#FF2222' : isRed ? '#FF3333' : config.holdNoteColor;
           const yTop = ny, yBot = ny + nh;
           const nearJudge = Math.abs(noteJy - yTop) <= Math.abs(noteJy - yBot) ? yTop : yBot;
           const farJudge = nearJudge === yTop ? yBot : yTop;
-          const grad = ctx.createLinearGradient(0, nearJudge, 0, farJudge);
-          grad.addColorStop(0, hexToRgba(holdColor, baseAlpha));
-          grad.addColorStop(1, hexToRgba(holdColor, 0));
-          ctx.globalAlpha = 1;
-          ctx.fillStyle = grad;
-          ctx.fillRect(nx, ny, noteW, nh);
+          // 头部方块：从判定线端朝尾部方向延伸一个 tap 高度（实色，不随长条收拢缩小）
+          const dir = nearJudge === yTop ? 1 : -1;
+          const tapH = tapHeight * gameScale;
+          const headEnd = nearJudge + dir * tapH;
+          const headTop = Math.min(nearJudge, headEnd);
+          const headBot = Math.max(nearJudge, headEnd);
+
+          // 长条渐变：头部方块外端实色 → 尾部完全透明（按住时只有透明尾部收拢，头部不拉伸）
+          const barH = Math.abs(farJudge - headEnd);
+          if (barH > 0.5) {
+            const barTop = Math.min(headEnd, farJudge);
+            const grad = ctx.createLinearGradient(0, headEnd, 0, farJudge);
+            grad.addColorStop(0, hexToRgba(holdColor, baseAlpha));
+            grad.addColorStop(1, hexToRgba(holdColor, 0));
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = grad;
+            ctx.fillRect(nx, barTop, noteW, barH);
+          }
+
+          // 头部方块（实色，像 tap；所有状态保持实色+长条渐变）
+          ctx.globalAlpha = baseAlpha;
+          ctx.fillStyle = holdColor;
+          ctx.fillRect(nx, headTop, noteW, tapH);
           if (note.isDouble && showDoubleGlow && !isRed) {
-            // 双押 hold：明显的黄边
+            // 双押：黄边只描头部方块（去掉尾部横线）
             ctx.strokeStyle = doubleGlowColor;
             ctx.lineWidth = 3;
-            ctx.strokeRect(nx, ny, noteW, nh);
+            ctx.strokeRect(nx, headTop, noteW, tapH);
           } else {
             ctx.strokeStyle = 'rgba(255,255,255,0.18)';
             ctx.lineWidth = 2;
-            ctx.strokeRect(nx, ny, noteW, nh);
+            ctx.strokeRect(nx, headTop, noteW, tapH);
           }
           // Hold 进度环已移入独立特效层（hold-ring-canvas，zIndex 9，判定环之上）
         }
