@@ -10,6 +10,21 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 7.5（正式版）', date: '2026-08-14',
+    items: [
+      '自动生成新增种子输入框：0~16 位纯数字，填 0 为纯随机；相同种子（机器学习关闭、对齐节拍一致）生成完全一致的谱面，可复现分享',
+      '难度定数量化到 0.5 档：同档位（±0.5）内相同种子谱面完全一致，跨档才变化；不加歌曲同样可用种子复现',
+      '自动生成对齐节拍改为 1/4 拍网格，避免音符全吸到整拍/半拍变成双押',
+      '可视化编辑器增强：撤销/重做、快捷键（Ctrl+Z/Y 等）、属性面板、复制粘贴、Ctrl+滚轮缩放',
+      '修复音量不持久化：音乐音量与打击音量在音量面板改动即改即存，刷新/重进保留',
+      'lingyanspace 智能通道（有 CORS 直连、无 CORS 走 /api 代理），修复生产环境 failed to fetch，内网穿透部署可用',
+      '素材修复新增主界面封面：横屏 43.jpg / 竖屏 916.jpg 可云端下载修复',
+      'Electron 关闭后台节流（backgroundThrottling），录制/切窗不再静音',
+      'Hold 渲染优化：miss 变纯红（不再渐变→纯色跳变）、渐变锚定屏幕内可见段',
+      '新增 GNU GPL v3.0 开源许可证；协助开发添加「乖猫猫$ǿ*」（提供公网部署）',
+    ],
+  },
+  {
     ver: 'Alpha 7.4（正式版）', date: '2026-08-13',
     items: [
       '新增自动生成休息段：谱面中期/中后期插入一段 10~20 秒的低难度（约 5.0 定数）放松段落，低难度谱面则更简单',
@@ -411,8 +426,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 7.4</div>
-      <div className="about-ver about-ver-sub">v0.7.4</div>
+      <div className="about-ver">Alpha 7.5</div>
+      <div className="about-ver about-ver-sub">v0.7.5</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
@@ -485,7 +500,7 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
       <div className="ann-top">
         <button className="btn btn-primary ann-back" onClick={onClose}>{lang === 'zh' ? '返回' : 'Back'}</button>
         <h3 className="ann-title">{lang === 'zh' ? '关于' : 'About'}</h3>
-        <span className="ann-count">Alpha 7.2</span>
+        <span className="ann-count">Alpha 7.5</span>
       </div>
       <div className="ann-list about-list">
         {/* 宽屏：双栏布局 */}
