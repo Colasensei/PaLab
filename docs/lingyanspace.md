@@ -42,28 +42,49 @@ lingyanspace（`yarp.lingyanspace.com`）是 Palab 的升级托管服务，承�
 ## 3. CORS 处理（关键）
 
 lingyanspace **无 CORS 头**，浏览器直连会被拦截。方案与 `updateChecker.ts` / `SettingsPanel.tsx` 一致：
+**统一走同源 `/api/*` 相对路径**，由代理转发到 lingyanspace：
+- 开发：Vite 代理（`vite.config.ts`）
+- 生产：部署服务器（Nginx 等）反向代理 —— 生产直连会 `failed to fetch`，必须配置反代
 
 ### 3.1 API 列表
 
 ```ts
-const API_BASE = import.meta.env.DEV
-  ? '/api/upgrade/GetApplyAllPackages'        // Vite 代理
-  : 'https://yarp.lingyanspace.com/api/UpgradeServer/Upgrade/GetApplyAllPackages'; // 生产直连
+// 统一走同源 /api/upgrade：dev= Vite 代理，生产= 服务器反向代理
+const API_BASE = '/api/upgrade/GetApplyAllPackages';
 ```
 
 ### 3.2 文件下载（`resolveDownloadUrl`）
 
 ```ts
-// dev 把 https://yarp.lingyanspace.com/UpgradeServer/UnauthorFolder/UpgradeProxy/<path>
-// 转为 /api/unauth/<path> 走 Vite 代理；生产直连原 URL
+// 统一把 yarp.lingyanspace.com/UpgradeServer/UnauthorFolder/UpgradeProxy/<path>
+// 转为 /api/unauth/<path>，由代理转发（dev= Vite，生产= 服务器反代）
 export function resolveDownloadUrl(fileUrl: string | null): string | null
 ```
 
-### 3.3 Vite 代理（`vite.config.ts`）
+### 3.3 代理配置
+
+开发（`vite.config.ts`）：
 
 ```
 /api/upgrade  → https://yarp.lingyanspace.com/api/UpgradeServer/Upgrade   (rewrite 去前缀)
 /api/unauth   → https://yarp.lingyanspace.com/UpgradeServer/UnauthorFolder/UpgradeProxy
+```
+
+生产（Nginx，云服务器必须添加，否则社区/公告/更新/素材修复全部 failed to fetch）：
+
+```nginx
+# /api/upgrade → lingyanspace 版本列表接口
+location /api/upgrade/ {
+  proxy_pass https://yarp.lingyanspace.com/api/UpgradeServer/Upgrade/;
+  proxy_set_header Host yarp.lingyanspace.com;
+  proxy_ssl_server_name on;
+}
+# /api/unauth → lingyanspace 文件下载
+location /api/unauth/ {
+  proxy_pass https://yarp.lingyanspace.com/UpgradeServer/UnauthorFolder/UpgradeProxy/;
+  proxy_set_header Host yarp.lingyanspace.com;
+  proxy_ssl_server_name on;
+}
 ```
 
 ---
