@@ -2,9 +2,8 @@
 
 import packageJson from '../../package.json';
 
-const API_PATH = import.meta.env.DEV
-  ? '/api/upgrade/GetApplyLastPackage'
-  : 'https://yarp.lingyanspace.com/api/UpgradeServer/Upgrade/GetApplyLastPackage';
+// 统一走同源 /api/upgrade：dev= Vite 代理，生产= 服务器反向代理（避免生产直连 lingyanspace 被 CORS 拦截）
+const API_PATH = '/api/upgrade/GetApplyLastPackage';
 const SW_ANDROID = '52045257433420805';
 const SW_WINDOWS = '52045545676477445';
 const PACKAGE_STATUS = 'beta';

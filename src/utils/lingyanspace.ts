@@ -4,10 +4,9 @@
  *  与更新检查不同：这里获取「全部版本列表」而非「最新版本」。
  *  dev 走 Vite 代理绕过 CORS；生产直连。 */
 
-// dev 用 /api/upgrade 代理（vite 已配置 → lingyanspace），生产直连
-const API_BASE = import.meta.env.DEV
-  ? '/api/upgrade/GetApplyAllPackages'
-  : 'https://yarp.lingyanspace.com/api/UpgradeServer/Upgrade/GetApplyAllPackages';
+// 统一走同源 /api/* 相对路径：dev 由 Vite 代理转发，生产由部署服务器（Nginx 等）反向代理转发。
+// 生产直连 yarp.lingyanspace.com 会被 CORS 拦截（lingyanspace 无 CORS 头）→ failed to fetch。
+const API_BASE = '/api/upgrade/GetApplyAllPackages';
 
 /** 谱面库软件 ID */
 export const SW_CHART_LIBRARY = '53303667563959301';
@@ -38,13 +37,11 @@ export async function getAllPackages(softwareId: string): Promise<LsPackage[]> {
   return (json.data || []).filter((d: LsPackage) => !d.isDeleted);
 }
 
-/** 下载地址：dev 走 vite /api/unauth 代理绕过 CORS；生产直连（同 SettingsPanel 素材修复） */
+/** 下载地址：统一转同源 /api/unauth 代理（dev= Vite，生产= 服务器反向代理），避免 CORS */
 export function resolveDownloadUrl(fileUrl: string | null): string | null {
   if (!fileUrl) return null;
-  if (import.meta.env.DEV) {
-    const m = fileUrl.match(/^https?:\/\/yarp\.lingyanspace\.com\/UpgradeServer\/UnauthorFolder\/UpgradeProxy\/(.+)$/);
-    if (m) return '/api/unauth/' + m[1];
-  }
+  const m = fileUrl.match(/^https?:\/\/yarp\.lingyanspace\.com\/UpgradeServer\/UnauthorFolder\/UpgradeProxy\/(.+)$/);
+  if (m) return '/api/unauth/' + m[1];
   return fileUrl;
 }
 

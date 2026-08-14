@@ -170,8 +170,8 @@ const SubHdr: React.FC<{ title: string; onBack: () => void; lang: Lang }> = ({ t
 );
 
 // ==================== 素材修复 ====================
-const REPAIR_PATH_DEV = '/api/unauth/52047071297934341';
-const REPAIR_PATH_PROD = 'https://yarp.lingyanspace.com/UpgradeServer/UnauthorFolder/UpgradeProxy/52047071297934341';
+// 统一走同源 /api/unauth：dev= Vite 代理，生产= 服务器反向代理（避免生产直连 lingyanspace 被 CORS 拦截）
+const REPAIR_PATH = '/api/unauth/52047071297934341';
 const REPAIR_FILES: { key: string; id: string; labelZh: string; labelEn: string }[] = [
   { key: ASSET_KEYS.mascot, id: '52047137196741637/14.png', labelZh: '看板娘立绘', labelEn: 'Mascot' },
   { key: ASSET_KEYS.hitSound, id: '52047169670091781/tab.ogg', labelZh: '打击音效', labelEn: 'Hit Sound' },
@@ -181,8 +181,7 @@ const REPAIR_FILES: { key: string; id: string; labelZh: string; labelEn: string 
 ];
 
 function getRepairUrl(id: string): string {
-  const base = import.meta.env.DEV ? REPAIR_PATH_DEV : REPAIR_PATH_PROD;
-  return `${base}/${id}`;
+  return `${REPAIR_PATH}/${id}`;
 }
 
 const RepairPanel: React.FC<{ lang: Lang; onBack: () => void }> = ({ lang, onBack }) => {
