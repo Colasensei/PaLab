@@ -85,6 +85,8 @@ export interface GameConfig {
   enableSplit?: boolean;
   /** 机器学习：进入加载界面时后台学习谱面库编排（默认关闭） */
   machineLearning?: boolean;
+  /** 生成种子：0~16 位纯数字，非全零时同种子同谱；空 / 0 = 纯随机 */
+  seed?: string;
   /** 编辑器元数据（OSU 导入预填） */
   chartTitle?: string;
   chartArtist?: string;

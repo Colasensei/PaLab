@@ -144,6 +144,17 @@ export const SongPanel: React.FC<SongPanelProps> = ({
                   <span className="toggle-slider"></span>
                 </label>
               </div>
+              {/* 种子：0~16 位纯数字，填 0 为纯随机；相同种子 + 机器学习关闭 + 对齐节拍一致 → 谱面完全一致 */}
+              <div className="sp-card-row">
+                <span className="sp-card-label">{lang === 'zh' ? '种子' : 'Seed'}</span>
+                <input
+                  type="text" inputMode="numeric" maxLength={16} pattern="[0-9]*"
+                  value={config.seed ?? ''}
+                  placeholder={lang === 'zh' ? '0 = 纯随机' : '0 = random'}
+                  onChange={e => onConfigChange({ ...config, seed: e.target.value.replace(/\D/g, '').slice(0, 16) })}
+                  style={{ flex: 1, minWidth: 0, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 13, textAlign: 'right' }}
+                />
+              </div>
             </div>
 
             {/* 高级，折叠的 */}

@@ -1,6 +1,17 @@
 import { GameConfig, Note, NoteType, BrainSplitSection } from '@/types';
 import { alignToBeat, constantToNps } from './manualAnalyzer';
 
+/** 可复现 PRNG（mulberry32）：相同种子 → 相同随机序列 */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /**
  * 根据谱面定数计算难度参数
  *
@@ -64,11 +75,17 @@ function getDifficultyParams(
 }
 
 export function generateChart(config: GameConfig, durationMs: number | null, enableHolds: boolean = true): { notes: Note[]; splits: BrainSplitSection[] } {
+  // 种子 PRNG：填 0~16 位纯数字（非全零）→ 相同种子生成完全相同的谱面；空 / 0 → 纯随机
+  const seedStr = (config.seed ?? '').trim();
+  const rand = /^\d{1,16}$/.test(seedStr) && !/^0+$/.test(seedStr)
+    ? mulberry32(parseInt(seedStr, 10) || 1)
+    : Math.random;
+
   const strengthAt = config.rhythmData && config.rhythmData.onsets.length > 0
     ? buildStrengthAt(config.rhythmData)
     : null;
 
-  let notes = generateTicks(config, durationMs ?? 120_000, enableHolds, strengthAt);
+  let notes = generateTicks(config, durationMs ?? 120_000, enableHolds, strengthAt, rand);
 
   // 节拍对齐：用 1/4 拍网格（网格更细，音符分布更散，避免全部吸到整拍/半拍变成双押）
   if (config.snapToBeat) {
@@ -76,7 +93,7 @@ export function generateChart(config: GameConfig, durationMs: number | null, ena
   }
 
   // 脑裂段：16+ 定数且开启开关时可能生成（4~8 小节、通常两个轨道）
-  const splits = generateSplits(config, durationMs ?? 120_000);
+  const splits = generateSplits(config, durationMs ?? 120_000, rand);
 
   // 脑裂开始/结束前后各 2 拍留白（含段内起始 2 拍与收尾前 2 拍）：方向切换瞬间不要有音符
   if (splits.length > 0) {
@@ -94,20 +111,20 @@ export function generateChart(config: GameConfig, durationMs: number | null, ena
 }
 
 /** 自动生成脑裂段：开启必生成、关闭不生成（0.7.1+）；插入一段 4~8 小节脑裂（通常两个轨道） */
-function generateSplits(config: GameConfig, durationMs: number): BrainSplitSection[] {
+function generateSplits(config: GameConfig, durationMs: number, rand: () => number): BrainSplitSection[] {
   if (!config.enableSplit || durationMs <= 4000) return [];
   const beatMs = 60000 / Math.max(30, config.bpm);
   const [beatsPerMeasure] = config.timeSignature.split('/').map(Number);
   const measureMs = beatMs * Math.max(2, beatsPerMeasure);
-  const nMeasures = 4 + Math.floor(Math.random() * 5); // 4~8 小节
+  const nMeasures = 4 + Math.floor(rand() * 5); // 4~8 小节
   const len = nMeasures * measureMs;
   const maxStart = Math.max(3000, durationMs - len - 3000);
-  const start = 3000 + Math.random() * Math.max(1, maxStart - 3000);
+  const start = 3000 + rand() * Math.max(1, maxStart - 3000);
   const tk = Math.max(2, config.trackCount as number);
   // 通常两个轨道（65% 两轨，35% 三轨），随机选择不重复
-  const n = Math.min(tk, 2 + (Math.random() < 0.35 ? 1 : 0));
+  const n = Math.min(tk, 2 + (rand() < 0.35 ? 1 : 0));
   const tracks = Array.from({ length: tk }, (_, i) => i)
-    .sort(() => Math.random() - 0.5)
+    .sort(() => rand() - 0.5)
     .slice(0, n);
   return tracks.map((t, i) => ({
     id: i, track: t,
@@ -126,6 +143,7 @@ function generateTicks(
   durationMs: number,
   enableHolds: boolean,
   strengthAt: ((t: number) => number) | null,
+  rand: () => number,
 ): Note[] {
   const beatInterval = 60000 / config.bpm;
   const [beatsPerMeasure] = config.timeSignature.split('/').map(Number);
@@ -137,11 +155,11 @@ function generateTicks(
   const breakParams = getDifficultyParams(breakC, config.trackCount as number, config.bpm, beatsPerMeasure);
   let breakStart = -1, breakEnd = -1;
   if (durationMs >= 25000) {
-    const bLen = (10 + Math.random() * 10) * 1000; // 10~20 秒
+    const bLen = (10 + rand() * 10) * 1000; // 10~20 秒
     const lo = durationMs * 0.45;                  // 中期起点下限
     const hi = durationMs * 0.8 - bLen;            // 结束不贴尾部
     if (hi > lo + 1000) {
-      breakStart = lo + Math.random() * (hi - lo);
+      breakStart = lo + rand() * (hi - lo);
       breakEnd = breakStart + bLen;
     }
   }
@@ -182,14 +200,14 @@ function generateTicks(
     const effProb = Math.min(1, p.noteProbability
       * (isDownbeat ? 2.0 : isMidBeat ? 1.5 : 1.0)
       * strengthMod);
-    if (Math.random() > effProb) continue;
+    if (rand() > effProb) continue;
 
-    const r = Math.random();
+    const r = rand();
     const sf = p.minSpacing;
 
     // 四押，定数 > 18 才给（休息段不生成）
     if (tk >= 4 && !inBreak && config.chartConstant > 18.0 && r < 0.008) {
-      const trks = quadPress(tk);
+      const trks = quadPress(tk, rand);
       if (trks.every(t => time - lastNoteTime[t] >= sf)) {
         for (const t of trks) {
           notes.push(mkN(noteId++, 'tap', t, time, 0, true, doubleGroupId));
@@ -201,7 +219,7 @@ function generateTicks(
 
     // 三押，15 起步（
     if (tk >= 4 && p.tripleProbability > 0 && r < p.tripleProbability) {
-      const trks = triplePress(tk);
+      const trks = triplePress(tk, rand);
       if (trks.every(t => time - lastNoteTime[t] >= sf)) {
         for (const t of trks) {
           notes.push(mkN(noteId++, 'tap', t, time, 0, true, doubleGroupId));
@@ -213,16 +231,16 @@ function generateTicks(
 
     // 台阶，左右左右（
     if (p.stairProbability > 0 && r < p.stairProbability && lastTrack >= 0 && tk >= 4) {
-      if (stairLen === 0) stairDir = Math.random() > 0.5 ? 1 : -1;
+      if (stairLen === 0) stairDir = rand() > 0.5 ? 1 : -1;
       const nt = lastTrack + stairDir;
       if (nt >= 0 && nt < tk && time - lastNoteTime[nt] >= sf) {
-        const ntype = rHold(p.holdProbability, enableHolds);
+        const ntype = rHold(p.holdProbability, enableHolds, rand);
         const hl = ntype === 'hold' ? beatInterval * 2 : 0;
         notes.push(mkN(noteId++, ntype, nt, time, hl, false, null));
         lastNoteTime[nt] = ntype === 'hold' ? time + hl : time + sf;
         lastTrack = nt;
         stairLen++;
-        if (stairLen >= 3 + Math.floor(Math.random() * 3)) { stairLen = 0; stairDir *= -1; }
+        if (stairLen >= 3 + Math.floor(rand() * 3)) { stairLen = 0; stairDir *= -1; }
         continue;
       }
       stairLen = 0;
@@ -230,7 +248,7 @@ function generateTicks(
 
     // 交互，左右左右左右（
     if (p.trillProbability > 0 && r < p.trillProbability && tk >= 4) {
-      if (trillTrack < 0 || Math.random() < 0.3) trillTrack = Math.floor(Math.random() * (tk - 1));
+      if (trillTrack < 0 || rand() < 0.3) trillTrack = Math.floor(rand() * (tk - 1));
       const tt = trillAlt ? trillTrack + 1 : trillTrack;
       trillAlt = !trillAlt;
       if (time - lastNoteTime[tt] >= sf) {
@@ -249,11 +267,11 @@ function generateTicks(
     }
 
     // 双押
-    if (Math.random() < p.doubleProbability && tk >= 2) {
-      const trks = selDbl(tk, time, lastNoteTime, sf);
+    if (rand() < p.doubleProbability && tk >= 2) {
+      const trks = selDbl(tk, time, lastNoteTime, sf, rand);
       if (trks) {
         for (const t of trks) {
-          const ntype = rHold(p.holdProbability, enableHolds);
+          const ntype = rHold(p.holdProbability, enableHolds, rand);
           const hl = ntype === 'hold' ? beatInterval * 2 : 0;
           notes.push(mkN(noteId++, ntype, t, time, hl, true, doubleGroupId));
           lastNoteTime[t] = ntype === 'hold' ? time + hl : time + sf;
@@ -263,9 +281,9 @@ function generateTicks(
     }
 
     // 单押，选最近没用的轨（减少碰撞拒绝）
-    const track = pickTrack(tk, time, lastNoteTime, sf, lastTrack);
+    const track = pickTrack(tk, time, lastNoteTime, sf, lastTrack, rand);
     if (track < 0) { stairLen = 0; continue; }
-    const ntype = rHold(p.holdProbability, enableHolds);
+    const ntype = rHold(p.holdProbability, enableHolds, rand);
     const hl = ntype === 'hold' ? beatInterval * 2 : 0;
     notes.push(mkN(noteId++, ntype, track, time, hl, false, null));
     lastNoteTime[track] = ntype === 'hold' ? time + hl : time + sf;
@@ -278,58 +296,58 @@ function generateTicks(
 }
 
 /** 优先选「最近没碰过」的轨，且倾向远离 lastTrack，降低单轨碰撞 */
-function pickTrack(tk: number, time: number, lastNoteTime: number[], minSpacing: number, lastTrack: number): number {
+function pickTrack(tk: number, time: number, lastNoteTime: number[], minSpacing: number, lastTrack: number, rand: () => number): number {
   const cand: number[] = [];
   for (let t = 0; t < tk; t++) {
     if (time - lastNoteTime[t] >= minSpacing) cand.push(t);
   }
   if (cand.length === 0) return -1;
-  if (lastTrack >= 0 && cand.length > 1 && Math.random() < 0.5) {
+  if (lastTrack >= 0 && cand.length > 1 && rand() < 0.5) {
     const far = cand.filter(t => Math.abs(t - lastTrack) >= 2);
-    if (far.length > 0) return far[Math.floor(Math.random() * far.length)];
+    if (far.length > 0) return far[Math.floor(rand() * far.length)];
   }
-  return cand[Math.floor(Math.random() * cand.length)];
+  return cand[Math.floor(rand() * cand.length)];
 }
 
-function rHold(prob: number, en: boolean): NoteType { return en && Math.random() < prob ? 'hold' : 'tap'; }
+function rHold(prob: number, en: boolean, rand: () => number): NoteType { return en && rand() < prob ? 'hold' : 'tap'; }
 
 function mkN(id: number, type: NoteType, track: number, startTime: number, hLen: number, isDouble: boolean, dgId: number | null): Note {
   const hl = type === 'hold' ? Math.max(hLen, 100) : 0;
   return { id, type, track, startTime, endTime: startTime + hl, isDouble, doubleGroupId: dgId };
 }
 
-function selDbl(tc: number, time: number, lastNoteTime: number[], minSpacing: number): number[] | null {
+function selDbl(tc: number, time: number, lastNoteTime: number[], minSpacing: number, rand: () => number): number[] | null {
   const avail: number[] = [];
   for (let t = 0; t < tc; t++) {
     if (time - lastNoteTime[t] >= minSpacing) avail.push(t);
   }
   if (avail.length < 2) return null;
   if (tc <= 4) {
-    const i = Math.floor(Math.random() * (avail.length - 1));
+    const i = Math.floor(rand() * (avail.length - 1));
     const t1 = avail[i];
     const rest = avail.filter(t => t !== t1);
-    return [t1, rest[Math.floor(Math.random() * rest.length)]];
+    return [t1, rest[Math.floor(rand() * rest.length)]];
   }
   const lc = Math.floor(avail.length / 2);
   const left = avail.slice(0, Math.max(1, lc));
   const right = avail.slice(lc);
   if (left.length === 0 || right.length === 0) return [avail[0], avail[1]];
-  return [left[Math.floor(Math.random() * left.length)], right[Math.floor(Math.random() * right.length)]];
+  return [left[Math.floor(rand() * left.length)], right[Math.floor(rand() * right.length)]];
 }
 
-function triplePress(tc: number): number[] {
-  if (tc <= 4) { const t1 = Math.floor(Math.random() * (tc - 1)); return [t1, t1 + 1]; }
+function triplePress(tc: number, rand: () => number): number[] {
+  if (tc <= 4) { const t1 = Math.floor(rand() * (tc - 1)); return [t1, t1 + 1]; }
   const lc = Math.floor(tc / 2);
-  if (Math.random() > 0.5) { const t1 = Math.floor(Math.random() * (lc - 1)); return [t1, t1 + 1, lc + Math.floor(Math.random() * lc)]; }
-  const t1 = Math.floor(Math.random() * lc);
-  return [t1, lc + Math.floor(Math.random() * (lc - 1)), lc + Math.floor(Math.random() * (lc - 1)) + 1];
+  if (rand() > 0.5) { const t1 = Math.floor(rand() * (lc - 1)); return [t1, t1 + 1, lc + Math.floor(rand() * lc)]; }
+  const t1 = Math.floor(rand() * lc);
+  return [t1, lc + Math.floor(rand() * (lc - 1)), lc + Math.floor(rand() * (lc - 1)) + 1];
 }
 
-function quadPress(tc: number): number[] {
+function quadPress(tc: number, rand: () => number): number[] {
   if (tc <= 4) return [0, 1, 2, 3];
   const lc = Math.floor(tc / 2);
-  const t1 = Math.floor(Math.random() * (lc - 1));
-  const t3 = lc + Math.floor(Math.random() * (lc - 1));
+  const t1 = Math.floor(rand() * (lc - 1));
+  const t3 = lc + Math.floor(rand() * (lc - 1));
   return [t1, t1 + 1, t3, t3 + 1];
 }
 
