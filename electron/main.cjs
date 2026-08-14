@@ -16,6 +16,9 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       devTools: !app.isPackaged,
+      // 关闭后台节流：录制/切窗口时音频与渲染不被 Chromium 暂停/降频，
+      // 避免 Xbox Game Bar 等录制时窗口失焦导致音频静音或无声
+      backgroundThrottling: false,
     },
     backgroundColor: '#0a0a2e',
   });
