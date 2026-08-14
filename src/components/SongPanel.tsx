@@ -152,7 +152,7 @@ export const SongPanel: React.FC<SongPanelProps> = ({
                   value={config.seed ?? ''}
                   placeholder={lang === 'zh' ? '0 = 纯随机' : '0 = random'}
                   onChange={e => onConfigChange({ ...config, seed: e.target.value.replace(/\D/g, '').slice(0, 16) })}
-                  style={{ flex: 1, minWidth: 0, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 13, textAlign: 'right' }}
+                  style={{ width: 150, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 13, textAlign: 'right' }}
                 />
               </div>
             </div>
