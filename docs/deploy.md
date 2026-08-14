@@ -1,20 +1,17 @@
-# Palab 服务器部署（精简版）
+# Palab 服务器部署
 
 > lingyanspace 无 CORS 头，联网功能靠服务器反向代理转发 `/api/*`。
 > **只传静态文件、不配反代 → 社区 / 公告 / 在线更新 / 素材修复全部 `failed to fetch`。**
 
-## 你只需要做 3 步
+## 需要做 3 步
 
 ### 1. 上传静态文件
 把构建好的 `dist/` 里所有文件传到服务器，如 `/var/www/palab/`。
 
 ### 2. Nginx 加两段反向代理
-在站点配置的 `server { }` 内加入（域名/IP 换成你自己的）：
+在站点配置的 `server { }` 内加入：
 
 ```nginx
-root /var/www/palab;
-location / { try_files $uri $uri/ /index.html; }
-
 location /api/upgrade/ {
     proxy_pass https://yarp.lingyanspace.com/api/UpgradeServer/Upgrade/;
     proxy_set_header Host yarp.lingyanspace.com;
@@ -33,8 +30,3 @@ nginx -t && nginx -s reload
 ```
 
 浏览器打开游戏检查：社区能列出谱面、公告能显示、素材修复能下载 = 成功。
-
----
-
-- 宝塔 / Caddy / HTTPS / 常见问题排查：见 `docs/lingyanspace.md` 及旧版 deploy 说明
-- lingyanspace 软件 ID 速查也在 `docs/lingyanspace.md`
