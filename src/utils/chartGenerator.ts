@@ -12,6 +12,9 @@ function mulberry32(seed: number): () => number {
   };
 }
 
+/** 难度量化到 0.5 档：同一档（±0.5）内的任意定数 → 同一组生成参数，保证相同种子谱面一致 */
+function quantizeHalf(c: number): number { return Math.floor((c || 0) * 2) / 2; }
+
 /**
  * 根据谱面定数计算难度参数
  *
@@ -147,11 +150,13 @@ function generateTicks(
 ): Note[] {
   const beatInterval = 60000 / config.bpm;
   const [beatsPerMeasure] = config.timeSignature.split('/').map(Number);
-  const params = getDifficultyParams(config.chartConstant, config.trackCount as number, config.bpm, beatsPerMeasure);
+  // 定数量化到 0.5 档：同档内（±0.5）参数完全一致 → 同种子同谱面（跨档才变）
+  const chartC = quantizeHalf(config.chartConstant);
+  const params = getDifficultyParams(chartC, config.trackCount as number, config.bpm, beatsPerMeasure);
 
   // 休息段：中期/中后期插入一段 10~20 秒的低难度（约 5.0 定数），让人放松。
   // 主谱面定数 <5.0 时休息段取谱面定数（随谱面更简单）；>=5.0 时固定 5.0，明显轻松。
-  const breakC = Math.min(config.chartConstant, 5.0);
+  const breakC = Math.min(chartC, 5.0);
   const breakParams = getDifficultyParams(breakC, config.trackCount as number, config.bpm, beatsPerMeasure);
   let breakStart = -1, breakEnd = -1;
   if (durationMs >= 25000) {
@@ -165,7 +170,7 @@ function generateTicks(
   }
 
   // 越难越密，tick 越多（
-  const subdivision = Math.max(2, beatsPerMeasure + Math.floor(config.chartConstant / 3));
+  const subdivision = Math.max(2, beatsPerMeasure + Math.floor(chartC / 3));
   const tickInterval = beatInterval / subdivision;
   const totalTicks = Math.floor(durationMs / tickInterval);
   const tk = config.trackCount as number;
@@ -206,7 +211,7 @@ function generateTicks(
     const sf = p.minSpacing;
 
     // 四押，定数 > 18 才给（休息段不生成）
-    if (tk >= 4 && !inBreak && config.chartConstant > 18.0 && r < 0.008) {
+    if (tk >= 4 && !inBreak && chartC > 18.0 && r < 0.008) {
       const trks = quadPress(tk, rand);
       if (trks.every(t => time - lastNoteTime[t] >= sf)) {
         for (const t of trks) {
