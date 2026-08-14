@@ -96,6 +96,7 @@ git add -A; git commit -m "<本次改了什么>"; git push origin main
 | **文件格式** | [`docs/file-formats.md`](docs/file-formats.md) | Zip 谱面包格式、localStorage 结构、版本信息 |
 | **手动制作** | [`docs/manual-chart.md`](docs/manual-chart.md) | 手动录入谱面完整教程 |
 | **lingyanspace 集成** | [`docs/lingyanspace.md`](docs/lingyanspace.md) | 升级托管/社区/公告 API、软件 ID、CORS 处理 |
+| **服务器部署** | [`docs/deploy.md`](docs/deploy.md) | 云服务器部署静态文件 + Nginx/Caddy 反向代理配置 |
 | **谱面库简介编写** | [`docs/谱面库简介编写指南.md`](docs/谱面库简介编写指南.md) | 社区谱面上传与 versionDes 简介格式 |
 | **Agent 指南** | `Agent.md` | 本文件 — 开发规范、UI 铁律、项目架构 |
 
