@@ -136,7 +136,8 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
   // 详情：点进后下载 zip 实时解压
   const loadDetail = useCallback((c: CommunityChart) => {
     if (!c.fileUrl) { setSel(prev => prev && prev.id === c.id ? { ...prev, pkg: null } : prev); return; }
-    fetch((await resolveDownloadUrl(c.fileUrl))!)
+    resolveDownloadUrl(c.fileUrl)
+      .then(url => fetch(url!))
       .then(r => { if (!r.ok) throw new Error('下载失败'); return r.blob(); })
       .then(blob => parseChartZip(blob, `${c.title}.zip`))
       .then(pkg => setSel(prev => prev && prev.id === c.id ? { ...prev, pkg } : prev))
