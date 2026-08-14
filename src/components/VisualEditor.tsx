@@ -48,6 +48,11 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
   const audioRef = useRef<HTMLAudioElement>(null!);
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const noteIdRef = useRef(0);
+  // 撤销/重做（双栈）+ 剪贴板
+  const notesRef = useRef<PlacedNote[]>([]);
+  const undoStackRef = useRef<PlacedNote[][]>([]);
+  const redoStackRef = useRef<PlacedNote[][]>([]);
+  const clipboardRef = useRef<{ sb: number; eb: number; track: number }[]>([]);
 
   // 导入背景视频（ObjectURL，不渲染到编辑器界面）
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,6 +83,9 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
   const PX_PER_SEC = speed * 100;
 
   useEffect(() => {
+    // 载入初始数据，清空撤销历史
+    undoStackRef.current = [];
+    redoStackRef.current = [];
     // 优先用模块级存的原始节拍
     if (_savedPlacedNotes.length > 0 || _savedSplits.length > 0) {
       noteIdRef.current = 0;
@@ -208,7 +216,107 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
     return lines;
   }, [bpm, speed, scrollOffset, align, timeToY, duration]);
 
-  const delNote = useCallback((id: number) => setNotes(prev => prev.filter(n => n.id !== id)), []);
+  const pushUndo = useCallback(() => {
+    undoStackRef.current.push(notesRef.current);
+    if (undoStackRef.current.length > 100) undoStackRef.current.shift();
+    redoStackRef.current = [];
+  }, []);
+
+  const delNote = useCallback((id: number) => {
+    pushUndo();
+    setNotes(notesRef.current.filter(n => n.id !== id));
+  }, [pushUndo]);
+
+  // ═══ 撤销 / 重做 + 快捷键批量操作 ═══
+  useEffect(() => { notesRef.current = notes; }, [notes]);
+
+  const mutateNotes = useCallback((next: PlacedNote[]) => {
+    pushUndo();
+    setNotes(next);
+  }, [pushUndo]);
+
+  const undo = useCallback(() => {
+    const prev = undoStackRef.current.pop();
+    if (!prev) return;
+    redoStackRef.current.push(notesRef.current);
+    setNotes(prev);
+    setSelectedIds(new Set());
+  }, []);
+
+  const redo = useCallback(() => {
+    const next = redoStackRef.current.pop();
+    if (!next) return;
+    undoStackRef.current.push(notesRef.current);
+    setNotes(next);
+    setSelectedIds(new Set());
+  }, []);
+
+  const selectAll = useCallback(() => { setSelectedIds(new Set(notesRef.current.map(n => n.id))); }, []);
+
+  const deleteSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const ids = selectedIds;
+    mutateNotes(notesRef.current.filter(n => !ids.has(n.id)));
+    setSelectedIds(new Set());
+  }, [selectedIds, mutateNotes]);
+
+  const copySelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    clipboardRef.current = notesRef.current.filter(n => selectedIds.has(n.id)).map(n => ({ sb: n.startBeat, eb: n.endBeat, track: n.track }));
+  }, [selectedIds]);
+
+  const pasteClipboard = useCallback(() => {
+    const cb = clipboardRef.current;
+    if (cb.length === 0) return;
+    const nowBeat = currentTime * bpm / 60;
+    const minSb = Math.min(...cb.map(c => c.sb));
+    const offset = Math.max(0, nowBeat) - minSb;
+    const next = [...notesRef.current];
+    for (const c of cb) {
+      const ns = Math.max(0, c.sb + offset);
+      const ne = Math.max(0, c.eb + offset);
+      next.push({ id: ++noteIdRef.current, track: c.track, startBeat: ns, endBeat: ne, startTime: beatToTime(ns), endTime: beatToTime(ne) });
+    }
+    mutateNotes(next);
+    setSelectedIds(new Set(next.slice(next.length - cb.length).map(n => n.id)));
+  }, [currentTime, bpm, beatToTime, mutateNotes]);
+
+  const nudgeSelected = useCallback((dir: number) => {
+    if (selectedIds.size === 0) return;
+    const ids = selectedIds;
+    const step = align === 'quarter' ? 0.25 : align === 'half' ? 0.5 : align === 'beat' ? 1 : 0.25;
+    const next = notesRef.current.map(n => {
+      if (!ids.has(n.id)) return n;
+      const ns = Math.max(0, n.startBeat + step * dir);
+      const ne = Math.max(0, n.endBeat + step * dir);
+      return { ...n, startBeat: ns, endBeat: ne, startTime: beatToTime(ns), endTime: beatToTime(ne) };
+    });
+    mutateNotes(next);
+  }, [selectedIds, align, beatToTime, mutateNotes]);
+
+  const moveTracks = useCallback((d: number) => {
+    if (selectedIds.size === 0) return;
+    const ids = selectedIds;
+    const next = notesRef.current.map(n => {
+      if (!ids.has(n.id)) return n;
+      const t = Math.min(trackCount - 1, Math.max(0, n.track + d));
+      return { ...n, track: t };
+    });
+    mutateNotes(next);
+  }, [selectedIds, trackCount, mutateNotes]);
+
+  const toggleType = useCallback(() => {
+    if (selectedIds.size !== 1) return;
+    const id = [...selectedIds][0];
+    const next = notesRef.current.map(n => {
+      if (n.id !== id) return n;
+      const isHold = Math.abs(n.endBeat - n.startBeat) > 0.001;
+      if (isHold) return { ...n, endBeat: n.startBeat, endTime: n.startTime };
+      const eb = n.startBeat + 1;
+      return { ...n, endBeat: eb, endTime: beatToTime(eb) };
+    });
+    mutateNotes(next);
+  }, [selectedIds, mutateNotes, beatToTime]);
   const toNotes = useCallback((): Note[] => {
     // 同一时刻不同轨道 → n 押，别漏了（
     const timeGroups = new Map<number, { startTime: number; tracks: Set<number>; indices: number[] }>();
@@ -242,10 +350,11 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
     const start = selected.beat, end = b;
     setSelected(null);
     if (hasOverlap(track, Math.min(start, end), Math.max(start, end))) return;
-    if (Math.abs(end - start) < 0.001)
-      setNotes(prev => [...prev, { id: ++noteIdRef.current, track, startBeat: start, endBeat: start, startTime: beatToTime(start), endTime: beatToTime(start) }]);
-    else
-      setNotes(prev => [...prev, { id: ++noteIdRef.current, track, startBeat: start, endBeat: end, startTime: beatToTime(start), endTime: beatToTime(end) }]);
+    const note = Math.abs(end - start) < 0.001
+      ? { id: ++noteIdRef.current, track, startBeat: start, endBeat: start, startTime: beatToTime(start), endTime: beatToTime(start) }
+      : { id: ++noteIdRef.current, track, startBeat: start, endBeat: end, startTime: beatToTime(start), endTime: beatToTime(end) };
+    pushUndo();
+    setNotes([...notesRef.current, note]);
   }, [selected, snap, beatToTime, hasOverlap]);
 
   const handleBeatClick = useCallback((e: React.PointerEvent, beat: number) => {
@@ -260,19 +369,21 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
     e.preventDefault();
     if (selectedIds.has(id) && selectedIds.size > 1) {
       // 右键已选中音符 → 批量删除全部选中
-      setNotes(prev => prev.filter(n => !selectedIds.has(n.id)));
+      mutateNotes(notesRef.current.filter(n => !selectedIds.has(n.id)));
       setSelectedIds(new Set());
     } else {
       delNote(id);
       setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
     }
-  }, [delNote, selectedIds]);
+  }, [delNote, selectedIds, mutateNotes]);
 
   // 音符按下 → 开始拖动
   const onNoteDown = useCallback((e: React.PointerEvent, id: number) => {
     e.preventDefault(); e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     const shift = e.shiftKey;
+    // 拖动前记录一次历史（整次拖动 = 一步撤销）
+    pushUndo();
     // 更新选中集
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -321,6 +432,12 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
   }, [duration, latencyOffset]);
 
   const onWheel = useCallback((e: React.WheelEvent) => {
+    // Ctrl + 滚轮：缩放（调整流速/时间轴密度）
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      setSpeed(prev => Math.max(1, Math.min(12, prev + (e.deltaY < 0 ? 0.5 : -0.5))));
+      return;
+    }
     seekTo(scrollOffset + (invertScroll ? -e.deltaY : e.deltaY) / PX_PER_SEC);
   }, [scrollOffset, PX_PER_SEC, seekTo, invertScroll]);
 
@@ -361,6 +478,29 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
   const onNoteTS = useCallback((id: number) => { longPressRef.current = setTimeout(() => delNote(id), 600); }, [delNote]);
   const onNoteTE = useCallback(() => { if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; } }, []);
 
+  // 键盘快捷键：撤销/重做、删除、全选、复制/粘贴、方向键微调、Esc
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      const mod = e.ctrlKey || e.metaKey;
+      const k = e.key.toLowerCase();
+      if (mod && k === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+      if (mod && k === 'y') { e.preventDefault(); redo(); return; }
+      if (mod && k === 'a') { e.preventDefault(); selectAll(); return; }
+      if (mod && k === 'c') { e.preventDefault(); copySelected(); return; }
+      if (mod && k === 'v') { e.preventDefault(); pasteClipboard(); return; }
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); return; }
+      if (e.key === 'Escape') { setSelectedIds(new Set()); setSelected(null); setShowEffect(false); setShowReset(false); setShowExit(false); return; }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); nudgeSelected(-1); return; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); nudgeSelected(1); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); moveTracks(-1); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); moveTracks(1); return; }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undo, redo, selectAll, copySelected, pasteClipboard, deleteSelected, nudgeSelected, moveTracks]);
+
   // 脑裂：在当前判定线（播放头）位置 开始/结束 所选轨道的脑裂
   const toggleSplit = useCallback((tracks: number[]) => {
     const t = Math.round(currentTime * 1000);
@@ -378,6 +518,10 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
   }, [currentTime]);
 
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  // 选中音符（用于属性面板）：单选时展示详情
+  const selNotes = notes.filter(n => selectedIds.has(n.id));
+  const selNote = selNotes.length === 1 ? selNotes[0] : null;
+  const selNoteIsHold = selNote ? Math.abs(selNote.endBeat - selNote.startBeat) > 0.001 : false;
 
   return (
     <div className="screen ve-screen">
@@ -392,8 +536,10 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
               <div key={i} data-beat={bl.beat} style={{ position: 'absolute', left: 0, width: totalWidth, top: bl.y - 8, height: 16, cursor: 'pointer', zIndex: 1 }}>
                 <div style={{ position: 'absolute', left: 0, top: 8, width: '100%', height: bl.strong ? 2 : 1, background: bl.strong ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
                 {bl.label && <span style={{ position: 'absolute', right: 4, top: 0, fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: 1, pointerEvents: 'none' }}>{bl.label}</span>}
-                {/* 小节号 + 秒数 */}
-                {bl.strong && <span style={{ position: 'absolute', left: 4, top: -2, fontSize: 8, color: 'rgba(255,255,255,0.22)', pointerEvents: 'none', lineHeight: 1 }}>{bl.measure} · {bl.timeSec.toFixed(1)}s</span>}
+                {/* 小节号 + 秒数（强拍显示小节，弱拍显示秒刻度） */}
+                {bl.strong
+                  ? <span style={{ position: 'absolute', left: 4, top: -2, fontSize: 8, color: 'rgba(255,255,255,0.22)', pointerEvents: 'none', lineHeight: 1 }}>{bl.measure} · {bl.timeSec.toFixed(1)}s</span>
+                  : <span style={{ position: 'absolute', left: 4, top: -2, fontSize: 7, color: 'rgba(255,255,255,0.12)', pointerEvents: 'none', lineHeight: 1 }}>{bl.timeSec.toFixed(1)}</span>}
               </div>
             ))}
             <div style={{ position: 'absolute', left: 0, width: totalWidth, top: JUDGE_Y, height: 2, background: 'rgba(255,255,255,0.3)', pointerEvents: 'none', zIndex: 5 }} />
@@ -444,6 +590,23 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
           </div>
         </div>
         <div className="ve-panel">
+          {/* 属性面板：单选音符时显示并支持编辑 */}
+          {selNote && (
+            <div className="ve-panel-sec" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 8, marginBottom: 6 }}>
+              <div className="ve-label">{lang === 'zh' ? '选中音符' : 'Selected Note'}</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                <span className="ve-val" style={{ fontSize: 10 }}>{lang === 'zh' ? '轨道' : 'Track'} {selNote.track + 1} · {selNoteIsHold ? 'Hold' : 'Tap'}</span>
+                <span style={{ display: 'flex', gap: 4 }}>
+                  <button className="ve-btn ve-btn-reset" onClick={() => moveTracks(-1)} title={lang === 'zh' ? '轨道左移' : 'Move track left'}>◀</button>
+                  <button className="ve-btn ve-btn-reset" onClick={() => moveTracks(1)} title={lang === 'zh' ? '轨道右移' : 'Move track right'}>▶</button>
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                <span className="ve-val" style={{ fontSize: 10 }}>{selNote.startTime.toFixed(2)}s → {selNote.endTime.toFixed(2)}s</span>
+                <button className="ve-btn ve-btn-save" onClick={toggleType}>{lang === 'zh' ? '切换类型' : 'Toggle Type'}</button>
+              </div>
+            </div>
+          )}
           <div className="ve-panel-sec"><label className="ve-label">BPM</label><input type="number" className="ve-input" value={bpm} onChange={e => setBpm(parseInt(e.target.value) || 120)} min={30} max={300} /></div>
           <div className="ve-panel-sec"><label className="ve-label">{lang === 'zh' ? '流速' : 'Speed'}</label><input type="range" className="ve-range" min={1} max={12} step={0.5} value={speed} onChange={e => setSpeed(parseFloat(e.target.value))} /><span className="ve-val">{speed.toFixed(1)}x</span></div>
           <div className="ve-panel-sec"><label className="ve-label">{lang === 'zh' ? '对齐' : 'Snap'}</label><div className="ve-align-row">{(['none','quarter','half','beat'] as AlignMode[]).map(m => (<button key={m} className={`ve-align-btn${align===m?' active':''}`} onClick={()=>setAlign(m)}>{m==='none'?(lang==='zh'?'无':'Off'):m==='quarter'?'1/4':m==='half'?'1/2':'1/1'}</button>))}</div></div>
@@ -483,8 +646,9 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
         <button className="ve-play-btn" onClick={togglePlay}>{playing ? (lang === 'zh' ? '暂停' : 'Pause') : (lang === 'zh' ? '播放' : 'Play')}</button>
         <div ref={progressWrapRef} className="ve-progress-wrap" onPointerDown={handleProgressDown}><div className="ve-progress-track"><div className="ve-progress-fill" style={{ width: `${pct}%` }} /><div className="ve-progress-thumb" style={{ left: `${pct}%` }} /></div></div>
         <span className="ve-time">{currentTime.toFixed(1)}s / {duration.toFixed(1)}s</span>
+        {selectedIds.size > 0 && <span className="ve-time" style={{ marginLeft: 8, color: '#7fb8ff' }}>{lang === 'zh' ? '已选' : 'Sel'} {selectedIds.size}</span>}
       </div>
-      {showReset && (<div className="ve-overlay" onClick={() => setShowReset(false)}><div className="ve-dialog" onClick={e => e.stopPropagation()}><p>{lang === 'zh' ? '确定要清除所有音符吗？此操作不可撤销。' : 'Clear all notes? This cannot be undone.'}</p><div className="ve-dialog-actions"><button className="ve-btn ve-btn-reset" onClick={() => setShowReset(false)}>{lang === 'zh' ? '取消' : 'Cancel'}</button><button className="ve-btn ve-btn-save" onClick={() => { setNotes([]); noteIdRef.current = 0; setShowReset(false); }}>{lang === 'zh' ? '确定' : 'Confirm'}</button></div></div></div>)}
+      {showReset && (<div className="ve-overlay" onClick={() => setShowReset(false)}><div className="ve-dialog" onClick={e => e.stopPropagation()}><p>{lang === 'zh' ? '确定要清除所有音符吗？此操作不可撤销。' : 'Clear all notes? This cannot be undone.'}</p><div className="ve-dialog-actions"><button className="ve-btn ve-btn-reset" onClick={() => setShowReset(false)}>{lang === 'zh' ? '取消' : 'Cancel'}</button><button className="ve-btn ve-btn-save" onClick={() => { mutateNotes([]); noteIdRef.current = 0; setShowReset(false); }}>{lang === 'zh' ? '确定' : 'Confirm'}</button></div></div></div>)}
       {showExit && (<div className="ve-overlay" onClick={() => setShowExit(false)}><div className="ve-dialog" onClick={e => e.stopPropagation()}><p>{lang === 'zh' ? (notes.length > 0 ? `你有 ${notes.length} 个未保存的音符，确定要离开吗？` : '确定要离开编辑器吗？') : (notes.length > 0 ? `You have ${notes.length} unsaved notes. Leave?` : 'Leave the editor?')}</p><div className="ve-dialog-actions"><button className="ve-btn ve-btn-reset" onClick={() => setShowExit(false)}>{lang === 'zh' ? '取消' : 'Cancel'}</button><button className="ve-btn ve-btn-save" onClick={onBack}>{lang === 'zh' ? '离开' : 'Leave'}</button></div></div></div>)}
       {/* 新增效果面板 — 脑裂（部分轨道反转） */}
       {showEffect && (
