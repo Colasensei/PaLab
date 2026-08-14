@@ -44,6 +44,7 @@ android/*.jks
 # Electron 构建临时
 release/
 release-temp/
+release-*/
 
 # Unity / Godot（还没成型，先整个排除）
 Palab.Unity/
