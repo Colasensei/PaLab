@@ -1087,13 +1087,27 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
           const baseAlpha = isRed ? 0.7 : isHoldDone ? 0.4 : 1;
           const holdColor = isFailed ? '#FF2222' : isRed ? '#FF3333' : config.holdNoteColor;
-          const yTop = ny, yBot = ny + nh;
-          const nearJudge = Math.abs(noteJy - yTop) <= Math.abs(noteJy - yBot) ? yTop : yBot;
-          const farJudge = nearJudge === yTop ? yBot : yTop;
 
           if (holdGradient) {
-            // 渐变长条：头部（判定线端）实色 → 尾部保留下限透明度（尾部仍有锐利形状）
-            const grad = ctx.createLinearGradient(0, nearJudge, 0, farJudge);
+            // 渐变长条：靠近判定线的端实色 → 远端保留下限透明度。
+            // 渐变锚定「屏幕内可见段」：miss 后长条整体掉下去、一端冲出屏幕时，
+            // 若渐变端点跟出屏，屏幕内只剩渐变一小段（接近透明）→ 视觉上"突然没渐变"。
+            // 改为始终在可见段内做「实→透」过渡，保证渐变全程不跳变。
+            const clipTop = Math.max(ny, -noteClipTop);
+            const clipBot = Math.min(ny + nh, h + noteClipTop);
+            let gTop: number, gBot: number; // 透明端 y / 实色端 y
+            if (noteJy <= clipTop) {
+              // 判定线在可见段上方（脑裂顶部判定线）→ 上实下透
+              gTop = clipBot; gBot = clipTop;
+            } else if (noteJy >= clipBot) {
+              // 判定线在可见段下方（正常下落 / miss 掉下去）→ 下实上透
+              gTop = clipTop; gBot = clipBot;
+            } else {
+              // 长条穿越判定线 → 实色端贴近判定线，远端透明
+              if (noteJy - clipTop <= clipBot - noteJy) { gBot = noteJy; gTop = clipBot; }
+              else { gTop = clipTop; gBot = noteJy; }
+            }
+            const grad = ctx.createLinearGradient(0, gBot, 0, gTop);
             grad.addColorStop(0, hexToRgba(holdColor, baseAlpha));
             grad.addColorStop(1, hexToRgba(holdColor, 0.2));
             ctx.globalAlpha = 1;
