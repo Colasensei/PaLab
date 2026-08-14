@@ -67,3 +67,6 @@ public/version.json
 *.exe
 *.zip
 *.7z
+
+# 临时对话记录文件
+Untitled-1.txt
