@@ -57,6 +57,12 @@ APK/EXE >50KB → `C:\Users\colas\Documents\palab\<版本>\`
 - 文件名用点号分隔，不用横杠（`palab.0.5.0.apk` 而非 `palab-0.5.0.apk`）
 - 版本号逐位比较（0.12.0 > 0.9.0）
 
+### 0.8 构建后提醒：上传前禁用浏览器 CORS
+
+**每次构建完成后，AI 必须提醒用户：上传（lingyanspace 后台传包）前先禁用浏览器 CORS 安全策略。**
+
+原因：lingyanspace 网站禁用了 PUT / DELETE / POST 的 CORS（开启这些方法影响较大且容易受攻击），但上传时需要用这些方法，所以上传前要在浏览器里临时禁用 CORS（例如 `chrome --disable-web-security --user-data-dir=<临时目录>`），传完包再恢复。
+
 ### 0.8 正式版（1.x.x）构建前提醒关闭开发者模式
 
 当要开始构建正式版（1.x.x）时，AI 必须提醒用户：
