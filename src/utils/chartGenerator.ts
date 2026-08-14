@@ -70,9 +70,9 @@ export function generateChart(config: GameConfig, durationMs: number | null, ena
 
   let notes = generateTicks(config, durationMs ?? 120_000, enableHolds, strengthAt);
 
-  // 节拍对齐，吸到半拍网格上（
+  // 节拍对齐：用 1/4 拍网格（网格更细，音符分布更散，避免全部吸到整拍/半拍变成双押）
   if (config.snapToBeat) {
-    notes = alignToBeat(notes, config.bpm);
+    notes = alignToBeat(notes, config.bpm, undefined, 4);
   }
 
   // 脑裂段：16+ 定数且开启开关时可能生成（4~8 小节、通常两个轨道）

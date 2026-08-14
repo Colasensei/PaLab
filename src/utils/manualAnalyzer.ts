@@ -31,13 +31,14 @@ export function alignToBeat(
   inputs: Note[],
   bpm: number,
   maxDeviationMs?: number,
+  subDiv: number = 2, // 每拍细分：2=半拍（默认），4=1/4 拍，8=1/8 拍
 ): Note[] {
   const beatInterval = 60000 / bpm;
   // 默认允许偏差 1/3 拍，再大就离谱了（
   const maxDev = maxDeviationMs ?? beatInterval * 0.38;
 
-  // 半拍网格，八分音符精度（
-  const subBeat = beatInterval / 2;
+  // 节拍网格，subDiv 决定精度（
+  const subBeat = beatInterval / subDiv;
 
   return inputs.map(note => {
     // 找最近的 sub-beat
