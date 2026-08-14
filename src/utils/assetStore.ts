@@ -25,6 +25,9 @@ export const ASSET_KEYS = {
   calibSong: 'calibration.mp3',
   noteTap: 'noteTap',
   noteHold: 'noteHold',
+  // 主界面封面（横屏 43.jpg / 竖屏 916.jpg），文件名与主菜单加载保持一致
+  coverLand: '43.jpg',
+  coverPort: '916.jpg',
 } as const;
 
 /** 从本地 File 对象转为 base64 data URL */
