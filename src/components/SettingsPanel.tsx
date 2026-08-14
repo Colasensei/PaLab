@@ -27,7 +27,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [showAccuracyBar, setShowAccuracyBar] = useState(settings.showAccuracyBar ?? false);
   const [showFPS, setShowFPS] = useState(settings.showFPS ?? false);
   const [musicVol, setMusicVol] = useState(settings.musicVolume ?? 50);
-  const [hitVol, setHitVol] = useState(Math.round(getHitVolume() * 100));
+  const [hitVol, setHitVol] = useState(Math.round(settings.hitVolume ?? getHitVolume() * 100));
   const [keyBindings, setKeyBindings] = useState<Partial<Record<TrackCount, string[]>> | undefined>(settings.keyBindings);
   const [uiScale, setUiScale] = useState(settings.uiScale ?? 1);
   const [gameUiScale, setGameUiScale] = useState(settings.gameUiScale ?? 1);
@@ -43,6 +43,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     bgColor: '#0a0a14', judgeLineColor: '#999999',
     language: currentLang, showACC, devMode, showWaveform, uiBlur, noPageLoading,
     noteScale, musicVolume: musicVol, judgeLineThickness, showAccuracyBar, showFPS,
+    hitVolume: hitVol,
     keyBindings,
     uiScale, gameUiScale,
     videoBg,
@@ -63,7 +64,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   if (sub === 'repair') return <RepairPanel lang={lang} onBack={() => setSub('main')} />;
   if (sub === 'personalize') return <PersonalizePanel lang={lang} onBack={() => setSub('main')} />;
   if (sub === 'latency') return <LatencyPanel lang={lang} offset={settings.latencyOffset} onSave={o => onSave(build({ latencyOffset: o }))} onBack={() => setSub('main')} />;
-  if (sub === 'audio') return <AudioPanel lang={lang} musicVol={musicVol} hitVol={hitVol} onMusic={setMusicVol} onHit={v => { setHitVol(v); setHitVolume(v / 100); }} onBack={() => setSub('main')} />;
+  if (sub === 'audio') return <AudioPanel lang={lang} musicVol={musicVol} hitVol={hitVol} onMusic={v => { setMusicVol(v); onSave(build({ musicVolume: v })); }} onHit={v => { setHitVol(v); setHitVolume(v / 100); onSave(build({ hitVolume: v })); }} onBack={() => setSub('main')} />;
   if (sub === 'keys') return <KeyBindingsPanel lang={lang} bindings={keyBindings} onChange={commitBindings} onBack={() => setSub('main')} />;
 
   return (

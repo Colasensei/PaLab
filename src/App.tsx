@@ -12,6 +12,7 @@ import JSZip from 'jszip';
 import { saveZipBlob } from '@/utils/zipSave';
 import { playPreview, setPreviewVolume, stopPreview, PREVIEW_VOLUME, PREVIEW_LOW_VOLUME } from '@/utils/previewPlayer';
 import { openMusicPlayer, stopMusicPlayback, setMusicVolume } from '@/utils/musicPlayer';
+import { setHitVolume } from '@/components/GamePlay';
 import { ChartPackage } from '@/components/ChartLibrary';
 import {
   MainMenu, ChartLibrary, ChartEditor,
@@ -388,6 +389,11 @@ const App: React.FC = () => {
   useEffect(() => {
     setMusicVolume(settings.musicVolume);
   }, [settings.musicVolume]);
+
+  // 启动/设置变化时恢复打击音量（settings.hitVolume 0~100 → 运行时 0~1）
+  useEffect(() => {
+    setHitVolume((settings.hitVolume ?? 100) / 100);
+  }, [settings.hitVolume]);
   const handlePreview = useCallback((url: string | null) => {
     // 同一首不重启
     if (previewState.current.url === url && previewState.current.playing) return;

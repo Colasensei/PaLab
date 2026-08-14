@@ -240,6 +240,8 @@ export interface AppSettings {
   noPageLoading: boolean;
   noteScale: number;
   musicVolume: number;
+  /** 打击音效音量（0~100），持久化到设置 */
+  hitVolume: number;
   judgeLineThickness: number;
   /** 准度条：显示最近打击偏移 */
   showAccuracyBar: boolean;
@@ -273,6 +275,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showWaveform: true,
   uiBlur: true,  noPageLoading: false,  noteScale: 1.0,
   musicVolume: 50,
+  hitVolume: 100,
   judgeLineThickness: 3,
   showAccuracyBar: false,
   showMascot: true,
