@@ -143,7 +143,7 @@ export function npsToConstant(nps: number): number {
   if (nps <= 3.0) return 3.0 + (nps - 1.0) * 2.5;            // NPS 1→3, 3→8
   if (nps <= 5.0) return 8.0 + (nps - 3.0) * 1.75;           // NPS 3→8, 5→11.5
   if (nps <= 8.0) return 11.5 + (nps - 5.0) * 1.5;           // NPS 5→11.5, 8→16
-  return 16.0 + Math.min(1, (nps - 8.0) / 2.0) * 2.0;        // NPS 8→16, 10→18
+  return 16.0 + Math.min(9.0, nps - 8.0);                    // NPS 8→16, 17→25（与 constantToNps 对版）
 }
 
 /** 定数 → 期望 NPS（npsToConstant 的逆函数，供生成器校准用） */
@@ -158,7 +158,7 @@ export function constantToNps(c: number): number {
 /**
  * 难度自动评定
  *
- * 基于以下指标映射到 chartConstant (1.0~18.0)，与自动生成器保持一致：
+ * 基于以下指标映射到 chartConstant (1.0~25.0)，与自动生成器保持一致：
  * - NPS (notes per second)：总物量 / 时长（主指标，对标 Phigros）
  * - 双押比例：多押音符数 / 总音符数（读谱/协调加成）
  * - Hold 比例：Hold 音符数 / 总音符数
@@ -220,8 +220,8 @@ export function estimateDifficulty(notes: Note[], durationMs: number, trackCount
   // 校准：分析整体略偏高，统一 ×0.93（实际难度通常比分析低）
   let finalScore = (baseScore + doubleBonus + holdBonus + peakBonus + splitBonus) * 0.93;
 
-  // 夹一夹别爆了（
-  finalScore = Math.max(1.0, Math.min(18.0, finalScore));
+  // 夹一夹别爆了（上限放宽到 25.0，超难谱面也能被侦测到）
+  finalScore = Math.max(1.0, Math.min(25.0, finalScore));
   return Math.round(finalScore * 10) / 10;
 }
 

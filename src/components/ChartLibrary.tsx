@@ -486,14 +486,14 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                   <span onClick={() => setShowDiffInfo(false)} style={{ fontSize: 18, color: '#666', cursor: 'pointer' }}>✕</span>
                 </div>
                 <div style={{ fontSize: 'clamp(12px,1.2vw,14px)', color: '#999', lineHeight: 1.8 }}>
-                  <p>{lang === 'zh' ? '难度定数范围：1.0 ~ 18.0' : 'Range: 1.0 ~ 18.0'}</p>
+                  <p>{lang === 'zh' ? '难度定数范围：1.0 ~ 25.0' : 'Range: 1.0 ~ 25.0'}</p>
                   {(['EZ','NM','HD','IN','AT'] as const).map(d => {
                     const ds = getDiffStyle(d);
                     return (
                       <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                         <span style={{ background: ds.bg, color: ds.fg, fontSize: 12, fontWeight: 700, padding: '1px 8px', borderRadius: 4 }}>{d}</span>
                         <span style={{ color: '#777' }}>
-                          {d === 'EZ' ? '1.0-4.9' : d === 'NM' ? '5.0-7.9' : d === 'HD' ? '8.0-11.9' : d === 'IN' ? '12.0-15.9' : '16.0-18.0'}
+                          {d === 'EZ' ? '1.0-4.9' : d === 'NM' ? '5.0-7.9' : d === 'HD' ? '8.0-11.9' : d === 'IN' ? '12.0-15.9' : '16.0-25.0'}
                           {d === sel.difficulty && <span style={{ color: '#fff', marginLeft: 6 }}>← {lang === 'zh' ? '当前' : 'current'}</span>}
                         </span>
                       </div>

@@ -85,7 +85,7 @@ export const HelpScreen: React.FC<Props> = ({ lang }) => {
                   <li>单曲 RKS = ((ACC×100 − 55) / 45)² × 谱面定数 × K数因子（ACC ≥ 70%）</li>
                   <li>K数因子：2K=0.35 / 4K=1.00 / 6K=2.20 / 8K=3.50（可在开发者面板调整）</li>
                   <li>综合 RKS = 前 20 首最高单曲 RKS 的平均值（不足 20 首显示 --）</li>
-                  <li>谱面定数范围 1.0 ~ 18.0，对应 EZ / NM / HD / IN / AT 五个难度等级</li>
+                  <li>谱面定数范围 1.0 ~ 25.0，对应 EZ / NM / HD / IN / AT 五个难度等级</li>
                 </ul>
               </div>
 

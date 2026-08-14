@@ -48,7 +48,7 @@ export interface GameConfig {
   bpm: number;
   timeSignature: TimeSignature;
   trackCount: TrackCount;
-  /** 谱面定数 (1.0~18.0)，决定谱面难度的一切 */
+  /** 谱面定数 (1.0~25.0)，决定谱面难度的一切 */
   chartConstant: number;
   timingWindows: TimingWindows;
   /** 流速倍率，默认1.0 */

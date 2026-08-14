@@ -14,7 +14,7 @@ const TRACK_COUNTS: TrackCount[] = [2, 4, 6, 8];
 const TIME_SIGNATURES: TimeSignature[] = ['2/4', '3/4', '4/4', '6/8'];
 
 function constantToLabel(c: number, advanced: boolean): string {
-  if (c > 18.0) return '?';
+  if (c > 25.0) return '?';
   return constantToDifficulty(c);
 }
 function constantToColor(c: number, advanced: boolean): string {
@@ -40,7 +40,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onConfirm, onBack, lan
   const pendingRef = useRef<{ file: File; url: string; rd: { bpm: number; onsets: number[]; strengths: number[]; envelope: number[] } | null } | null>(null);
 
   const sliderMin = advanced ? 0 : 1.0;
-  const sliderMax = advanced ? 25.0 : 18.0;
+  const sliderMax = 25.0; // 分析器上限放宽到 25.0，普通模式也支持
   const diffLabel = constantToLabel(chartConstant, advanced);
   const diffBg = 'rgba(255,255,255,0.12)';
   const diffText = '#fff';
