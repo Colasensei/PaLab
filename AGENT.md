@@ -62,6 +62,11 @@ APK/EXE >50KB → `C:\Users\colas\Documents\palab\<版本>\`
 当要开始构建正式版（1.x.x）时，AI 必须提醒用户：
 - 关闭设置里的开发者选项入口（devMode / DEV MODE 徽章）
 
+### 0.8 正式发布时提醒改名
+
+**正式发布（1.x.x）时，AI 必须提醒用户把游戏名字改为「Palabeat」**（当前为 Palab）。
+改名涉及：标题/Logo、package.json productName、AboutScreen、HelpScreen、桌面快捷方式名、Android 应用名、Electron 窗口标题等。
+
 ### 0.9 每次对话结束时提交
 每次聊天任务完成后，AI 必须将本次所有改动提交到 main 分支并推送到 GitHub：
 - 提交信息用中文概括本次改了什么，不用英文
