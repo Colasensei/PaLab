@@ -1088,11 +1088,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           const baseAlpha = isRed ? 0.7 : isHoldDone ? 0.4 : 1;
           const holdColor = isFailed ? '#FF2222' : isRed ? '#FF3333' : config.holdNoteColor;
 
-          if (holdGradient) {
+          // miss 变红（isRed）：直接纯红掉下去，不做渐变——避免 miss 后长条穿越
+          // 判定线/一端冲出屏幕导致「渐变→纯色」跳变。正常/按住/完成仍用渐变。
+          if (holdGradient && !isRed) {
             // 渐变长条：靠近判定线的端实色 → 远端保留下限透明度。
-            // 渐变锚定「屏幕内可见段」：miss 后长条整体掉下去、一端冲出屏幕时，
-            // 若渐变端点跟出屏，屏幕内只剩渐变一小段（接近透明）→ 视觉上"突然没渐变"。
-            // 改为始终在可见段内做「实→透」过渡，保证渐变全程不跳变。
+            // 渐变锚定「屏幕内可见段」：长条整体掉下去、一端冲出屏幕时，
+            // 若渐变端点跟出屏，屏幕内只剩渐变一小段 → 视觉上"突然没渐变"。
+            // 改为始终在可见段内做「实→透」过渡。
             const clipTop = Math.max(ny, -noteClipTop);
             const clipBot = Math.min(ny + nh, h + noteClipTop);
             let gTop: number, gBot: number; // 透明端 y / 实色端 y
@@ -1100,7 +1102,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
               // 判定线在可见段上方（脑裂顶部判定线）→ 上实下透
               gTop = clipBot; gBot = clipTop;
             } else if (noteJy >= clipBot) {
-              // 判定线在可见段下方（正常下落 / miss 掉下去）→ 下实上透
+              // 判定线在可见段下方（正常下落 / 按住收拢）→ 下实上透
               gTop = clipTop; gBot = clipBot;
             } else {
               // 长条穿越判定线 → 实色端贴近判定线，远端透明
@@ -1114,7 +1116,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             ctx.fillStyle = grad;
             ctx.fillRect(nx, ny, noteW, nh);
           } else {
-            // 实心长条（无渐变）
+            // 纯色长条：miss 变红（纯红）或关闭了渐变开关
             ctx.globalAlpha = baseAlpha;
             ctx.fillStyle = holdColor;
             ctx.fillRect(nx, ny, noteW, nh);
