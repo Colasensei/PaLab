@@ -175,10 +175,9 @@ const REPAIR_PATH_PROD = 'https://yarp.lingyanspace.com/UpgradeServer/UnauthorFo
 const REPAIR_FILES: { key: string; id: string; labelZh: string; labelEn: string }[] = [
   { key: ASSET_KEYS.mascot, id: '52047137196741637/14.png', labelZh: '看板娘立绘', labelEn: 'Mascot' },
   { key: ASSET_KEYS.hitSound, id: '52047169670091781/tab.ogg', labelZh: '打击音效', labelEn: 'Hit Sound' },
-  // 主界面封面：文件名必须与主菜单背景加载一致（横屏 43.jpg / 竖屏 916.jpg）。
-  // lingyanspace 上传时文件名就是 43.jpg / 916.jpg；id 的文件夹部分待上传后填写。
-  { key: ASSET_KEYS.coverLand, id: '43.jpg', labelZh: '主界面封面（横屏）', labelEn: 'Menu Cover (Landscape)' },
-  { key: ASSET_KEYS.coverPort, id: '916.jpg', labelZh: '主界面封面（竖屏）', labelEn: 'Menu Cover (Portrait)' },
+  // 主界面封面：文件名与主菜单背景加载一致（横屏 43.jpg / 竖屏 916.jpg）
+  { key: ASSET_KEYS.coverLand, id: '53489520232895493/43.jpg', labelZh: '主界面封面（横屏）', labelEn: 'Menu Cover (Landscape)' },
+  { key: ASSET_KEYS.coverPort, id: '53489534385525765/916.jpg', labelZh: '主界面封面（竖屏）', labelEn: 'Menu Cover (Portrait)' },
 ];
 
 function getRepairUrl(id: string): string {
