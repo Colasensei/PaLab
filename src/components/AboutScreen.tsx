@@ -427,7 +427,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
         <a className="about-link" href="https://space.bilibili.com/3546634667428724" target="_blank" rel="noopener noreferrer">
           {lang === 'zh' ? '重音teto的法棍厨子' : 'Teto\'s Baguette Chef'}
         </a>
-        <div className="about-contrib-note">{lang === 'zh' ? '帮助测试和提出建议' : 'Testing & feedback'}</div>
+        <span className="about-link about-link-plain">乖猫猫$ǿ*</span>
+        <div className="about-contrib-note">{lang === 'zh' ? '帮助测试和提出建议 · 提供公网部署' : 'Testing & feedback · Provided public deployment'}</div>
       </div>
 
       <div className="about-links">

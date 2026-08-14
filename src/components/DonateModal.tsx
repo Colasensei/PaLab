@@ -8,6 +8,7 @@ interface Props {
 
 const DONORS = [
   { name: '重音teto的法棍厨子', note: '' },
+  { name: '乖猫猫$ǿ*', note: '' },
 ];
 
 export const DonateModal: React.FC<Props> = ({ lang, onClose }) => {
