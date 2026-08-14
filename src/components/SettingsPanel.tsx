@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { AppSettings, TrackCount, KEY_MAP } from '@/types';
 import { t, Lang } from '@/utils/lang';
 import { saveAsset, fileToDataURL, hasAsset, loadAsset, clearAsset, ASSET_KEYS } from '@/utils/assetStore';
+import { useDirectLingyanspace } from '@/utils/lingyanspace';
 import { setHitVolume, getHitVolume } from './GamePlay';
 
 interface Props {
@@ -194,7 +195,7 @@ const RepairPanel: React.FC<{ lang: Lang; onBack: () => void }> = ({ lang, onBac
   const download = async (f: typeof REPAIR_FILES[number]) => {
     setStatus(prev => ({ ...prev, [f.key]: 'loading' }));
     try {
-      const resp = await fetch(getRepairUrl(f.id), { cache: 'no-store' });
+      const resp = await fetch(await getRepairUrl(f.id), { cache: 'no-store' });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const blob = await resp.blob();
       const dataUrl = await new Promise<string>((resolve) => {

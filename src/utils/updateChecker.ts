@@ -1,9 +1,11 @@
 /** 更新检查 — lingyanspace 升级托管服务 */
 
 import packageJson from '../../package.json';
+import { useDirectLingyanspace } from './lingyanspace';
 
-// 统一走同源 /api/upgrade：dev= Vite 代理，生产= 服务器反向代理（避免生产直连 lingyanspace 被 CORS 拦截）
-const API_PATH = '/api/upgrade/GetApplyLastPackage';
+// 有 CORS 直连 lingyanspace；否则走同源 /api/upgrade（dev= Vite 代理，生产= 反代）
+const UPGRADE_DIRECT = 'https://yarp.lingyanspace.com/api/UpgradeServer/Upgrade';
+const UPGRADE_PROXY = '/api/upgrade';
 const SW_ANDROID = '52045257433420805';
 const SW_WINDOWS = '52045545676477445';
 const PACKAGE_STATUS = 'beta';
@@ -39,7 +41,7 @@ export function getLocalVersion(): string {
 
 export async function checkUpdate(): Promise<CheckResult> {
   const sid = getSoftwareId();
-  const url = `${API_PATH}?softwareId=${sid}&packageStatus=${PACKAGE_STATUS}&packageType=${PACKAGE_TYPE}`;
+  const url = `${(await useDirectLingyanspace()) ? UPGRADE_DIRECT : UPGRADE_PROXY}/GetApplyLastPackage?softwareId=${sid}&packageStatus=${PACKAGE_STATUS}&packageType=${PACKAGE_TYPE}`;
   let debug = `GET ${url}`;
   try {
     const resp = await fetch(url);

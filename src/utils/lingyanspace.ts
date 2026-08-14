@@ -4,9 +4,30 @@
  *  与更新检查不同：这里获取「全部版本列表」而非「最新版本」。
  *  dev 走 Vite 代理绕过 CORS；生产直连。 */
 
-// 统一走同源 /api/* 相对路径：dev 由 Vite 代理转发，生产由部署服务器（Nginx 等）反向代理转发。
-// 生产直连 yarp.lingyanspace.com 会被 CORS 拦截（lingyanspace 无 CORS 头）→ failed to fetch。
-const API_BASE = '/api/upgrade/GetApplyAllPackages';
+// 智能选择数据通道：
+// - lingyanspace 提供 CORS 头 → 浏览器可跨域直连完整 URL（纯静态 build 部署也能用）
+// - 无 CORS → 回退同源 /api/* 相对路径（dev= Vite 代理，生产= Nginx / vite preview 反代）
+// 探测结果缓存，避免每次请求都探测。
+let directOk: boolean | null = null;
+export async function useDirectLingyanspace(): Promise<boolean> {
+  if (directOk !== null) return directOk;
+  if (import.meta.env.DEV) { directOk = false; return false; }
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 4000);
+    await fetch('https://yarp.lingyanspace.com/api/UpgradeServer/Upgrade/GetApplyLastPackage?softwareId=52045545676477445&packageStatus=beta&packageType=install', { signal: ctrl.signal, cache: 'no-store' });
+    clearTimeout(t);
+    directOk = true; // 能收到响应（哪怕业务错误码）→ CORS 放行
+  } catch {
+    directOk = false; // CORS 拦截 / 网络错误 → 回退代理
+  }
+  return directOk;
+}
+const UPGRADE_DIRECT = 'https://yarp.lingyanspace.com/api/UpgradeServer/Upgrade';
+const UPGRADE_PROXY = '/api/upgrade';
+async function upgradeBase(): Promise<string> {
+  return (await useDirectLingyanspace()) ? UPGRADE_DIRECT : UPGRADE_PROXY;
+}
 
 /** 谱面库软件 ID */
 export const SW_CHART_LIBRARY = '53303667563959301';
@@ -29,7 +50,7 @@ export interface LsPackage {
 
 /** 获取全部版本列表（已剔除删除项；45001=无版本记录，视为空列表） */
 export async function getAllPackages(softwareId: string): Promise<LsPackage[]> {
-  const resp = await fetch(`${API_BASE}?softwareId=${softwareId}`);
+  const resp = await fetch(`${await upgradeBase()}/GetApplyAllPackages?softwareId=${softwareId}`);
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   const json = await resp.json();
   if (json.code === 45001) return [];          // 该应用无任何版本记录
@@ -37,9 +58,10 @@ export async function getAllPackages(softwareId: string): Promise<LsPackage[]> {
   return (json.data || []).filter((d: LsPackage) => !d.isDeleted);
 }
 
-/** 下载地址：统一转同源 /api/unauth 代理（dev= Vite，生产= 服务器反向代理），避免 CORS */
-export function resolveDownloadUrl(fileUrl: string | null): string | null {
+/** 下载地址：有 CORS 直连完整 URL；否则转同源 /api/unauth 代理（dev= Vite，生产= 反代） */
+export async function resolveDownloadUrl(fileUrl: string | null): Promise<string | null> {
   if (!fileUrl) return null;
+  if (await useDirectLingyanspace()) return fileUrl;
   const m = fileUrl.match(/^https?:\/\/yarp\.lingyanspace\.com\/UpgradeServer\/UnauthorFolder\/UpgradeProxy\/(.+)$/);
   if (m) return '/api/unauth/' + m[1];
   return fileUrl;
