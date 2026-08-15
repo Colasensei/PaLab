@@ -562,9 +562,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const [gameHeight, setGameHeight] = useState(window.innerHeight - gameTopMargin);
   // 皮肤：标准 / 球状
   const isBall = (skin ?? 'standard') === 'ball';
-  // 轨道宽度，80~180px 自适应（；球状皮肤轨道大幅变窄（横屏正合适，竖屏保留下限避免过窄）
+  // 标准轨道宽度，80~180px 自适应
   const baseTrackW = Math.max(trackMinW, Math.min(trackMaxW, Math.floor((window.innerWidth - hMargin) / config.trackCount)));
-  const trackWidth = isBall ? Math.max(52, Math.min(88, Math.floor(baseTrackW * 0.45))) : baseTrackW;
+  // 球状皮肤：轨道总宽按屏幕比例（横屏占 1/5、竖屏占 8/9），每轨 = 总宽 / 轨数
+  const ballTotalW = window.innerWidth > window.innerHeight ? window.innerWidth / 5 : window.innerWidth * 8 / 9;
+  const trackWidth = isBall ? Math.max(14, Math.min(170, Math.round(ballTotalW / config.trackCount))) : baseTrackW;
   const totalWidth = config.trackCount * trackWidth;
   // 球状音符尺寸：球直径 ≈ 轨道宽 0.8（球比轨道略小），长条圆角矩形半径略小于球
   const ballR = isBall ? (trackWidth * gameScale) * 0.4 : 0;
