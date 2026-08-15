@@ -736,57 +736,33 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 新游戏开始：清空 autoplay 变色特效去重（restart 后音符 id 复用）
   useEffect(() => { if (state.isPlaying) autoFxRef.current.clear(); }, [state.isPlaying]);
 
-  // ═══ 自适应渲染分辨率：帧率稳不住屏幕刷新率 → 物理降渲染分辨率（下限物理分辨率 50%），
-  // 再不稳则逐级降低帧率要求（120→90→60，最低锁 60）═══
+  // ═══ 自适应渲染分辨率：帧数下降 ≥2fps 连续 3 次 → 降一级渲染分辨率（物理降，
+  // 下限物理分辨率 50%）；降级后帧数稳定（不再下降）则停止降级。退出游戏时随组件卸载自动恢复 ═══
   const [perfScale, setPerfScale] = useState(1);
   const perfScaleRef = useRef(1);
   perfScaleRef.current = perfScale;
-  const targetFpsRef = useRef<number>(60);
-  const fpsLowStreakRef = useRef(0);
 
-  // 检测屏幕刷新率（rAF 间隔中位数推断）：60 / 90 / 120
-  useEffect(() => {
-    let raf = 0;
-    const deltas: number[] = [];
-    let last = performance.now();
-    const measure = (t: number) => {
-      deltas.push(t - last);
-      last = t;
-      if (deltas.length < 60) { raf = requestAnimationFrame(measure); return; }
-      const sorted = [...deltas.slice(15)].sort((a, b) => a - b);
-      const med = sorted[Math.floor(sorted.length / 2)];
-      const hz = Math.round(1000 / med);
-      targetFpsRef.current = hz >= 120 ? 120 : hz >= 90 ? 90 : 60;
-    };
-    raf = requestAnimationFrame(measure);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  // 游玩中监控实际帧率：连续不稳 → 降渲染分辨率；降到下限仍不稳 → 降帧率要求
   useEffect(() => {
     if (!state.isPlaying) return;
     let frames = 0, start = performance.now(), raf = 0;
+    let drops = 0;           // 连续帧数下降次数
+    let lastFps: number | null = null;
     const loop = () => {
       frames++;
       const now = performance.now();
       if (now - start >= 1000) {
         const fps = (frames * 1000) / (now - start);
-        const target = targetFpsRef.current;
-        if (fps < target * 0.9) {
-          fpsLowStreakRef.current++;
-          if (fpsLowStreakRef.current >= 3) {
-            fpsLowStreakRef.current = 0;
-            if (perfScaleRef.current > 0.5) {
-              // 物理降渲染分辨率（乘 0.8），不低于物理分辨率的 50%
-              setPerfScale(p => Math.max(0.5, Math.round(p * 0.8 * 100) / 100));
-            } else if (target > 60) {
-              // 已降到分辨率下限仍不稳 → 降刷新率要求（120→90→60）
-              targetFpsRef.current = target === 120 ? 90 : 60;
-            }
+        // 帧数下降 ≥2fps 记一次；连续 3 次 → 降一级分辨率
+        if (lastFps !== null && fps < lastFps - 2) {
+          drops++;
+          if (drops >= 3) {
+            drops = 0;
+            setPerfScale(p => Math.max(0.5, Math.round(p * 0.8 * 100) / 100));
           }
         } else {
-          fpsLowStreakRef.current = 0;
+          drops = 0; // 帧数稳定/回升 → 停止降级
         }
+        lastFps = fps;
         frames = 0; start = now;
       }
       raf = requestAnimationFrame(loop);
