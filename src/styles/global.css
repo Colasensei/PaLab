@@ -4584,6 +4584,14 @@ body::after {
 .hud-song-name { font-size: 13px; color: rgba(255,255,255,0.5); font-weight: 600; letter-spacing: 1px; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hud-song-diff { font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 600; letter-spacing: 1px; }
 
+/* 轨道压暗（游戏内背景模糊关闭）时：HUD 文字纯白不透明，保证在压暗背景上清晰可读 */
+.game-bg-solid .hud-score,
+.game-bg-solid .hud-acc,
+.game-bg-solid .hud-song-name,
+.game-bg-solid .hud-song-diff {
+  color: #fff;
+}
+
 /* ============ 设置界面 ============ */
 .settings-screen {
   padding: 80px 20px 20px;

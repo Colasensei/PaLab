@@ -1405,7 +1405,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [config.trackCount, onPressWithFX, onReleaseWithFX, getTrackFromClientX]);
 
   return (
-    <div className="screen gameplay-screen" style={{ background: config.bgColor }}
+    <div className={`screen gameplay-screen${!gameBgBlur ? ' game-bg-solid' : ''}`} style={{ background: config.bgColor }}
     >
       {/* 背景：谱面视频优先（muted 硬件解码 + CSS 模糊，保证流畅），否则封面模糊图 */}
       {perfBgCover && !gameBgOverride && videoBg && config.videoUrl && (
