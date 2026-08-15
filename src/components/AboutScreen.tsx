@@ -10,6 +10,19 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 7.6（正式版）', date: '2026-08-15',
+    items: [
+      '新增游戏皮肤（标准 / 球状）：球状皮肤窄轨道（横屏占 1/5、竖屏占 8/9）、上下双判定线、白色球音符、长条球 + 圆角矩形渐变、判定变色特效（Perfect 黄 / Good 蓝 / 提前按红）',
+      '设置重构：移除「保存」按钮改为即改即存（任何改动自动保存，仅点「返回」退出，不再误退出）',
+      '新增「游戏内背景模糊」开关：关闭后谱面不模糊不压暗、仅轨道区域压暗 80%（上下覆盖屏幕全高），HUD 纯白清晰可读',
+      '个性化新增「游戏内背景」（强制覆盖谱面曲绘 / 封面 / 视频背景）；音符大小与判定线宽度移至个性化',
+      '谱面库列表左滑新增「导出」：Web 浏览器下载 / Android 写内部存储并走分享',
+      '加载界面随机显示歌曲的封面与曲绘（无权重）',
+      '准度条新增判定位置竖线（对应判定颜色、3 秒渐隐）；长条刚按下时按 tap 判定在准度条显示一次',
+      '修复：音量不持久化、设置保存误退出、轨道 / 压暗 / 准度条水平对齐、加载界面多余封面',
+    ],
+  },
+  {
     ver: 'Alpha 7.5（正式版）', date: '2026-08-14',
     items: [
       '自动生成新增种子输入框：0~16 位纯数字，填 0 为纯随机；相同种子（机器学习关闭、对齐节拍一致）生成完全一致的谱面，可复现分享',
@@ -426,8 +439,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 7.5</div>
-      <div className="about-ver about-ver-sub">v0.7.5</div>
+      <div className="about-ver">Alpha 7.6</div>
+      <div className="about-ver about-ver-sub">v0.7.6</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
@@ -500,7 +513,7 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
       <div className="ann-top">
         <button className="btn btn-primary ann-back" onClick={onClose}>{lang === 'zh' ? '返回' : 'Back'}</button>
         <h3 className="ann-title">{lang === 'zh' ? '关于' : 'About'}</h3>
-        <span className="ann-count">Alpha 7.5</span>
+        <span className="ann-count">Alpha 7.6</span>
       </div>
       <div className="ann-list about-list">
         {/* 宽屏：双栏布局 */}
