@@ -4,6 +4,7 @@ import { t, Lang } from '@/utils/lang';
 import { saveAsset, fileToDataURL, hasAsset, loadAsset, clearAsset, ASSET_KEYS } from '@/utils/assetStore';
 import { useDirectLingyanspace } from '@/utils/lingyanspace';
 import { setHitVolume, getHitVolume } from './GamePlay';
+import { canAdjustResolution } from '@/utils/platform';
 
 interface Props {
   settings: AppSettings;
@@ -36,6 +37,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [holdGradient, setHoldGradient] = useState(settings.holdGradient ?? true);
   const [skin, setSkin] = useState<'standard' | 'ball'>(settings.skin ?? 'standard');
   const [gameBgBlur, setGameBgBlur] = useState(settings.gameBgBlur ?? true);
+  const [renderScale, setRenderScale] = useState(settings.renderScale ?? 1);
   const [sub, setSub] = useState<Sub>('main');
 
   const build = (o: Partial<AppSettings> = {}): AppSettings => ({
@@ -53,6 +55,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     holdGradient,
     skin,
     gameBgBlur,
+    renderScale,
     showMascot: false, // 立绘已移除，永远关闭
     ...o,
   });
@@ -145,6 +148,16 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
           <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '性能模式' : 'Performance Mode'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={performanceMode} onChange={e => { const v = e.target.checked; setPerformanceMode(v); onSave(build({ performanceMode: v })); }} /><span className="toggle-slider" /></label>
           </div>
+          {/* 渲染分辨率：仅 Capacitor / Electron 平台真正生效，浏览器隐藏 */}
+          {canAdjustResolution() && (
+            <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '渲染分辨率' : 'Render Resolution'}</span>
+              <div className="st-lang-toggle">
+                {([{ v: 1, l: lang === 'zh' ? '原始' : 'Native' }, { v: 0.75, l: '75%' }, { v: 0.5, l: '50%' }] as { v: number; l: string }[]).map(s => (
+                  <button key={s.v} className={`st-lang-btn ${(renderScale ?? 1) === s.v ? 'active' : ''}`} onClick={() => { setRenderScale(s.v); onSave(build({ renderScale: s.v })); }}>{s.l}</button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '开发者模式' : 'Developer Mode'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={devMode} onChange={e => {
               const v = e.target.checked;

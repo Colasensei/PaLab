@@ -45,6 +45,8 @@ interface GamePlayProps {
   skin?: 'standard' | 'ball';
   /** 游戏内背景模糊：关闭=谱面不模糊不压暗、轨道区域压暗 80% */
   gameBgBlur?: boolean;
+  /** 渲染分辨率倍率（1=100% 原始；0.75=75%；0.5=50%）。非 1 时手动锁定渲染分辨率，不再自动降档 */
+  renderScale?: number;
 }
 
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
@@ -454,7 +456,7 @@ const AccuracyBar: React.FC<{ lastOffset: number; lastColor?: string; scale?: nu
 };
 
 export const GamePlay: React.FC<GamePlayProps> = ({
-  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings, gameUiScale = 1, videoBg = true, holdGradient = true, skin = 'standard', gameBgBlur = true,
+  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings, gameUiScale = 1, videoBg = true, holdGradient = true, skin = 'standard', gameBgBlur = true, renderScale = 1,
 }) => {
   // 键位：自定义优先，否则默认（useMemo 保证引用稳定，避免 useInput 监听重建）
   const keys = useMemo(() => resolveKeys(keyBindings, config.trackCount), [keyBindings, config.trackCount]);
@@ -738,12 +740,18 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   // ═══ 自适应渲染分辨率：帧数下降 ≥2fps 连续 3 次 → 降一级渲染分辨率（物理降，
   // 下限物理分辨率 50%）；降级后帧数稳定（不再下降）则停止降级。退出游戏时随组件卸载自动恢复 ═══
-  const [perfScale, setPerfScale] = useState(1);
-  const perfScaleRef = useRef(1);
+  // 手动渲染分辨率档位（设置项，仅 Cap/Elec 平台）：非 1 时锁定为固定倍率，不再自动降档
+  const [perfScale, setPerfScale] = useState(renderScale);
+  const perfScaleRef = useRef(perfScale);
   perfScaleRef.current = perfScale;
+
+  // 手动档位：设置变更后同步（进入游戏时已按 renderScale 初始化）
+  useEffect(() => { setPerfScale(renderScale); }, [renderScale]);
 
   useEffect(() => {
     if (!state.isPlaying) return;
+    // 手动固定渲染分辨率（非 1）：不参与自动降档
+    if (renderScale < 1) return;
     let frames = 0, start = performance.now(), raf = 0;
     let drops = 0;           // 连续帧数下降次数
     let lastFps: number | null = null;
@@ -769,7 +777,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [state.isPlaying]);
+  }, [state.isPlaying, renderScale]);
 
   const onReleaseWithFX = useCallback((track: number) => {
     if (effectiveConfig.autoPlay) return;

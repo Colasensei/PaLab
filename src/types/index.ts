@@ -264,6 +264,8 @@ export interface AppSettings {
   skin?: 'standard' | 'ball';
   /** 游戏内背景模糊：开启=模糊压暗（默认）；关闭=不模糊不压暗、轨道区域压 80% 暗 */
   gameBgBlur?: boolean;
+  /** 渲染分辨率倍率（1=100% 原始；0.75=75%；0.5=50%）。仅 Capacitor / Electron 平台可用，低端设备更流畅；非 1 时手动锁定渲染分辨率 */
+  renderScale?: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -291,6 +293,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   holdGradient: true,
   skin: 'standard',
   gameBgBlur: true,
+  renderScale: 1,
 };
 
 // ============ 账号信息 ============
