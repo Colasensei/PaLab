@@ -440,8 +440,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // canvas 循环读取最新判定特效（球状皮肤：完美/好球变色渐隐用）
   const effectsRef = useRef<JEffect[]>(effects);
   effectsRef.current = effects;
-  // 球状皮肤：bad（提前按）红球渐隐的判定时间戳
-  const badTimeRef = useRef<Map<number, number>>(new Map());
+  // 球状皮肤：判定变色球特效（黄/蓝/红），判定后音符已移出 activeNotes，独立列表由 canvas 绘制
+  const ballFxRef = useRef<{ track: number; color: string; time: number }[]>([]);
 
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
@@ -529,9 +529,19 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [effBgUrl, bgBlurVal, bgBrightnessVal, uiBlur]);
 
   const [gameHeight, setGameHeight] = useState(window.innerHeight - gameTopMargin);
-  const JUDGMENT_LINE_Y = gameHeight - judgeLineOffset;
-  // 脑裂轨道判定线 Y（顶部，与底部判定线对称）；splits 为脑裂段
-  const TOP_JUDGE_Y = judgeLineOffset;
+  // 皮肤：标准 / 球状
+  const isBall = (skin ?? 'standard') === 'ball';
+  // 轨道宽度，80~180px 自适应（；球状皮肤轨道大幅变窄（只需比音符球大一点点）
+  const baseTrackW = Math.max(trackMinW, Math.min(trackMaxW, Math.floor((window.innerWidth - hMargin) / config.trackCount)));
+  const trackWidth = isBall ? Math.max(40, Math.min(88, Math.floor(baseTrackW * 0.45))) : baseTrackW;
+  const totalWidth = config.trackCount * trackWidth;
+  // 球状音符尺寸：球直径 ≈ 轨道宽 0.8（球比轨道略小），长条圆角矩形半径略小于球
+  const ballR = isBall ? (trackWidth * gameScale) * 0.4 : 0;
+  const barR = isBall ? ballR * 0.75 : 0;
+  // 球状判定线整体上移一个球半径，避免球贴底/出屏被裁切
+  const JUDGMENT_LINE_Y = gameHeight - judgeLineOffset - (isBall ? trackWidth * 0.4 : 0);
+  // 脑裂轨道判定线 Y（顶部，与底部判定线对称）；球状时下移一个球半径
+  const TOP_JUDGE_Y = judgeLineOffset + (isBall ? trackWidth * 0.4 : 0);
   const splits = config.splits;
 
   useEffect(() => {
@@ -665,16 +675,25 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         if (getDevOverride('perf_hitEffectRender')) {
           const id = String(effectIdRef.current++);
           const max = getDevOverride('perf_maxParticles');
+          const jt = result.judgmentType === 'good' ? 'good' : 'perfect';
           setEffects(prev => {
-            const jt = result.judgmentType === 'good' ? 'good' : 'perfect';
             const next = [...prev, { id, type: jt as 'perfect' | 'good', track, time: performance.now() }];
             return next.length > max ? next.slice(-max) : next;
           });
+          // 球状皮肤：判定成功 → 音符球本身变色（Perfect 黄 / Good 蓝），画在判定线
+          if (isBall) {
+            const c = performance.now();
+            ballFxRef.current = [...ballFxRef.current.filter(f => c - f.time < 450), { track, color: jt === 'perfect' ? '#FFD700' : '#4488FF', time: c }];
+          }
         }
+      } else if (result.judgmentType === 'bad' && isBall) {
+        // 提前按：球变红渐渐消失
+        const c = performance.now();
+        ballFxRef.current = [...ballFxRef.current.filter(f => c - f.time < 450), { track, color: '#FF4444', time: c }];
       }
     }
     setKeysDown(prev => new Set(prev).add(track));
-  }, [paused, effectiveConfig.autoPlay, handlePress, correctHitSound]);
+  }, [paused, effectiveConfig.autoPlay, handlePress, correctHitSound, isBall]);
 
   const onReleaseWithFX = useCallback((track: number) => {
     if (effectiveConfig.autoPlay) return;
@@ -978,15 +997,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     return () => window.removeEventListener('keydown', h);
   }, [paused, doPause]);
 
-  // 皮肤：标准 / 球状
-  const isBall = (skin ?? 'standard') === 'ball';
-  // 轨道宽度，80~180px 自适应（；球状皮肤轨道大幅变窄（只需比音符球大一点点）
-  const baseTrackW = Math.max(trackMinW, Math.min(trackMaxW, Math.floor((window.innerWidth - hMargin) / config.trackCount)));
-  const trackWidth = isBall ? Math.max(40, Math.min(88, Math.floor(baseTrackW * 0.45))) : baseTrackW;
-  const totalWidth = config.trackCount * trackWidth;
-  // 球状音符尺寸：球直径 ≈ 轨道宽 0.8（球比轨道略小），长条圆角矩形半径略小于球
-  const ballR = isBall ? (trackWidth * gameScale) * 0.4 : 0;
-  const barR = isBall ? ballR * 0.75 : 0;
+  // 轨道宽度 / 皮肤尺寸已在上方（判定线定义处）统一计算，此处不再重复
 
   // Canvas 音符渲染 — 只用 ref 读运行时状态，不重建 rAF
   const canvasStateRef = useRef(state);
@@ -1031,6 +1042,27 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       const results = engineResultsRef.current;
       const activeHolds = engineHoldsRef.current;
 
+      // 球状皮肤：判定变色球特效（黄/蓝/红）— 判定后音符已移出 activeNotes，独立绘制
+      if (isBall) {
+        const fxNow = performance.now();
+        const fArr = ballFxRef.current;
+        const kept: typeof fArr = [];
+        const stw = trackWidth * gameScale;
+        for (const f of fArr) {
+          const age = fxNow - f.time;
+          if (age > 450) continue;
+          kept.push(f);
+          const p = Math.min(1, age / 350);
+          const fxX = f.track * stw + stw / 2;
+          const fxY = isTrackSplit(splits, f.track, now) ? TOP_JUDGE_Y : jy;
+          ctx.globalAlpha = Math.max(0, 1 - p);
+          ctx.fillStyle = f.color;
+          ctx.beginPath(); ctx.arc(fxX, fxY, ballR, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        if (kept.length !== fArr.length) ballFxRef.current = kept;
+      }
+
       for (const note of s.activeNotes) {
         const result = results.get(note.id);
         const isBadOrMiss = result && (result.judgment.type === 'bad' || result.judgment.type === 'miss');
@@ -1052,31 +1084,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         const startY = noteJy - ((note.startTime - now) / eff) * fallDist;
         if (note.type === 'tap') {
           if (isBall) {
-            // ═══ 球状皮肤：白色球 + 判定变色渐隐 ═══
-            const cx = note.track * scaledTrackW + scaledTrackW / 2;
-            // 判定成功：球变黄（Perfect）/ 蓝（Good）并渐隐
-            if (result && !isBadOrMiss) {
-              const fx = effectsRef.current.find(e => e.id === String(note.id));
-              const t0 = fx ? fx.time : performance.now();
-              const p = Math.min(1, (performance.now() - t0) / 350);
-              ctx.globalAlpha = Math.max(0, 1 - p);
-              ctx.fillStyle = result.judgment.type === 'perfect' ? '#FFD700' : '#4488FF';
-              ctx.beginPath(); ctx.arc(cx, noteJy, ballR, 0, Math.PI * 2); ctx.fill();
-              ctx.globalAlpha = 1;
-              continue;
-            }
-            // 提前按（bad）：球变红渐渐消失
-            if (result && result.judgment.type === 'bad') {
-              if (!badTimeRef.current.has(note.id)) badTimeRef.current.set(note.id, performance.now());
-              const p = Math.min(1, (performance.now() - badTimeRef.current.get(note.id)!) / 450);
-              ctx.globalAlpha = Math.max(0, 1 - p);
-              ctx.fillStyle = '#FF4444';
-              ctx.beginPath(); ctx.arc(cx, noteJy, ballR, 0, Math.PI * 2); ctx.fill();
-              ctx.globalAlpha = 1;
-              continue;
-            }
+            // ═══ 球状皮肤：白色球；判定变色（黄/蓝/红）由 ballFx 特效层绘制 ═══
             // autoPlay 到线即消失
             if (reachedLineInAuto) continue;
+            const cx = note.track * scaledTrackW + scaledTrackW / 2;
             const cy = startY;
             if (cy + ballR < -noteClipTop || cy - ballR > h + noteClipTop) continue;
             // 下落中 / miss：白色球（miss 纯红）
@@ -1162,8 +1173,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
               // 渐变：判定线端（头部球）实色 → 尾部渐变透明渐隐
               const grad = ctx.createLinearGradient(0, bTop, 0, bBot);
               const headAtBottom = headY >= tailY;
-              grad.addColorStop(headAtBottom ? 0 : 1, hexToRgba('#FFFFFF', baseAlpha));
-              grad.addColorStop(headAtBottom ? 1 : 0, hexToRgba('#FFFFFF', 0.12));
+              // 判定线端（头部球）实色 → 远离判定线（尾部）渐变透明
+              grad.addColorStop(headAtBottom ? 1 : 0, hexToRgba('#FFFFFF', baseAlpha));
+              grad.addColorStop(headAtBottom ? 0 : 1, hexToRgba('#FFFFFF', 0.12));
               ctx.fillStyle = grad;
             } else {
               ctx.globalAlpha = baseAlpha;
@@ -1373,6 +1385,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         }} />
       )}
 
+      {/* 背景模糊关闭：全屏轨道压暗 80%（直接覆盖屏幕上下，谱面本身不模糊不压暗） */}
+      {!gameBgBlur && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 0, pointerEvents: 'none' }} />
+      )}
+
       {/* HUD */}
       <div className="hud-left">
         <button className="btn btn-small btn-pause" onClick={handlePause}>{lang === 'zh' ? '暂停' : 'Pause'}</button>
@@ -1437,10 +1454,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         onContextMenu={e => e.preventDefault()}
         style={{ width: totalWidth * gameScale + 10, height: gameHeight, marginTop: gameTopCssVal, touchAction: 'none' }}
       >
-        {/* 背景模糊关闭：轨道区域压暗 80%（谱面本身不模糊不压暗） */}
-        {!gameBgBlur && (
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 0, pointerEvents: 'none' }} />
-        )}
         {/* Canvas 音符渲染层 */}
         <canvas
           ref={noteCanvasRef}
@@ -1490,8 +1503,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           );
         })}
 
-        {/* 圆圈特效 */}
-        {effects.filter(e => e.type === 'good' || e.type === 'perfect').map(eff => {
+        {/* 圆圈特效（球状皮肤不用：判定成功由音符球本身变色，不再叠加原版圆环） */}
+        {!isBall && effects.filter(e => e.type === 'good' || e.type === 'perfect').map(eff => {
           const age = performance.now() - eff.time;
           const p = Math.min(age / (effMaxAge * 0.5), 1);
           const size = tapEffInitial + p * tapEffSpread;
