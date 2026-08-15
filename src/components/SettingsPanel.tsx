@@ -34,6 +34,8 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [videoBg, setVideoBg] = useState(settings.videoBg ?? true);
   const [performanceMode, setPerformanceMode] = useState(settings.performanceMode ?? false);
   const [holdGradient, setHoldGradient] = useState(settings.holdGradient ?? true);
+  const [skin, setSkin] = useState<'standard' | 'ball'>(settings.skin ?? 'standard');
+  const [gameBgBlur, setGameBgBlur] = useState(settings.gameBgBlur ?? true);
   const [sub, setSub] = useState<Sub>('main');
 
   const build = (o: Partial<AppSettings> = {}): AppSettings => ({
@@ -49,6 +51,8 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     videoBg,
     performanceMode,
     holdGradient,
+    skin,
+    gameBgBlur,
     showMascot: false, // 立绘已移除，永远关闭
     ...o,
   });
@@ -62,7 +66,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   };
 
   if (sub === 'repair') return <RepairPanel lang={lang} onBack={() => setSub('main')} />;
-  if (sub === 'personalize') return <PersonalizePanel lang={lang} onBack={() => setSub('main')} />;
+  if (sub === 'personalize') return <PersonalizePanel lang={lang} onBack={() => setSub('main')} noteScale={noteScale} judgeLineThickness={judgeLineThickness} onNoteScale={v => { setNoteScale(v); onSave(build({ noteScale: v })); }} onJudgeLine={v => { setJudgeLineThickness(v); onSave(build({ judgeLineThickness: v })); }} />;
   if (sub === 'latency') return <LatencyPanel lang={lang} offset={settings.latencyOffset} onSave={o => onSave(build({ latencyOffset: o }))} onBack={() => setSub('main')} />;
   if (sub === 'audio') return <AudioPanel lang={lang} musicVol={musicVol} hitVol={hitVol} onMusic={v => { setMusicVol(v); onSave(build({ musicVolume: v })); }} onHit={v => { setHitVol(v); setHitVolume(v / 100); onSave(build({ hitVolume: v })); }} onBack={() => setSub('main')} />;
   if (sub === 'keys') return <KeyBindingsPanel lang={lang} bindings={keyBindings} onChange={commitBindings} onBack={() => setSub('main')} />;
@@ -76,71 +80,75 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
           <div className="st-row st-row-noborder">
             <span className="st-label">{t('language', lang)}</span>
             <div className="st-lang-toggle">
-              <button className={`st-lang-btn ${currentLang === 'zh' ? 'active' : ''}`} onClick={() => setCurrentLang('zh')}>{t('chinese', lang)}</button>
-              <button className={`st-lang-btn ${currentLang === 'en' ? 'active' : ''}`} onClick={() => setCurrentLang('en')}>{t('english', lang)}</button>
+              <button className={`st-lang-btn ${currentLang === 'zh' ? 'active' : ''}`} onClick={() => { setCurrentLang('zh'); onSave(build({ language: 'zh' })); }}>{t('chinese', lang)}</button>
+              <button className={`st-lang-btn ${currentLang === 'en' ? 'active' : ''}`} onClick={() => { setCurrentLang('en'); onSave(build({ language: 'en' })); }}>{t('english', lang)}</button>
+            </div>
+          </div>
+        </div>
+
+        {/* 皮肤：样式同语言选项（标准 / 球状） */}
+        <div className="st-card">
+          <div className="st-row st-row-noborder">
+            <span className="st-label">{lang === 'zh' ? '皮肤' : 'Skin'}</span>
+            <div className="st-lang-toggle">
+              <button className={`st-lang-btn ${(skin ?? 'standard') === 'standard' ? 'active' : ''}`} onClick={() => { setSkin('standard'); onSave(build({ skin: 'standard' })); }}>{lang === 'zh' ? '标准' : 'Standard'}</button>
+              <button className={`st-lang-btn ${(skin ?? 'standard') === 'ball' ? 'active' : ''}`} onClick={() => { setSkin('ball'); onSave(build({ skin: 'ball' })); }}>{lang === 'zh' ? '球状' : 'Ball'}</button>
             </div>
           </div>
         </div>
 
         <div className="st-card">
           <div className="st-row"><span className="st-label">{t('double.glow', lang)}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={showDoubleGlow} onChange={e => setShowDoubleGlow(e.target.checked)} /><span className="toggle-slider" /></label>
+            <label className="toggle-switch"><input type="checkbox" checked={showDoubleGlow} onChange={e => { const v = e.target.checked; setShowDoubleGlow(v); onSave(build({ showDoubleGlow: v })); }} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '实时 ACC' : 'Realtime ACC'}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={showACC} onChange={e => setShowACC(e.target.checked)} /><span className="toggle-slider" /></label>
+            <label className="toggle-switch"><input type="checkbox" checked={showACC} onChange={e => { const v = e.target.checked; setShowACC(v); onSave(build({ showACC: v })); }} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '音频可视化' : 'Audio Viz'}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={showWaveform} onChange={e => setShowWaveform(e.target.checked)} /><span className="toggle-slider" /></label>
+            <label className="toggle-switch"><input type="checkbox" checked={showWaveform} onChange={e => { const v = e.target.checked; setShowWaveform(v); onSave(build({ showWaveform: v })); }} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? 'UI 模糊效果' : 'UI Blur'}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={uiBlur} onChange={e => setUiBlur(e.target.checked)} /><span className="toggle-slider" /></label>
+            <label className="toggle-switch"><input type="checkbox" checked={uiBlur} onChange={e => { const v = e.target.checked; setUiBlur(v); onSave(build({ uiBlur: v })); }} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '谱面视频背景' : 'Video Background'}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={videoBg} onChange={e => setVideoBg(e.target.checked)} /><span className="toggle-slider" /></label>
+            <label className="toggle-switch"><input type="checkbox" checked={videoBg} onChange={e => { const v = e.target.checked; setVideoBg(v); onSave(build({ videoBg: v })); }} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '长条渐变透明' : 'Hold Gradient'}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={holdGradient} onChange={e => setHoldGradient(e.target.checked)} /><span className="toggle-slider" /></label>
+            <label className="toggle-switch"><input type="checkbox" checked={holdGradient} onChange={e => { const v = e.target.checked; setHoldGradient(v); onSave(build({ holdGradient: v })); }} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '关闭无用加载' : 'Skip Extra Loading'}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={noPageLoading} onChange={e => setNoPageLoading(e.target.checked)} /><span className="toggle-slider" /></label>
+            <label className="toggle-switch"><input type="checkbox" checked={noPageLoading} onChange={e => { const v = e.target.checked; setNoPageLoading(v); onSave(build({ noPageLoading: v })); }} /><span className="toggle-slider" /></label>
           </div>
-          <div className="st-row"><span className="st-label">{lang === 'zh' ? '音符大小' : 'Note Scale'}</span>
-            <div className="st-speed-row"><input type="range" min={0.5} max={2.0} step={0.05} value={noteScale} onChange={e => setNoteScale(parseFloat(e.target.value))} className="st-range" />
-              <span className="st-speed-val">{noteScale.toFixed(2)}x</span></div>
-          </div>
-          <div className="st-row"><span className="st-label">{lang === 'zh' ? '判定线粗细' : 'Judge Line'}</span>
-            <div className="st-speed-row"><input type="range" min={1} max={10} step={1} value={judgeLineThickness} onChange={e => setJudgeLineThickness(parseInt(e.target.value))} className="st-range" />
-              <span className="st-speed-val">{judgeLineThickness}px
-                <span style={{ display: 'inline-block', width: Math.max(12, judgeLineThickness * 4), height: Math.max(1, judgeLineThickness), background: '#999', borderRadius: judgeLineThickness / 2, marginLeft: 6, verticalAlign: 'middle' }} />
-              </span></div>
+          <div className="st-row"><span className="st-label">{lang === 'zh' ? '游戏内背景模糊' : 'In-Game BG Blur'}</span>
+            <label className="toggle-switch"><input type="checkbox" checked={gameBgBlur ?? true} onChange={e => { const v = e.target.checked; setGameBgBlur(v); onSave(build({ gameBgBlur: v })); }} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '准度条' : 'Accuracy Bar'}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={showAccuracyBar} onChange={e => setShowAccuracyBar(e.target.checked)} /><span className="toggle-slider" /></label>
+            <label className="toggle-switch"><input type="checkbox" checked={showAccuracyBar} onChange={e => { const v = e.target.checked; setShowAccuracyBar(v); onSave(build({ showAccuracyBar: v })); }} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '显示帧数' : 'Show FPS'}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={showFPS} onChange={e => setShowFPS(e.target.checked)} /><span className="toggle-slider" /></label>
+            <label className="toggle-switch"><input type="checkbox" checked={showFPS} onChange={e => { const v = e.target.checked; setShowFPS(v); onSave(build({ showFPS: v })); }} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '界面大小' : 'UI Scale'}</span>
             <div className="st-lang-toggle">
               {([{ v: 0.6, l: lang === 'zh' ? '极小' : 'XS' }, { v: 0.8, l: lang === 'zh' ? '小' : 'S' }, { v: 1, l: lang === 'zh' ? '中' : 'M' }, { v: 1.2, l: lang === 'zh' ? '大' : 'L' }] as { v: number; l: string }[]).map(s => (
-                <button key={s.v} className={`st-lang-btn ${uiScale === s.v ? 'active' : ''}`} onClick={() => setUiScale(s.v)}>{s.l}</button>
+                <button key={s.v} className={`st-lang-btn ${uiScale === s.v ? 'active' : ''}`} onClick={() => { setUiScale(s.v); onSave(build({ uiScale: s.v })); }}>{s.l}</button>
               ))}
             </div>
           </div>
           <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '游戏界面大小' : 'Game UI Scale'}</span>
             <div className="st-lang-toggle">
               {([{ v: 0.6, l: lang === 'zh' ? '极小' : 'XS' }, { v: 0.8, l: lang === 'zh' ? '小' : 'S' }, { v: 1, l: lang === 'zh' ? '中' : 'M' }, { v: 1.2, l: lang === 'zh' ? '大' : 'L' }] as { v: number; l: string }[]).map(s => (
-                <button key={s.v} className={`st-lang-btn ${gameUiScale === s.v ? 'active' : ''}`} onClick={() => setGameUiScale(s.v)}>{s.l}</button>
+                <button key={s.v} className={`st-lang-btn ${gameUiScale === s.v ? 'active' : ''}`} onClick={() => { setGameUiScale(s.v); onSave(build({ gameUiScale: s.v })); }}>{s.l}</button>
               ))}
             </div>
           </div>
           <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '性能模式' : 'Performance Mode'}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={performanceMode} onChange={e => setPerformanceMode(e.target.checked)} /><span className="toggle-slider" /></label>
+            <label className="toggle-switch"><input type="checkbox" checked={performanceMode} onChange={e => { const v = e.target.checked; setPerformanceMode(v); onSave(build({ performanceMode: v })); }} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '开发者模式' : 'Developer Mode'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={devMode} onChange={e => {
-              const u = { ...settings, devMode: e.target.checked, noteColor: '#35BFFF' as const, holdNoteColor: '#35BFFF' as const, bgColor: '#0a0a14' as const, judgeLineColor: '#999999' as const };
-              onSave(u);
+              const v = e.target.checked;
+              onSave(build({ devMode: v, noteColor: '#35BFFF', holdNoteColor: '#35BFFF', bgColor: '#0a0a14', judgeLineColor: '#999999' }));
             }} /><span className="toggle-slider" /></label>
           </div>
         </div>
@@ -156,7 +164,9 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
         <button className="st-action-btn st-sub-btn" onClick={() => setSub('audio')}>{lang === 'zh' ? '音量' : 'Volume'}</button>
         <button className="st-action-btn st-sub-btn" onClick={() => setSub('keys')}>{lang === 'zh' ? '键位' : 'Keys'}</button>
 
-        <button className="st-save-btn" onClick={save}>{t('save', lang)}</button>
+        <p style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', margin: 8 }}>
+          {lang === 'zh' ? '所有改动即时自动保存，无需手动保存；点「返回」退出设置。' : 'All changes are saved automatically. Press Back to exit.'}
+        </p>
       </div>
     </div>
   );
@@ -243,44 +253,52 @@ const RepairPanel: React.FC<{ lang: Lang; onBack: () => void }> = ({ lang, onBac
 };
 
 // ==================== 个性化 ====================
-const PersonalizePanel: React.FC<{ lang: Lang; onBack: () => void }> = ({ lang, onBack }) => {
-  const [tapOk, setTapOk] = useState(hasAsset(ASSET_KEYS.noteTap));
-  const [holdOk, setHoldOk] = useState(hasAsset(ASSET_KEYS.noteHold));
-  const imp = async (k: string, e: React.ChangeEvent<HTMLInputElement>, s: (v: boolean) => void) => {
+const PersonalizePanel: React.FC<{
+  lang: Lang;
+  onBack: () => void;
+  noteScale: number;
+  judgeLineThickness: number;
+  onNoteScale: (v: number) => void;
+  onJudgeLine: (v: number) => void;
+}> = ({ lang, onBack, noteScale, judgeLineThickness, onNoteScale, onJudgeLine }) => {
+  const [gameBgOk, setGameBgOk] = useState(hasAsset(ASSET_KEYS.gameBg));
+  const impBg = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
-    saveAsset(k, await fileToDataURL(f)); s(true);
+    saveAsset(ASSET_KEYS.gameBg, await fileToDataURL(f));
+    setGameBgOk(true);
   };
-  const clr = (k: string, s: (v: boolean) => void) => { clearAsset(k); s(false); };
-  const tp = tapOk ? loadAsset(ASSET_KEYS.noteTap) : null;
-  const hp = holdOk ? loadAsset(ASSET_KEYS.noteHold) : null;
+  const clrBg = () => { clearAsset(ASSET_KEYS.gameBg); setGameBgOk(false); };
+  const gb = gameBgOk ? loadAsset(ASSET_KEYS.gameBg) : null;
 
   return (
     <div className="screen settings-screen">
       <div className="settings-container">
         <SubHdr title={lang === 'zh' ? '个性化' : 'Personalize'} onBack={onBack} lang={lang} />
+        {/* 游戏内背景：强制覆盖谱面本身的曲绘/封面/视频背景 */}
         <div className="st-card">
-          <span className="st-label" style={{ display: 'block', marginBottom: 8 }}>{lang === 'zh' ? 'Tap 贴图' : 'Tap Skin'}</span>
-          <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>{lang === 'zh' ? '保持比例，居中显示。' : 'Keep aspect ratio, centered.'}</p>
+          <span className="st-label" style={{ display: 'block', marginBottom: 8 }}>{lang === 'zh' ? '游戏内背景' : 'In-Game Background'}</span>
+          <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>{lang === 'zh' ? '选择后强制覆盖谱面本身的曲绘 / 封面 / 视频背景。' : 'Overrides the chart\'s own illustration / cover / video background.'}</p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, color: tapOk ? '#44BB44' : 'var(--text-secondary)', minWidth: 30 }}>{tapOk ? 'OK' : '-'}</span>
-            <input type="file" accept="image/*" onChange={e => imp(ASSET_KEYS.noteTap, e, setTapOk)} id="per-t" className="file-input" />
-            <label htmlFor="per-t" className="st-file-btn">{tapOk ? (lang === 'zh' ? '更换' : 'Change') : (lang === 'zh' ? '选取' : 'Pick')}</label>
-            {tapOk && <button className="st-clear-btn" onClick={() => clr(ASSET_KEYS.noteTap, setTapOk)}>{lang === 'zh' ? '清除' : 'Clear'}</button>}
+            <span style={{ fontSize: 11, color: gameBgOk ? '#44BB44' : 'var(--text-secondary)', minWidth: 30 }}>{gameBgOk ? 'OK' : '-'}</span>
+            <input type="file" accept="image/*" onChange={impBg} id="per-bg" className="file-input" />
+            <label htmlFor="per-bg" className="st-file-btn">{gameBgOk ? (lang === 'zh' ? '更换' : 'Change') : (lang === 'zh' ? '选取' : 'Pick')}</label>
+            {gameBgOk && <button className="st-clear-btn" onClick={clrBg}>{lang === 'zh' ? '清除' : 'Clear'}</button>}
           </div>
-          {tp && <div className="st-bg-preview" style={{ marginTop: 8 }}><img src={tp} alt="" style={{ objectFit: 'contain', maxHeight: 40 }} /></div>}
+          {gb && <div className="st-bg-preview" style={{ marginTop: 8 }}><img src={gb} alt="" style={{ objectFit: 'cover', maxHeight: 60, width: '100%' }} /></div>}
         </div>
         <div className="st-card">
-          <span className="st-label" style={{ display: 'block', marginBottom: 8 }}>{lang === 'zh' ? 'Hold 贴图' : 'Hold Skin'}</span>
-          <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>{lang === 'zh' ? '拉伸填充整个长条。' : 'Stretch to fill hold area.'}</p>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, color: holdOk ? '#44BB44' : 'var(--text-secondary)', minWidth: 30 }}>{holdOk ? 'OK' : '-'}</span>
-            <input type="file" accept="image/*" onChange={e => imp(ASSET_KEYS.noteHold, e, setHoldOk)} id="per-h" className="file-input" />
-            <label htmlFor="per-h" className="st-file-btn">{holdOk ? (lang === 'zh' ? '更换' : 'Change') : (lang === 'zh' ? '选取' : 'Pick')}</label>
-            {holdOk && <button className="st-clear-btn" onClick={() => clr(ASSET_KEYS.noteHold, setHoldOk)}>{lang === 'zh' ? '清除' : 'Clear'}</button>}
+          <div className="st-row"><span className="st-label">{lang === 'zh' ? '音符大小' : 'Note Scale'}</span>
+            <div className="st-speed-row"><input type="range" min={0.5} max={2.0} step={0.05} value={noteScale} onChange={e => onNoteScale(parseFloat(e.target.value))} className="st-range" />
+              <span className="st-speed-val">{noteScale.toFixed(2)}x</span></div>
           </div>
-          {hp && <div className="st-bg-preview" style={{ marginTop: 8 }}><img src={hp} alt="" style={{ objectFit: 'fill', maxHeight: 40, width: 120 }} /></div>}
+          <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '判定线宽度' : 'Judge Line'}</span>
+            <div className="st-speed-row"><input type="range" min={1} max={10} step={1} value={judgeLineThickness} onChange={e => onJudgeLine(parseInt(e.target.value))} className="st-range" />
+              <span className="st-speed-val">{judgeLineThickness}px
+                <span style={{ display: 'inline-block', width: Math.max(12, judgeLineThickness * 4), height: Math.max(1, judgeLineThickness), background: '#999', borderRadius: judgeLineThickness / 2, marginLeft: 6, verticalAlign: 'middle' }} />
+              </span></div>
+          </div>
         </div>
-        <p style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', margin: 8 }}>{lang === 'zh' ? '贴图在下一局生效。' : 'Skins apply next game.'}</p>
+        <p style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', margin: 8 }}>{lang === 'zh' ? '改动即时保存，下一局生效。' : 'Changes save instantly, apply next game.'}</p>
       </div>
     </div>
   );

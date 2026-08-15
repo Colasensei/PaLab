@@ -11,6 +11,8 @@ interface Props {
   uiBlur?: boolean;
   chartInfo?: { title: string; artist: string; difficulty: string; chartConstant: number; illustrationUrl: string | null; coverUrl: string | null } | null;
   coverOverride?: string | null;
+  /** 封面覆盖：chartInfo 为空时也显示一张封面（页面加载界面随机封面） */
+  coverImgOverride?: string | null;
   pageTitle?: string;
   /** 后台异步任务：加载期间并行执行。完成后一起结束。不提供则为纯定时假加载 */
   task?: () => Promise<void>;
@@ -20,7 +22,7 @@ interface Props {
   mlLearning?: boolean;
 }
 
-export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true, chartInfo, coverOverride, pageTitle, task, minDuration, mlLearning = false }) => {
+export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true, chartInfo, coverOverride, coverImgOverride, pageTitle, task, minDuration, mlLearning = false }) => {
   const [tip] = useState(() => getRandomTip(lang));
   const [staticBg, setStaticBg] = useState<string | null>(null);
   // 机器学习学习进度
@@ -39,7 +41,7 @@ export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true
   onCompleteRef.current = onComplete;
   // 背景：优先曲绘，无曲绘回退封面（模糊背景），再回退封面覆盖参数
   const bgImg = chartInfo?.illustrationUrl || chartInfo?.coverUrl || coverOverride || null;
-  const coverImg = chartInfo?.coverUrl || null;
+  const coverImg = chartInfo?.coverUrl || coverImgOverride || null;
 
   // 静态模糊：设置禁用模糊时生成一张模糊图片
   useEffect(() => {

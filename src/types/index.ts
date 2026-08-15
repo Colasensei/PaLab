@@ -260,6 +260,10 @@ export interface AppSettings {
   performanceMode?: boolean;
   /** Hold 长条渐变透明（开启后长条从头部实色渐变到尾部，默认开启） */
   holdGradient?: boolean;
+  /** 游戏皮肤：standard 标准 / ball 球状 */
+  skin?: 'standard' | 'ball';
+  /** 游戏内背景模糊：开启=模糊压暗（默认）；关闭=不模糊不压暗、轨道区域压 80% 暗 */
+  gameBgBlur?: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -285,6 +289,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   gameUiScale: 1,
   performanceMode: false,
   holdGradient: true,
+  skin: 'standard',
+  gameBgBlur: true,
 };
 
 // ============ 账号信息 ============

@@ -28,6 +28,8 @@ export const ASSET_KEYS = {
   // 主界面封面（横屏 43.jpg / 竖屏 916.jpg），文件名与主菜单加载保持一致
   coverLand: '43.jpg',
   coverPort: '916.jpg',
+  // 游戏内背景（个性化强制覆盖谱面背景）
+  gameBg: 'gameBg',
 } as const;
 
 /** 从本地 File 对象转为 base64 data URL */

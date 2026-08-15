@@ -6,6 +6,8 @@ import { generateBlurredBg } from '@/utils/blurImage';
 import { PREVIEW_VOLUME, PREVIEW_LOW_VOLUME, setPreviewVolume } from '@/utils/previewPlayer';
 import { isFav, toggleFav, subscribeFavs } from '@/utils/favStore';
 import { parseChartZip } from '@/utils/chartParser';
+import { saveZipBlob } from '@/utils/zipSave';
+import JSZip from 'jszip';
 import { CommunityPanel } from './CommunityPanel';
 import { CoverThumb } from './CoverThumb';
 
@@ -206,6 +208,54 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     else if (selected > i) setSelected(selected - 1);
   };
 
+  /** 从谱面库条目重建 .zip 谱面包（与制作完成后导出一致） */
+  const buildPkgZip = async (c: ChartPackage) => {
+    const zip = new JSZip();
+    let cfg: any = {};
+    try { cfg = JSON.parse(c.config || '{}'); } catch { /* ignore */ }
+    const info = {
+      title: c.title, artist: c.artist, author: c.author,
+      difficulty: c.difficulty, chartConstant: c.chartConstant,
+      description: c.description, config: cfg,
+    };
+    zip.file('info.json', JSON.stringify(info, null, 2));
+    zip.file('chart.json', c.chartData || '[]');
+    const toBlob = async (url: string | null) => { if (!url) return null; try { return await (await fetch(url)).blob(); } catch { return null; } };
+    const songBlob = await toBlob(c.songUrl);
+    if (songBlob) {
+      const mime = (songBlob.type || '').toLowerCase();
+      const extMap: Record<string, string> = { 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/aac': 'aac', 'audio/flac': 'flac' };
+      zip.file(`song.${extMap[mime] || 'mp3'}`, songBlob);
+    }
+    const coverBlob = await toBlob(c.coverUrl);
+    if (coverBlob) zip.file('cover.png', coverBlob);
+    const illusBlob = await toBlob(c.illustrationUrl);
+    if (illusBlob) zip.file('illustration.png', illusBlob);
+    const videoBlob = await toBlob(c.videoUrl ?? null);
+    if (videoBlob) {
+      const vext = (videoBlob.type.split('/')[1] || 'mp4').split(';')[0];
+      zip.file(`video.${/^[a-z0-9]{2,5}$/i.test(vext) ? vext : 'mp4'}`, videoBlob);
+    }
+    return zip.generateAsync({ type: 'blob' });
+  };
+
+  const [exporting, setExporting] = useState(false);
+  // 导出：Web 下载；Android 走 Capacitor Filesystem+Share（下载走不通会自动走分享）
+  const handleExport = async (i: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const pkg = charts[i];
+    if (!pkg || exporting) return;
+    setExporting(true);
+    try {
+      const blob = await buildPkgZip(pkg);
+      await saveZipBlob(blob, pkg.fileName);
+    } catch {
+      alert(lang === 'zh' ? '导出失败' : 'Export failed');
+    }
+    setExporting(false);
+    setSwipedIdx(null);
+  };
+
   const sortedCharts = [...charts]
     .filter(c => !favOnly || isFav(c.fileName))
     .sort((a, b) => {
@@ -289,15 +339,24 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
             const isSwiped = swipedIdx === realIdx;
             return (
             <div key={c.fileName} ref={realIdx === selected ? selectedItemRef : null} style={{ position: 'relative', overflow: 'hidden', borderRadius: 10, marginBottom: 2 }}>
-              {/* iOS 滑动删除背景 */}
+              {/* iOS 滑动操作背景：导出（蓝）+ 删除（红） */}
               {isSwiped && (
               <div style={{
-                position: 'absolute', right: 0, top: 0, bottom: 0,
-                width: 64, background: '#CC2222', borderRadius: '0 10px 10px 0',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', zIndex: 0,
-              }} onClick={(e) => { e.stopPropagation(); handleDelete(realIdx, e); setSwipedIdx(null); }}>
-                <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>{lang === 'zh' ? '删除' : 'Del'}</span>
+                position: 'absolute', right: 0, top: 0, bottom: 0, width: 128, zIndex: 0,
+                display: 'flex',
+              }}>
+                <div style={{
+                  flex: 1, background: '#1E6FD9', borderRadius: '10px 0 0 10px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                }} onClick={(e) => { handleExport(realIdx, e); }}>
+                  <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>{exporting && swipedIdx === realIdx ? '...' : (lang === 'zh' ? '导出' : 'Export')}</span>
+                </div>
+                <div style={{
+                  flex: 1, background: '#CC2222', borderRadius: '0 10px 10px 0',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                }} onClick={(e) => { e.stopPropagation(); handleDelete(realIdx, e); setSwipedIdx(null); }}>
+                  <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>{lang === 'zh' ? '删除' : 'Del'}</span>
+                </div>
               </div>
               )}
               {/* 列表项主体 */}
@@ -315,7 +374,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                 onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ idx: realIdx, x: e.clientX, y: e.clientY }); }}
                 style={{
                   position: 'relative', zIndex: 1,
-                  transform: isSwiped ? 'translateX(-64px)' : 'translateX(0)',
+                  transform: isSwiped ? 'translateX(-128px)' : 'translateX(0)',
                   transition: 'transform 0.2s ease',
                   // 选中高亮只由滑动选择框 .cl2-selection 负责；item 自身不再加背景，
                   // 否则点击瞬间 item 自身先“闪”出背景框，再叠加选择框平移，出现两个选框

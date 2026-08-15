@@ -149,7 +149,7 @@ const App: React.FC = () => {
   const [animating, setAnimating] = useState(false);
   const animRef = useRef<number>(0);
   const [pageLoading, setPageLoading] = useState<AppScreen | null>(null);
-  const [pageLoadingBg, setPageLoadingBg] = useState<string | null>(null);
+  const [pageLoadingBg, setPageLoadingBg] = useState<{ bg: string | null; cover: string | null } | null>(null);
   const [pageLoadingLabel, setPageLoadingLabel] = useState<string>('');
   const [playTime, setPlayTime] = useState<number>(() => parseFloat(localStorage.getItem('palab_playtime') || '0'));
 
@@ -245,12 +245,12 @@ const App: React.FC = () => {
     }
   };
 
-  /** 从缓存中随机选一张曲绘（仅选有曲绘的歌曲，不用封面） */
+  /** 从缓存中随机选一首歌的封面/曲绘（无权重：所有有封面或曲绘的歌曲均匀随机） */
   const pickRandomCover = () => {
-    const pool = chartsCacheRef.current.filter(c => !!c.illustrationUrl);
-    if (pool.length === 0) return null;
+    const pool = chartsCacheRef.current.filter(c => !!c.illustrationUrl || !!c.coverUrl);
+    if (pool.length === 0) return { bg: null, cover: null };
     const r = pool[Math.floor(Math.random() * pool.length)];
-    return r.illustrationUrl;
+    return { bg: r.illustrationUrl || r.coverUrl, cover: r.coverUrl };
   };
 
   const handleBrandDevClick = useCallback(() => {
@@ -459,11 +459,11 @@ const App: React.FC = () => {
   }, [eulaAccepted]);
 
   // ============ 设置 ============
+  // 自动保存：只持久化，不触发返回（退出设置靠「返回」按钮）
   const handleSettingsSave = useCallback((s: AppSettings) => {
     setSettings(s);
     saveSettings(s);
-    navigateBack();
-  }, [navigateBack]);
+  }, []);
 
   // ============ 配置确认 → 歌曲面板 ============
   const handleConfigConfirm = useCallback(async (cfg: GameConfig) => {
@@ -944,11 +944,11 @@ const App: React.FC = () => {
       case 'song-panel':
         return <SongPanel config={config} highScore={highScore} highPP={highPP} highRating={highRating} history={history} onStart={handleStart} onClearConfig={handleClearConfig} onConfigChange={handleConfigChange} onBack={navigateBack} onSettings={goToSettings} lang={lang} isTrial={isTrial} keyBindings={settings.keyBindings} />;
       case 'page-loading':
-        return <LoadingScreen onComplete={handlePageLoadingComplete} lang={lang} chartInfo={null} uiBlur={effectiveUiBlur} coverOverride={pageLoadingBg} pageTitle={pageLoadingLabel} />;
+        return <LoadingScreen onComplete={handlePageLoadingComplete} lang={lang} chartInfo={null} uiBlur={effectiveUiBlur} coverOverride={pageLoadingBg?.bg ?? null} coverImgOverride={pageLoadingBg?.cover ?? null} pageTitle={pageLoadingLabel} />;
       case 'loading':
         return <LoadingScreen onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={effectiveUiBlur} task={loadingTaskRef.current} mlLearning={!!config.machineLearning} />;
       case 'gameplay':
-        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={effectiveUiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} showFPS={settings.showFPS ?? false} keyBindings={settings.keyBindings} gameUiScale={settings.gameUiScale} videoBg={settings.videoBg ?? true} holdGradient={settings.holdGradient ?? true} />;
+        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={effectiveUiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} showFPS={settings.showFPS ?? false} keyBindings={settings.keyBindings} gameUiScale={settings.gameUiScale} videoBg={settings.videoBg ?? true} holdGradient={settings.holdGradient ?? true} skin={settings.skin ?? 'standard'} gameBgBlur={settings.gameBgBlur ?? true} />;
       case 'results':
         return results ? <ResultsScreen results={results} onRestart={handleRestart} onBackToPanel={handleBackToPanel} rks={rks} rksChange={rksChange} lang={lang} isTrial={isTrial} onAdjustParams={handleTrialDiscard} onContinueToEditor={handleTrialContinue} chartInfo={chartSource} /> : null;
       case 'editor':

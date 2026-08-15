@@ -41,6 +41,10 @@ interface GamePlayProps {
   videoBg?: boolean;
   /** Hold 长条渐变透明 */
   holdGradient?: boolean;
+  /** 游戏皮肤：standard 标准 / ball 球状 */
+  skin?: 'standard' | 'ball';
+  /** 游戏内背景模糊：关闭=谱面不模糊不压暗、轨道区域压暗 80% */
+  gameBgBlur?: boolean;
 }
 
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
@@ -416,10 +420,13 @@ const AccuracyBar: React.FC<{ lastOffset: number; scale?: number }> = ({ lastOff
 };
 
 export const GamePlay: React.FC<GamePlayProps> = ({
-  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings, gameUiScale = 1, videoBg = true, holdGradient = true,
+  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings, gameUiScale = 1, videoBg = true, holdGradient = true, skin = 'standard', gameBgBlur = true,
 }) => {
   // 键位：自定义优先，否则默认（useMemo 保证引用稳定，避免 useInput 监听重建）
   const keys = useMemo(() => resolveKeys(keyBindings, config.trackCount), [keyBindings, config.trackCount]);
+  // 个性化「游戏内背景」：强制覆盖谱面本身的曲绘/封面/视频背景
+  const gameBgOverride = loadAsset(ASSET_KEYS.gameBg) ?? null;
+  const effBgUrl = gameBgOverride || coverUrl;
   // 游戏内界面缩放（不含HUD）
   const gameScale = gameUiScale ?? 1;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -430,6 +437,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const gameStartRef = useRef<number>(0);
   const [effects, setEffects] = useState<JEffect[]>([]);
   const effectIdRef = useRef(0);
+  // canvas 循环读取最新判定特效（球状皮肤：完美/好球变色渐隐用）
+  const effectsRef = useRef<JEffect[]>(effects);
+  effectsRef.current = effects;
+  // 球状皮肤：bad（提前按）红球渐隐的判定时间戳
+  const badTimeRef = useRef<Map<number, number>>(new Map());
 
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
@@ -512,9 +524,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 模糊：开 → CSS 实时；关 → 预生成静态图（
   const [blurredBg, setBlurredBg] = useState<string | null>(null);
   useEffect(() => {
-    if (uiBlur || !coverUrl) { setBlurredBg(null); return; }
-    generateBlurredBg(coverUrl, bgBlurVal, bgBrightnessVal).then(setBlurredBg);
-  }, [coverUrl, bgBlurVal, bgBrightnessVal, uiBlur]);
+    if (uiBlur || !effBgUrl) { setBlurredBg(null); return; }
+    generateBlurredBg(effBgUrl, bgBlurVal, bgBrightnessVal).then(setBlurredBg);
+  }, [effBgUrl, bgBlurVal, bgBrightnessVal, uiBlur]);
 
   const [gameHeight, setGameHeight] = useState(window.innerHeight - gameTopMargin);
   const JUDGMENT_LINE_Y = gameHeight - judgeLineOffset;
@@ -966,9 +978,15 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     return () => window.removeEventListener('keydown', h);
   }, [paused, doPause]);
 
-  // 轨道宽度，80~180px 自适应（
-  const trackWidth = Math.max(trackMinW, Math.min(trackMaxW, Math.floor((window.innerWidth - hMargin) / config.trackCount)));
+  // 皮肤：标准 / 球状
+  const isBall = (skin ?? 'standard') === 'ball';
+  // 轨道宽度，80~180px 自适应（；球状皮肤轨道大幅变窄（只需比音符球大一点点）
+  const baseTrackW = Math.max(trackMinW, Math.min(trackMaxW, Math.floor((window.innerWidth - hMargin) / config.trackCount)));
+  const trackWidth = isBall ? Math.max(40, Math.min(88, Math.floor(baseTrackW * 0.45))) : baseTrackW;
   const totalWidth = config.trackCount * trackWidth;
+  // 球状音符尺寸：球直径 ≈ 轨道宽 0.8（球比轨道略小），长条圆角矩形半径略小于球
+  const ballR = isBall ? (trackWidth * gameScale) * 0.4 : 0;
+  const barR = isBall ? ballR * 0.75 : 0;
 
   // Canvas 音符渲染 — 只用 ref 读运行时状态，不重建 rAF
   const canvasStateRef = useRef(state);
@@ -1033,6 +1051,46 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         const scaledTrackW = trackWidth * gameScale;
         const startY = noteJy - ((note.startTime - now) / eff) * fallDist;
         if (note.type === 'tap') {
+          if (isBall) {
+            // ═══ 球状皮肤：白色球 + 判定变色渐隐 ═══
+            const cx = note.track * scaledTrackW + scaledTrackW / 2;
+            // 判定成功：球变黄（Perfect）/ 蓝（Good）并渐隐
+            if (result && !isBadOrMiss) {
+              const fx = effectsRef.current.find(e => e.id === String(note.id));
+              const t0 = fx ? fx.time : performance.now();
+              const p = Math.min(1, (performance.now() - t0) / 350);
+              ctx.globalAlpha = Math.max(0, 1 - p);
+              ctx.fillStyle = result.judgment.type === 'perfect' ? '#FFD700' : '#4488FF';
+              ctx.beginPath(); ctx.arc(cx, noteJy, ballR, 0, Math.PI * 2); ctx.fill();
+              ctx.globalAlpha = 1;
+              continue;
+            }
+            // 提前按（bad）：球变红渐渐消失
+            if (result && result.judgment.type === 'bad') {
+              if (!badTimeRef.current.has(note.id)) badTimeRef.current.set(note.id, performance.now());
+              const p = Math.min(1, (performance.now() - badTimeRef.current.get(note.id)!) / 450);
+              ctx.globalAlpha = Math.max(0, 1 - p);
+              ctx.fillStyle = '#FF4444';
+              ctx.beginPath(); ctx.arc(cx, noteJy, ballR, 0, Math.PI * 2); ctx.fill();
+              ctx.globalAlpha = 1;
+              continue;
+            }
+            // autoPlay 到线即消失
+            if (reachedLineInAuto) continue;
+            const cy = startY;
+            if (cy + ballR < -noteClipTop || cy - ballR > h + noteClipTop) continue;
+            // 下落中 / miss：白色球（miss 纯红）
+            ctx.globalAlpha = isRed ? 0.7 : 1;
+            ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : '#FFFFFF';
+            ctx.beginPath(); ctx.arc(cx, cy, ballR, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 1;
+            // 双押：黄色描边；普通：白色描边
+            const isDoubleNote = note.isDouble && showDoubleGlow && !isRed;
+            ctx.strokeStyle = isDoubleNote ? doubleGlowColor : 'rgba(255,255,255,0.18)';
+            ctx.lineWidth = isDoubleNote ? 3 : 2;
+            ctx.beginPath(); ctx.arc(cx, cy, ballR + 2, 0, Math.PI * 2); ctx.stroke();
+            continue;
+          }
           if (result && !isBadOrMiss) continue;
           // autoPlay 到线即消失（不依赖判定帧）
           if (reachedLineInAuto) continue;
@@ -1084,6 +1142,47 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             if (nh < holdMinH * gameScale) nh = holdMinH * gameScale;
           }
           if (ny + nh < -noteClipTop || ny > h + noteClipTop) continue;
+
+          if (isBall) {
+            // ═══ 球状长条：头部球 + 尾部圆角矩形 ═══
+            const cx = nx + noteW / 2;
+            const holdColor = isFailed ? '#FF2222' : isRed ? '#FF3333' : '#FFFFFF';
+            const baseAlpha = isRed ? 0.7 : isHoldDone ? 0.4 : 1;
+            // 头部球位置：按住/完成锁定判定线，下落中随长条前端（startY）
+            const headY = (isHolding || isHoldDone) ? noteJy : startY;
+            const tailY = endY;
+            const bTop = Math.min(headY, tailY);
+            const bBot = Math.max(headY, tailY);
+            const bH = Math.max(bBot - bTop, holdMinH * gameScale * 0.4);
+            const bWidth = barR * 2;
+            const bx = cx - barR;
+            const rr = barR * 0.55;
+            ctx.globalAlpha = 1;
+            if (holdGradient && !isRed) {
+              // 渐变：判定线端（头部球）实色 → 尾部渐变透明渐隐
+              const grad = ctx.createLinearGradient(0, bTop, 0, bBot);
+              const headAtBottom = headY >= tailY;
+              grad.addColorStop(headAtBottom ? 0 : 1, hexToRgba('#FFFFFF', baseAlpha));
+              grad.addColorStop(headAtBottom ? 1 : 0, hexToRgba('#FFFFFF', 0.12));
+              ctx.fillStyle = grad;
+            } else {
+              ctx.globalAlpha = baseAlpha;
+              ctx.fillStyle = holdColor;
+            }
+            ctx.beginPath(); ctx.roundRect(bx, bTop, bWidth, bH, rr); ctx.fill();
+            ctx.globalAlpha = 1;
+            // 头部球（判定线端）
+            ctx.fillStyle = holdColor;
+            ctx.globalAlpha = baseAlpha;
+            ctx.beginPath(); ctx.arc(cx, headY, ballR, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 1;
+            // 球外圈描边（双押黄 / 普通白）
+            const isDoubleEdge = note.isDouble && showDoubleGlow && !isRed;
+            ctx.strokeStyle = isDoubleEdge ? doubleGlowColor : 'rgba(255,255,255,0.25)';
+            ctx.lineWidth = isDoubleEdge ? 3 : 2;
+            ctx.beginPath(); ctx.arc(cx, headY, ballR + 2, 0, Math.PI * 2); ctx.stroke();
+            continue;
+          }
 
           const baseAlpha = isRed ? 0.7 : isHoldDone ? 0.4 : 1;
           const holdColor = isFailed ? '#FF2222' : isRed ? '#FF3333' : config.holdNoteColor;
@@ -1138,7 +1237,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     return () => cancelAnimationFrame(raf);
   }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, TOP_JUDGE_Y, splits, trackWidth, notePadX, tapHeight, holdMinH, gameScale,
       doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop,
-      getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay, holdGradient]);
+      getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay, holdGradient, isBall, ballR, barR]);
 
   // Hold 进度环 — 独立特效 canvas 层。与音符/判定共用 getCurrentTime() 时钟、
   // engine 实时 hold 状态（engineHoldsRef）；画在所有特效之上（zIndex 9）。
@@ -1172,7 +1271,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         const dur = note.endTime - note.startTime;
         const elapsed = now - note.startTime;
         const prog = dur > 0 ? Math.min(1, Math.max(0, elapsed / dur)) : 0;
-        const rr = holdRingR * gameScale;
+        const rr = isBall ? ballR + 4 * gameScale : holdRingR * gameScale;
         const cx = note.track * (trackWidth * gameScale) + (trackWidth * gameScale) / 2;
         // 脑裂轨道：进度环画在顶部判定线
         const cy = isTrackSplit(splits, note.track, now) ? TOP_JUDGE_Y : JUDGMENT_LINE_Y;
@@ -1196,7 +1295,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, TOP_JUDGE_Y, splits, trackWidth, holdRingR, holdRingW, holdRingColor, gameScale,
-      getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay]);
+      getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay, isBall, ballR]);
 
   const getNoteY = (noteTime: number): number => {
     const timeUntil = noteTime - state.currentTime;
@@ -1257,20 +1356,20 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     <div className="screen gameplay-screen" style={{ background: config.bgColor }}
     >
       {/* 背景：谱面视频优先（muted 硬件解码 + CSS 模糊，保证流畅），否则封面模糊图 */}
-      {perfBgCover && videoBg && config.videoUrl && (
+      {perfBgCover && !gameBgOverride && videoBg && config.videoUrl && (
         <video
           ref={videoBgRef}
           className="gameplay-cover-bg gameplay-video-bg"
           src={config.videoUrl}
           autoPlay muted={!config.videoSound} loop playsInline preload="metadata"
-          style={config.videoBlur === false ? { filter: 'brightness(0.45)' } : undefined}
+          style={!gameBgBlur ? { filter: 'none' } : (config.videoBlur === false ? { filter: 'brightness(0.45)' } : undefined)}
         />
       )}
-      {perfBgCover && (!videoBg || !config.videoUrl) && coverUrl && (
+      {perfBgCover && !gameBgOverride && (!videoBg || !config.videoUrl) && effBgUrl && (
         <div className="gameplay-cover-bg" style={{
-          backgroundImage: `url(${uiBlur ? coverUrl : blurredBg})`,
-          filter: uiBlur ? `blur(${bgBlurVal}px) brightness(${bgBrightnessVal})` : 'none',
-          transform: `scale(${bgScaleVal})`,
+          backgroundImage: `url(${uiBlur ? effBgUrl : blurredBg})`,
+          filter: gameBgBlur ? (uiBlur ? `blur(${bgBlurVal}px) brightness(${bgBrightnessVal})` : 'none') : 'none',
+          transform: `scale(${gameBgBlur ? bgScaleVal : 1})`,
         }} />
       )}
 
@@ -1338,6 +1437,10 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         onContextMenu={e => e.preventDefault()}
         style={{ width: totalWidth * gameScale + 10, height: gameHeight, marginTop: gameTopCssVal, touchAction: 'none' }}
       >
+        {/* 背景模糊关闭：轨道区域压暗 80%（谱面本身不模糊不压暗） */}
+        {!gameBgBlur && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 0, pointerEvents: 'none' }} />
+        )}
         {/* Canvas 音符渲染层 */}
         <canvas
           ref={noteCanvasRef}
@@ -1366,18 +1469,24 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         </div>
 
         {/* 判定线 — 按轨道绘制，脑裂轨道在顶部（红色警示）；判定线固定不随缩放移动 */}
+        {/* 球状皮肤：每条轨道画上下两条线，间距=球直径，实际判定线在中间 */}
         {Array.from({ length: config.trackCount }, (_, i) => {
           const isSplit = isTrackSplit(splits, i, state.currentTime);
           const scaledTrackW = trackWidth * gameScale;
+          const yBase = isSplit ? TOP_JUDGE_Y : JUDGMENT_LINE_Y;
+          const lineH = isBall ? Math.max(2, Math.floor(judgeLineThickness / 2)) : judgeLineThickness;
+          const gap = isBall ? trackWidth * 0.8 : 0; // 上下两条线的间距 = 球直径
+          const lnStyle = { left: i * scaledTrackW, width: scaledTrackW, height: lineH, background: isSplit ? '#FF7878' : config.judgeLineColor, borderRadius: Math.ceil(lineH / 2) } as const;
+          if (isBall) {
+            return (
+              <React.Fragment key={i}>
+                <div className="judgment-line" style={{ ...lnStyle, top: yBase - gap / 2 - lineH / 2 }} />
+                <div className="judgment-line" style={{ ...lnStyle, top: yBase + gap / 2 - lineH / 2 }} />
+              </React.Fragment>
+            );
+          }
           return (
-            <div key={i} className="judgment-line" style={{
-              top: isSplit ? TOP_JUDGE_Y : JUDGMENT_LINE_Y,
-              left: i * scaledTrackW,
-              width: scaledTrackW,
-              height: judgeLineThickness,
-              background: isSplit ? '#FF7878' : config.judgeLineColor,
-              borderRadius: Math.ceil(judgeLineThickness / 2),
-            }} />
+            <div key={i} className="judgment-line" style={{ ...lnStyle, top: yBase }} />
           );
         })}
 
