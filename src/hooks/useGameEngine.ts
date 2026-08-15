@@ -224,7 +224,10 @@ export function useGameEngine({
       if (best) {
         if (best.note.type === 'hold') {
           holdActiveRef.current.set(best.note.id, { pressTime: now });
+          // 长条刚点住：按 tap 判定规则在准度条显示一次（判定逻辑不变，仅准度条体现按下时刻偏移）
+          const hj = judgeNote(best.note, now, null, windows);
           updateScoreState(Array.from(resultsRef.current.values()));
+          setState(s => ({ ...s, lastOffset: hj.offset, lastJudgment: hj.type }));
           let playSound = true;
           if (best.note.isDouble && best.note.doubleGroupId !== null) {
             if (!doubleSoundRef.current.has(best.note.doubleGroupId)) {
@@ -303,14 +306,19 @@ export function useGameEngine({
     }
     const holds = new Set<number>();
     holdActiveRef.current.forEach((_, id) => holds.add(id));
-    const lastR = noteResults.length > 0 ? noteResults[noteResults.length - 1] : null;
+    // 准度条只按 tap 判定显示：hold 结束/自动判定的结果（offset 0 / heldTime）不覆盖准度条；
+    // 长条刚按下时的 tap 式判定由 handlePress 单独写入，这里不覆盖它
+    let lastTapR: NoteResult | null = null;
+    for (let i = noteResults.length - 1; i >= 0; i--) {
+      if (noteResults[i].note.type === 'tap') { lastTapR = noteResults[i]; break; }
+    }
     setState(s => ({
       ...s,
       results: new Map(noteResults.map(r => [r.note.id, r])),
       combo, maxCombo, score, activeHolds: holds,
       hasGood, hasBreak,
-      lastOffset: lastR ? lastR.judgment.offset : s.lastOffset,
-      lastJudgment: lastR ? lastR.judgment.type : s.lastJudgment,
+      lastOffset: lastTapR ? lastTapR.judgment.offset : s.lastOffset,
+      lastJudgment: lastTapR ? lastTapR.judgment.type : s.lastJudgment,
     }));
   }
 

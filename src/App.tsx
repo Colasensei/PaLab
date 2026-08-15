@@ -944,7 +944,7 @@ const App: React.FC = () => {
       case 'song-panel':
         return <SongPanel config={config} highScore={highScore} highPP={highPP} highRating={highRating} history={history} onStart={handleStart} onClearConfig={handleClearConfig} onConfigChange={handleConfigChange} onBack={navigateBack} onSettings={goToSettings} lang={lang} isTrial={isTrial} keyBindings={settings.keyBindings} />;
       case 'page-loading':
-        return <LoadingScreen onComplete={handlePageLoadingComplete} lang={lang} chartInfo={null} uiBlur={effectiveUiBlur} coverOverride={pageLoadingBg?.bg ?? null} coverImgOverride={pageLoadingBg?.cover ?? null} pageTitle={pageLoadingLabel} />;
+        return <LoadingScreen onComplete={handlePageLoadingComplete} lang={lang} chartInfo={null} uiBlur={effectiveUiBlur} coverOverride={pageLoadingBg?.bg ?? null} pageTitle={pageLoadingLabel} />;
       case 'loading':
         return <LoadingScreen onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={effectiveUiBlur} task={loadingTaskRef.current} mlLearning={!!config.machineLearning} />;
       case 'gameplay':
