@@ -29,6 +29,8 @@ export interface GameEngineState {
   hasBreak: boolean;
   /** 最近一次打击的偏移 (ms)，正=晚，负=早，用于准度条 */
   lastOffset: number;
+  /** 最近一次判定类型（准度条标记颜色） */
+  lastJudgment?: string;
   pauseRewind: number;
 }
 
@@ -129,6 +131,7 @@ export function useGameEngine({
     hasGood: false,
     hasBreak: false,
     lastOffset: 0,
+    lastJudgment: undefined,
     pauseRewind: -1,
   });
 
@@ -161,7 +164,7 @@ export function useGameEngine({
       ...s,
       currentTime: 0, results: new Map(), combo: 0, maxCombo: 0, score: 0,
       activeNotes: [], activeHolds: new Set(), isPlaying: true, isFinished: false, paused: false,
-      resumeKey: 0, hasGood: false, hasBreak: false, lastOffset: 0,
+      resumeKey: 0, hasGood: false, hasBreak: false, lastOffset: 0, lastJudgment: undefined,
     }));
   }, []);
 
@@ -307,6 +310,7 @@ export function useGameEngine({
       combo, maxCombo, score, activeHolds: holds,
       hasGood, hasBreak,
       lastOffset: lastR ? lastR.judgment.offset : s.lastOffset,
+      lastJudgment: lastR ? lastR.judgment.type : s.lastJudgment,
     }));
   }
 

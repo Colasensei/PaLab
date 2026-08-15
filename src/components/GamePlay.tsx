@@ -320,8 +320,25 @@ const AudioViz: React.FC<{ active: boolean }> = ({ active }) => {
 // 准度条 — 显示最近打击偏移
 // ═══════════════════════════════════════════════
 
-const AccuracyBar: React.FC<{ lastOffset: number; scale?: number }> = ({ lastOffset, scale = 1 }) => {
+// 准度条判定位置竖线：显示最近判定落点，3 秒后渐隐
+const AccuracyMarker: React.FC<{ m: { id: number; pct: number; color: string } }> = ({ m }) => {
+  const [op, setOp] = useState(1);
+  useEffect(() => { const r = requestAnimationFrame(() => setOp(0)); return () => cancelAnimationFrame(r); }, []);
+  return (
+    <div style={{
+      position: 'absolute', left: `${m.pct}%`, top: -3, bottom: -3, width: 2,
+      background: m.color, transform: 'translateX(-50%)', zIndex: 3,
+      opacity: op, transition: 'opacity 3s linear',
+    }} />
+  );
+};
+
+const AccuracyBar: React.FC<{ lastOffset: number; lastColor?: string; scale?: number }> = ({ lastOffset, lastColor = '', scale = 1 }) => {
   const caretRef = useRef<HTMLDivElement>(null);
+  // 判定位置竖线标记：每次判定落点 push，3 秒渐隐移除
+  const [markers, setMarkers] = useState<{ id: number; pct: number; color: string }[]>([]);
+  const markerIdRef = useRef(0);
+  const lastHitRef = useRef<{ off: number; color: string } | null>(null);
 
   const timeB = useMemo(() => getDevOverride('j_timeB'), []); // perfect ±80ms
   const timeA = useMemo(() => getDevOverride('j_timeA'), []); // good ±160ms
@@ -348,6 +365,16 @@ const AccuracyBar: React.FC<{ lastOffset: number; scale?: number }> = ({ lastOff
   }, [timeA, redW, midW]);
 
   const pct = getPercent(lastOffset);
+
+  useEffect(() => {
+    const prev = lastHitRef.current;
+    if (prev && prev.off === lastOffset && prev.color === lastColor) return;
+    lastHitRef.current = { off: lastOffset, color: lastColor };
+    if (!lastColor) return;
+    const id = markerIdRef.current++;
+    setMarkers(prev => [...prev, { id, pct: getPercent(lastOffset), color: lastColor }]);
+    const t = setTimeout(() => setMarkers(prev => prev.filter(m => m.id !== id)), 3000);
+  }, [lastOffset, lastColor, getPercent]);
 
   useEffect(() => {
     if (caretRef.current) {
@@ -401,6 +428,8 @@ const AccuracyBar: React.FC<{ lastOffset: number; scale?: number }> = ({ lastOff
           transform: 'translateX(-50%)',
           zIndex: 2,
         }} />
+        {/* 判定位置竖线（3 秒渐隐） */}
+        {markers.map(m => <AccuracyMarker key={m.id} m={m} />)}
       </div>
       {/* 箭头 ▲ 向上指 */}
       <div ref={caretRef} style={{
@@ -442,6 +471,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   effectsRef.current = effects;
   // 球状皮肤：判定变色球特效（黄/蓝/红），判定后音符已移出 activeNotes，独立列表由 canvas 绘制
   const ballFxRef = useRef<{ track: number; color: string; time: number }[]>([]);
+  // 球状皮肤：autoplay 已触发变色特效的音符 id（去重，避免每帧重复触发）
+  const autoFxRef = useRef<Set<number>>(new Set());
 
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
@@ -521,19 +552,19 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const comboKThreshold = useMemo(() => getDevOverride('u_comboKFormat'), []);
   const scoreKThreshold = useMemo(() => getDevOverride('u_scoreKFormat'), []);
 
-  // 模糊：开 → CSS 实时；关 → 预生成静态图（
+  // 模糊：开 → CSS 实时；关 → 预生成静态图（但游戏内背景模糊关闭时直接用不模糊原图）
   const [blurredBg, setBlurredBg] = useState<string | null>(null);
   useEffect(() => {
-    if (uiBlur || !effBgUrl) { setBlurredBg(null); return; }
+    if (uiBlur || gameBgBlur === false || !effBgUrl) { setBlurredBg(null); return; }
     generateBlurredBg(effBgUrl, bgBlurVal, bgBrightnessVal).then(setBlurredBg);
-  }, [effBgUrl, bgBlurVal, bgBrightnessVal, uiBlur]);
+  }, [effBgUrl, bgBlurVal, bgBrightnessVal, uiBlur, gameBgBlur]);
 
   const [gameHeight, setGameHeight] = useState(window.innerHeight - gameTopMargin);
   // 皮肤：标准 / 球状
   const isBall = (skin ?? 'standard') === 'ball';
-  // 轨道宽度，80~180px 自适应（；球状皮肤轨道大幅变窄（只需比音符球大一点点）
+  // 轨道宽度，80~180px 自适应（；球状皮肤轨道大幅变窄（横屏正合适，竖屏保留下限避免过窄）
   const baseTrackW = Math.max(trackMinW, Math.min(trackMaxW, Math.floor((window.innerWidth - hMargin) / config.trackCount)));
-  const trackWidth = isBall ? Math.max(40, Math.min(88, Math.floor(baseTrackW * 0.45))) : baseTrackW;
+  const trackWidth = isBall ? Math.max(52, Math.min(88, Math.floor(baseTrackW * 0.45))) : baseTrackW;
   const totalWidth = config.trackCount * trackWidth;
   // 球状音符尺寸：球直径 ≈ 轨道宽 0.8（球比轨道略小），长条圆角矩形半径略小于球
   const ballR = isBall ? (trackWidth * gameScale) * 0.4 : 0;
@@ -694,6 +725,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     }
     setKeysDown(prev => new Set(prev).add(track));
   }, [paused, effectiveConfig.autoPlay, handlePress, correctHitSound, isBall]);
+
+  // 新游戏开始：清空 autoplay 变色特效去重（restart 后音符 id 复用）
+  useEffect(() => { if (state.isPlaying) autoFxRef.current.clear(); }, [state.isPlaying]);
 
   const onReleaseWithFX = useCallback((track: number) => {
     if (effectiveConfig.autoPlay) return;
@@ -1085,8 +1119,14 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         if (note.type === 'tap') {
           if (isBall) {
             // ═══ 球状皮肤：白色球；判定变色（黄/蓝/红）由 ballFx 特效层绘制 ═══
-            // autoPlay 到线即消失
-            if (reachedLineInAuto) continue;
+            // autoPlay 到线即判定 perfect：触发一次黄色变色球
+            if (reachedLineInAuto) {
+              if (!autoFxRef.current.has(note.id)) {
+                autoFxRef.current.add(note.id);
+                ballFxRef.current.push({ track: note.track, color: '#FFD700', time: performance.now() });
+              }
+              continue;
+            }
             const cx = note.track * scaledTrackW + scaledTrackW / 2;
             const cy = startY;
             if (cy + ballR < -noteClipTop || cy - ballR > h + noteClipTop) continue;
@@ -1379,15 +1419,20 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       )}
       {perfBgCover && !gameBgOverride && (!videoBg || !config.videoUrl) && effBgUrl && (
         <div className="gameplay-cover-bg" style={{
-          backgroundImage: `url(${uiBlur ? effBgUrl : blurredBg})`,
+          backgroundImage: `url(${(!gameBgBlur || uiBlur) ? effBgUrl : blurredBg})`,
           filter: gameBgBlur ? (uiBlur ? `blur(${bgBlurVal}px) brightness(${bgBrightnessVal})` : 'none') : 'none',
           transform: `scale(${gameBgBlur ? bgScaleVal : 1})`,
         }} />
       )}
 
-      {/* 背景模糊关闭：全屏轨道压暗 80%（直接覆盖屏幕上下，谱面本身不模糊不压暗） */}
+      {/* 背景模糊关闭：仅轨道区域压暗 80%，上下覆盖屏幕全高（轨道两侧不压暗） */}
       {!gameBgBlur && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 0, pointerEvents: 'none' }} />
+        <div style={{
+          position: 'absolute', top: 0, bottom: 0,
+          left: Math.max(0, (window.innerWidth - totalWidth * gameScale) / 2),
+          width: totalWidth * gameScale,
+          background: 'rgba(0,0,0,0.8)', zIndex: 0, pointerEvents: 'none',
+        }} />
       )}
 
       {/* HUD */}
@@ -1432,7 +1477,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       </div>
 
       {/* 准度条 */}
-      {showAccuracyBar && state.isPlaying && <AccuracyBar lastOffset={state.lastOffset} scale={gameScale} />}
+      {showAccuracyBar && state.isPlaying && <AccuracyBar lastOffset={state.lastOffset} lastColor={state.lastJudgment ? JUDGMENT_COLORS[state.lastJudgment as JudgmentType] : ''} scale={gameScale} />}
 
       {/* 顶部进度条，DOM 直驱不走 React */}
       <div className="progress-bar-container">
