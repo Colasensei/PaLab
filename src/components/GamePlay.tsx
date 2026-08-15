@@ -1535,7 +1535,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           const isSplit = isTrackSplit(splits, i, state.currentTime);
           const scaledTrackW = trackWidth * gameScale;
           const yBase = isSplit ? TOP_JUDGE_Y : JUDGMENT_LINE_Y;
-          const lineH = isBall ? Math.max(2, Math.floor(judgeLineThickness / 2)) : judgeLineThickness;
+          const lineH = judgeLineThickness; // 球状/标准都用设置的判定线宽度
           const gap = isBall ? trackWidth * 0.8 : 0; // 上下两条线的间距 = 球直径
           const lnStyle = { left: i * scaledTrackW, width: scaledTrackW, height: lineH, background: isSplit ? '#FF7878' : config.judgeLineColor, borderRadius: Math.ceil(lineH / 2) } as const;
           if (isBall) {
