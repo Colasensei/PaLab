@@ -245,10 +245,13 @@ function playHitSound() {
 }
 
 // 音频可视化，不播只读（
-const AudioViz: React.FC<{ active: boolean }> = ({ active }) => {
+const AudioViz: React.FC<{ active: boolean; perfScale?: number }> = ({ active, perfScale = 1 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef(0);
+  // 实时读取渲染分辨率缩放（draw 闭包只建一次，用 ref 拿最新值）
+  const scaleRef = useRef(perfScale);
+  scaleRef.current = perfScale;
 
   useEffect(() => {
     if (!active) return;
@@ -282,8 +285,10 @@ const AudioViz: React.FC<{ active: boolean }> = ({ active }) => {
     const draw = () => {
       rafRef.current = requestAnimationFrame(draw);
       analyser.getByteFrequencyData(dataArray);
-      const w = canvas.offsetWidth * 2;
-      const h = canvas.offsetHeight * 2;
+      // 自适应渲染分辨率：降分辨率时同步降低波形 canvas 物理像素
+      const s = Math.max(0.5, scaleRef.current);
+      const w = canvas.offsetWidth * 2 * s;
+      const h = canvas.offsetHeight * 2 * s;
       canvas.width = w;
       canvas.height = h;
       ctx2d.clearRect(0, 0, w, h);
@@ -731,6 +736,65 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   // 新游戏开始：清空 autoplay 变色特效去重（restart 后音符 id 复用）
   useEffect(() => { if (state.isPlaying) autoFxRef.current.clear(); }, [state.isPlaying]);
 
+  // ═══ 自适应渲染分辨率：帧率稳不住屏幕刷新率 → 物理降渲染分辨率（下限物理分辨率 50%），
+  // 再不稳则逐级降低帧率要求（120→90→60，最低锁 60）═══
+  const [perfScale, setPerfScale] = useState(1);
+  const perfScaleRef = useRef(1);
+  perfScaleRef.current = perfScale;
+  const targetFpsRef = useRef<number>(60);
+  const fpsLowStreakRef = useRef(0);
+
+  // 检测屏幕刷新率（rAF 间隔中位数推断）：60 / 90 / 120
+  useEffect(() => {
+    let raf = 0;
+    const deltas: number[] = [];
+    let last = performance.now();
+    const measure = (t: number) => {
+      deltas.push(t - last);
+      last = t;
+      if (deltas.length < 60) { raf = requestAnimationFrame(measure); return; }
+      const sorted = [...deltas.slice(15)].sort((a, b) => a - b);
+      const med = sorted[Math.floor(sorted.length / 2)];
+      const hz = Math.round(1000 / med);
+      targetFpsRef.current = hz >= 120 ? 120 : hz >= 90 ? 90 : 60;
+    };
+    raf = requestAnimationFrame(measure);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // 游玩中监控实际帧率：连续不稳 → 降渲染分辨率；降到下限仍不稳 → 降帧率要求
+  useEffect(() => {
+    if (!state.isPlaying) return;
+    let frames = 0, start = performance.now(), raf = 0;
+    const loop = () => {
+      frames++;
+      const now = performance.now();
+      if (now - start >= 1000) {
+        const fps = (frames * 1000) / (now - start);
+        const target = targetFpsRef.current;
+        if (fps < target * 0.9) {
+          fpsLowStreakRef.current++;
+          if (fpsLowStreakRef.current >= 3) {
+            fpsLowStreakRef.current = 0;
+            if (perfScaleRef.current > 0.5) {
+              // 物理降渲染分辨率（乘 0.8），不低于物理分辨率的 50%
+              setPerfScale(p => Math.max(0.5, Math.round(p * 0.8 * 100) / 100));
+            } else if (target > 60) {
+              // 已降到分辨率下限仍不稳 → 降刷新率要求（120→90→60）
+              targetFpsRef.current = target === 120 ? 90 : 60;
+            }
+          }
+        } else {
+          fpsLowStreakRef.current = 0;
+        }
+        frames = 0; start = now;
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [state.isPlaying]);
+
   const onReleaseWithFX = useCallback((track: number) => {
     if (effectiveConfig.autoPlay) return;
     handleRelease(track);
@@ -1044,13 +1108,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   useEffect(() => {
     const canvas = noteCanvasRef.current;
     if (!canvas) return;
-    // DPR 封顶到 2：高分屏填充量最多 4x CSS 像素，足够清晰且性能好
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const ctx = canvas.getContext('2d')!;
 
     let raf = 0;
 
     const loop = () => {
+      // 自适应渲染分辨率：帧率不达标时降 DPR（物理降分辨率，下限物理分辨率 50%）
+      const dpr = Math.min(window.devicePixelRatio || 1, 2) * perfScaleRef.current;
       const w = totalWidth * gameScale;
       const h = gameHeight;
       if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
@@ -1298,10 +1362,11 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   useEffect(() => {
     const canvas = holdRingCanvasRef.current;
     if (!canvas) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const ctx = canvas.getContext('2d')!;
     let raf = 0;
     const loop = () => {
+      // 自适应渲染分辨率：帧率不达标时降 DPR（物理降分辨率，下限物理分辨率 50%）
+      const dpr = Math.min(window.devicePixelRatio || 1, 2) * perfScaleRef.current;
       const w = totalWidth * gameScale;
       const h = gameHeight;
       if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
@@ -1419,7 +1484,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           style={!gameBgBlur ? { filter: 'none' } : (config.videoBlur === false ? { filter: 'brightness(0.45)' } : undefined)}
         />
       )}
-      {perfBgCover && !gameBgOverride && (!videoBg || !config.videoUrl) && effBgUrl && (
+      {/* 封面背景：有游戏内背景覆盖时用它；否则无视频时才用谱面封面/曲绘 */}
+      {perfBgCover && effBgUrl && (gameBgOverride || !videoBg || !config.videoUrl) && (
         <div className="gameplay-cover-bg" style={{
           backgroundImage: `url(${(!gameBgBlur || uiBlur) ? effBgUrl : blurredBg})`,
           filter: gameBgBlur ? (uiBlur ? `blur(${bgBlurVal}px) brightness(${bgBrightnessVal})` : 'none') : 'none',
@@ -1492,7 +1558,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
       {/* 音频可视化背景 */}
       {showWaveform && perfAudioViz && (
-        <AudioViz active={state.isPlaying} />
+        <AudioViz active={state.isPlaying} perfScale={perfScale} />
       )}
 
       {/* 游戏区域（游戏内缩放：渲染坐标×gameScale，判定线固定贴底/贴顶，轨道向屏幕外延伸） */}
