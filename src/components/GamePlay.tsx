@@ -1049,7 +1049,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     let raf = 0;
 
     const loop = () => {
-      const w = totalWidth * gameScale + 10;
+      const w = totalWidth * gameScale;
       const h = gameHeight;
       if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
         canvas.width = w * dpr;
@@ -1300,7 +1300,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     const ctx = canvas.getContext('2d')!;
     let raf = 0;
     const loop = () => {
-      const w = totalWidth * gameScale + 10;
+      const w = totalWidth * gameScale;
       const h = gameHeight;
       if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
         canvas.width = w * dpr;
@@ -1429,6 +1429,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       {!gameBgBlur && (
         <div style={{
           position: 'absolute', top: 0, bottom: 0,
+          // game-area 宽度 = totalWidth*gameScale（居中，轨道对称居中）→ 压暗层与轨道对齐
           left: Math.max(0, (window.innerWidth - totalWidth * gameScale) / 2),
           width: totalWidth * gameScale,
           background: 'rgba(0,0,0,0.8)', zIndex: 0, pointerEvents: 'none',
@@ -1497,7 +1498,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         ref={containerRef}
         className="game-area"
         onContextMenu={e => e.preventDefault()}
-        style={{ width: totalWidth * gameScale + 10, height: gameHeight, marginTop: gameTopCssVal, touchAction: 'none' }}
+        style={{ width: totalWidth * gameScale, height: gameHeight, marginTop: gameTopCssVal, touchAction: 'none' }}
       >
         {/* Canvas 音符渲染层 */}
         <canvas
