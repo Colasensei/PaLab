@@ -266,6 +266,8 @@ export interface AppSettings {
   gameBgBlur?: boolean;
   /** 渲染分辨率倍率（1=100% 原始；0.75=75%；0.5=50%）。仅 Capacitor / Electron 平台可用，低端设备更流畅；非 1 时手动锁定渲染分辨率 */
   renderScale?: number;
+  /** 边缘轨道异色：首尾轨道（第 1 / 最后 1 轨）与中间轨道不同色，防读谱眼花（球状皮肤=淡蓝/白，标准皮肤=白/蓝） */
+  edgeTrackTint?: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -294,6 +296,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   skin: 'standard',
   gameBgBlur: true,
   renderScale: 1,
+  edgeTrackTint: false,
 };
 
 // ============ 账号信息 ============

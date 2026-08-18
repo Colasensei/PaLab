@@ -47,6 +47,8 @@ interface GamePlayProps {
   gameBgBlur?: boolean;
   /** 渲染分辨率倍率（1=100% 原始；0.75=75%；0.5=50%）。非 1 时手动锁定渲染分辨率，不再自动降档 */
   renderScale?: number;
+  /** 边缘轨道异色：首尾轨道与中间轨道不同色（球状=淡蓝/白，标准=白/蓝），防读谱眼花 */
+  edgeTrackTint?: boolean;
 }
 
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
@@ -57,6 +59,10 @@ const JUDGMENT_COLORS: Record<JudgmentType, string> = {
   bad: '#FF4444',
   miss: '#FF4444',
 };
+
+// 边缘轨道异色：首尾轨道（第 1 / 最后 1 轨）与中间轨道不同色，防读谱眼花
+const EDGE_BALL_COLOR = '#8FD3FF'; // 球状皮肤边缘轨：淡蓝色（默认白）
+const EDGE_NOTE_COLOR = '#FFFFFF'; // 标准皮肤边缘轨：白色（默认蓝）
 
 interface JEffect {
   id: string;
@@ -456,7 +462,7 @@ const AccuracyBar: React.FC<{ lastOffset: number; lastColor?: string; scale?: nu
 };
 
 export const GamePlay: React.FC<GamePlayProps> = ({
-  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings, gameUiScale = 1, videoBg = true, holdGradient = true, skin = 'standard', gameBgBlur = true, renderScale = 1,
+  config, notes, duration, onFinish, onBack, onRestart, target = 'none', showDoubleGlow = true, latencyOffset = 0, lang, devMode = false, showACC = false, showWaveform = false, coverUrl = null, noteScale = 1.0, musicVolume = 80, uiBlur = true, judgeLineThickness = 3, correctHitSound = false, showAccuracyBar = false, showFPS = false, keyBindings, gameUiScale = 1, videoBg = true, holdGradient = true, skin = 'standard', gameBgBlur = true, renderScale = 1, edgeTrackTint = false,
 }) => {
   // 键位：自定义优先，否则默认（useMemo 保证引用稳定，避免 useInput 监听重建）
   const keys = useMemo(() => resolveKeys(keyBindings, config.trackCount), [keyBindings, config.trackCount]);
@@ -569,6 +575,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const [gameHeight, setGameHeight] = useState(window.innerHeight - gameTopMargin);
   // 皮肤：标准 / 球状
   const isBall = (skin ?? 'standard') === 'ball';
+  // 边缘轨道异色：≥3 轨时首尾轨道（第 1 / 最后 1 轨）用不同颜色，防读谱眼花
+  const edgeTintOn = !!edgeTrackTint && config.trackCount >= 3;
+  const isEdgeTrack = (track: number) => edgeTintOn && (track === 0 || track === config.trackCount - 1);
   // 标准轨道宽度，80~180px 自适应
   const baseTrackW = Math.max(trackMinW, Math.min(trackMaxW, Math.floor((window.innerWidth - hMargin) / config.trackCount)));
   // 球状皮肤：轨道总宽按屏幕比例（横屏占 1/5、竖屏占 8/9），每轨 = 总宽 / 轨数
@@ -1180,9 +1189,9 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             const cx = note.track * scaledTrackW + scaledTrackW / 2;
             const cy = startY;
             if (cy + ballR < -noteClipTop || cy - ballR > h + noteClipTop) continue;
-            // 下落中 / miss：白色球（miss 纯红）
+            // 下落中 / miss：白色球（miss 纯红；边缘轨道异色时变淡蓝）
             ctx.globalAlpha = isRed ? 0.7 : 1;
-            ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : '#FFFFFF';
+            ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : isEdgeTrack(note.track) ? EDGE_BALL_COLOR : '#FFFFFF';
             ctx.beginPath(); ctx.arc(cx, cy, ballR, 0, Math.PI * 2); ctx.fill();
             ctx.globalAlpha = 1;
             // 双押：黄色描边；普通：白色描边
@@ -1202,7 +1211,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           if (ny + nh < -noteClipTop || ny > h + noteClipTop) continue;
 
           ctx.globalAlpha = isRed ? 0.7 : 1;
-          ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : config.noteColor;
+          ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : isEdgeTrack(note.track) ? EDGE_NOTE_COLOR : config.noteColor;
           const isDoubleNote = note.isDouble && showDoubleGlow && !isRed;
           ctx.fillRect(nx, ny, noteW, nh);
           if (isDoubleNote) {
@@ -1247,7 +1256,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           if (isBall) {
             // ═══ 球状长条：头部球 + 尾部圆角矩形 ═══
             const cx = nx + noteW / 2;
-            const holdColor = isFailed ? '#FF2222' : isRed ? '#FF3333' : '#FFFFFF';
+            const holdColor = isFailed ? '#FF2222' : isRed ? '#FF3333' : isEdgeTrack(note.track) ? EDGE_BALL_COLOR : '#FFFFFF';
             const baseAlpha = isRed ? 0.7 : isHoldDone ? 0.4 : 1;
             // 头部球位置：按住/完成锁定判定线，下落中随长条前端（startY）
             const headY = (isHolding || isHoldDone) ? noteJy : startY;
@@ -1264,8 +1273,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
               const grad = ctx.createLinearGradient(0, bTop, 0, bBot);
               const headAtBottom = headY >= tailY;
               // 判定线端（头部球）实色 → 远离判定线（尾部）渐变透明
-              grad.addColorStop(headAtBottom ? 1 : 0, hexToRgba('#FFFFFF', baseAlpha));
-              grad.addColorStop(headAtBottom ? 0 : 1, hexToRgba('#FFFFFF', 0.12));
+              grad.addColorStop(headAtBottom ? 1 : 0, hexToRgba(holdColor, baseAlpha));
+              grad.addColorStop(headAtBottom ? 0 : 1, hexToRgba(holdColor, 0.12));
               ctx.fillStyle = grad;
             } else {
               ctx.globalAlpha = baseAlpha;
@@ -1287,7 +1296,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           }
 
           const baseAlpha = isRed ? 0.7 : isHoldDone ? 0.4 : 1;
-          const holdColor = isFailed ? '#FF2222' : isRed ? '#FF3333' : config.holdNoteColor;
+          const holdColor = isFailed ? '#FF2222' : isRed ? '#FF3333' : isEdgeTrack(note.track) ? EDGE_NOTE_COLOR : config.holdNoteColor;
 
           // miss 变红（isRed）：直接纯红掉下去，不做渐变——避免 miss 后长条穿越
           // 判定线/一端冲出屏幕导致「渐变→纯色」跳变。正常/按住/完成仍用渐变。

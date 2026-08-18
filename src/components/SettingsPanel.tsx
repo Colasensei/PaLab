@@ -38,6 +38,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [skin, setSkin] = useState<'standard' | 'ball'>(settings.skin ?? 'standard');
   const [gameBgBlur, setGameBgBlur] = useState(settings.gameBgBlur ?? true);
   const [renderScale, setRenderScale] = useState(settings.renderScale ?? 1);
+  const [edgeTrackTint, setEdgeTrackTint] = useState(settings.edgeTrackTint ?? false);
   const [sub, setSub] = useState<Sub>('main');
 
   const build = (o: Partial<AppSettings> = {}): AppSettings => ({
@@ -56,6 +57,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     skin,
     gameBgBlur,
     renderScale,
+    edgeTrackTint,
     showMascot: false, // 立绘已移除，永远关闭
     ...o,
   });
@@ -69,7 +71,7 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   };
 
   if (sub === 'repair') return <RepairPanel lang={lang} onBack={() => setSub('main')} />;
-  if (sub === 'personalize') return <PersonalizePanel lang={lang} onBack={() => setSub('main')} noteScale={noteScale} judgeLineThickness={judgeLineThickness} onNoteScale={v => { setNoteScale(v); onSave(build({ noteScale: v })); }} onJudgeLine={v => { setJudgeLineThickness(v); onSave(build({ judgeLineThickness: v })); }} />;
+  if (sub === 'personalize') return <PersonalizePanel lang={lang} onBack={() => setSub('main')} noteScale={noteScale} judgeLineThickness={judgeLineThickness} edgeTrackTint={edgeTrackTint} onNoteScale={v => { setNoteScale(v); onSave(build({ noteScale: v })); }} onJudgeLine={v => { setJudgeLineThickness(v); onSave(build({ judgeLineThickness: v })); }} onEdgeTrackTint={v => { setEdgeTrackTint(v); onSave(build({ edgeTrackTint: v })); }} />;
   if (sub === 'latency') return <LatencyPanel lang={lang} offset={settings.latencyOffset} onSave={o => onSave(build({ latencyOffset: o }))} onBack={() => setSub('main')} />;
   if (sub === 'audio') return <AudioPanel lang={lang} musicVol={musicVol} hitVol={hitVol} onMusic={v => { setMusicVol(v); onSave(build({ musicVolume: v })); }} onHit={v => { setHitVol(v); setHitVolume(v / 100); onSave(build({ hitVolume: v })); }} onBack={() => setSub('main')} />;
   if (sub === 'keys') return <KeyBindingsPanel lang={lang} bindings={keyBindings} onChange={commitBindings} onBack={() => setSub('main')} />;
@@ -271,9 +273,11 @@ const PersonalizePanel: React.FC<{
   onBack: () => void;
   noteScale: number;
   judgeLineThickness: number;
+  edgeTrackTint: boolean;
   onNoteScale: (v: number) => void;
   onJudgeLine: (v: number) => void;
-}> = ({ lang, onBack, noteScale, judgeLineThickness, onNoteScale, onJudgeLine }) => {
+  onEdgeTrackTint: (v: boolean) => void;
+}> = ({ lang, onBack, noteScale, judgeLineThickness, edgeTrackTint, onNoteScale, onJudgeLine, onEdgeTrackTint }) => {
   const [gameBgOk, setGameBgOk] = useState(hasAsset(ASSET_KEYS.gameBg));
   const impBg = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
@@ -310,6 +314,16 @@ const PersonalizePanel: React.FC<{
                 <span style={{ display: 'inline-block', width: Math.max(12, judgeLineThickness * 4), height: Math.max(1, judgeLineThickness), background: '#999', borderRadius: judgeLineThickness / 2, marginLeft: 6, verticalAlign: 'middle' }} />
               </span></div>
           </div>
+        </div>
+        <div className="st-card">
+          <div className="st-row st-row-noborder"><span className="st-label">{lang === 'zh' ? '边缘轨道异色' : 'Edge Track Tint'}</span>
+            <label className="toggle-switch"><input type="checkbox" checked={edgeTrackTint} onChange={e => onEdgeTrackTint(e.target.checked)} /><span className="toggle-slider" /></label>
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '6px 0 0' }}>
+            {lang === 'zh'
+              ? '首尾轨道（第 1 / 最后 1 轨）与中间轨道使用不同颜色，防止读谱时眼花。球状皮肤边缘轨道变淡蓝色，标准皮肤边缘轨道变白色。'
+              : 'Outer tracks (1st / last) use a different color from the middle to reduce eye strain. Ball skin: outer tracks light blue. Standard skin: outer tracks white.'}
+          </p>
         </div>
         <p style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', margin: 8 }}>{lang === 'zh' ? '改动即时保存，下一局生效。' : 'Changes save instantly, apply next game.'}</p>
       </div>
