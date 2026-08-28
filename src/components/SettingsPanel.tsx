@@ -197,8 +197,13 @@ const SubHdr: React.FC<{ title: string; onBack: () => void; lang: Lang }> = ({ t
 );
 
 // ==================== 素材修复 ====================
-// 统一走同源 /api/unauth：dev= Vite 代理，生产= 服务器反向代理（避免生产直连 lingyanspace 被 CORS 拦截）
-const REPAIR_PATH = '/api/unauth/52047071297934341';
+// 走智能通道（与更新/公告/社区一致）：
+// - lingyanspace 提供 CORS → 直连完整 URL（EXE / APK 等本地应用也能下载）
+// - 无 CORS → 回退同源 /api/unauth（dev= Vite 代理，生产= 服务器反代）
+// 修复之前硬编码 /api/unauth 导致 EXE/APK 本地无反代而下载失败。
+const REPAIR_ID = '52047071297934341';
+const REPAIR_DIRECT = `https://yarp.lingyanspace.com/UpgradeServer/UnauthorFolder/UpgradeProxy/${REPAIR_ID}`;
+const REPAIR_PATH = `/api/unauth/${REPAIR_ID}`;
 const REPAIR_FILES: { key: string; id: string; labelZh: string; labelEn: string }[] = [
   { key: ASSET_KEYS.mascot, id: '52047137196741637/14.png', labelZh: '看板娘立绘', labelEn: 'Mascot' },
   { key: ASSET_KEYS.hitSound, id: '52047169670091781/tab.ogg', labelZh: '打击音效', labelEn: 'Hit Sound' },
@@ -207,8 +212,8 @@ const REPAIR_FILES: { key: string; id: string; labelZh: string; labelEn: string 
   { key: ASSET_KEYS.coverPort, id: '53489534385525765/916.jpg', labelZh: '主界面封面（竖屏）', labelEn: 'Menu Cover (Portrait)' },
 ];
 
-function getRepairUrl(id: string): string {
-  return `${REPAIR_PATH}/${id}`;
+async function getRepairUrl(id: string): Promise<string> {
+  return (await useDirectLingyanspace()) ? `${REPAIR_DIRECT}/${id}` : `${REPAIR_PATH}/${id}`;
 }
 
 const RepairPanel: React.FC<{ lang: Lang; onBack: () => void }> = ({ lang, onBack }) => {
