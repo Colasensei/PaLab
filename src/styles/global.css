@@ -3044,758 +3044,293 @@ body::after {
   100% { transform: scale(1); }
 }
 
-/* ============ 结算画面 (Phigros 风格) ============ */
-.results-screen {
-  gap: 20px;
-  background: #000 !important;
-  animation: resultsBgIn 0.4s ease-out;
-}
-
-@keyframes resultsBgIn {
-  from { background: transparent; }
-  to { background: #000; }
-}
-
-.results-panel {
-  max-width: 480px;
-  width: 100%;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-
-/* 结算面板光晕背景 */
-.results-panel::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at 50% 30%, rgba(107,197,255,0.03) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
-  animation: resultGlow 6s ease-in-out infinite alternate;
-}
-
-@keyframes resultGlow {
-  0%   { transform: translate(0, 0) rotate(0deg); }
-  100% { transform: translate(5%, 5%) rotate(3deg); }
-}
-
-.results-panel > * {
-  position: relative;
-  z-index: 1;
-}
-
-/* 结算入场动画（缩放 + 淡入） */
-.results-animate {
-  transform: scale(0.92);
-  opacity: 0;
-  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease;
-}
-
-.results-visible {
-  transform: scale(1);
-  opacity: 1;
-}
-
-/* 详细统计展开/收起 */
-.result-stats {
-  cursor: pointer;
-  user-select: none;
-  transition: all 0.3s ease;
-  margin-bottom: 8px;
-}
-
-.stats-toggle-hint {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 6px;
-  opacity: 0.5;
-  letter-spacing: 1px;
-  transition: opacity 0.2s;
-}
-
-.result-stats:hover .stats-toggle-hint {
-  opacity: 0.8;
-}
-
-.stat-details {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s ease;
-}
-
-.details-open {
-  max-height: 220px;
-}
-
-/* Phigros 风格评级展示 — 大号发光字符 */
-.result-rating {
-  font-size: 120px;
-  font-weight: 900;
-  line-height: 0.9;
-  text-shadow: none;
-  font-family: var(--font-rating);
-  margin: 8px 0;
-  letter-spacing: 4px;
-}
-
-.result-rating-label {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 6px;
-  margin-bottom: 12px;
-  opacity: 0.8;
-}
-
-/* 结算歌曲信息 */
-.result-song-info {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 12px;
-  font-size: 13px;
-}
-
-.result-song-name {
-  color: var(--text-secondary);
-  letter-spacing: 1px;
-}
-
-.result-difficulty {
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-.result-autoplay {
-  padding: 2px 8px;
-  background: rgba(107, 197, 255, 0.12);
-  border: 1px solid rgba(107, 197, 255, 0.25);
-  border-radius: 4px;
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
-.result-score {
-  font-size: 44px;
-  font-weight: 800;
-  color: white;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 2px;
-}
-
-.result-score-label {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-  letter-spacing: 5px;
-  text-transform: uppercase;
-}
-
-/* PP & RKS 行 */
-.result-pp-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  padding: 10px 0;
-  border-top: 1px solid rgba(255,255,255,0.05);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-
-.result-pp-label { font-size: 12px; color: var(--text-secondary); letter-spacing: 2px; text-transform: uppercase; }
-.result-pp-value { font-size: 18px; font-weight: 700; color: var(--phi); font-variant-numeric: tabular-nums; }
-.result-rks-label { font-size: 12px; color: var(--text-secondary); letter-spacing: 2px; margin-left: 8px; text-transform: uppercase; }
-.result-rks-value { font-size: 18px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
-
-/* RKS 升降动画 */
-.rks-change {
-  font-size: 14px;
-  font-weight: 700;
-  margin-left: 4px;
-  animation: rksPop 0.5s ease-out;
-}
-
-.rks-up { color: var(--success); }
-.rks-down { color: var(--danger); }
-
-@keyframes rksPop {
-  0% { transform: scale(0.3); opacity: 0; }
-  50% { transform: scale(1.3); }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.result-stats {
-  margin-bottom: 24px;
-}
-
-.stat-row {
-  display: flex;
-  align-items: center;
-  padding: 7px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.stat-label {
-  width: 100px;
-  text-align: left;
-  font-size: 13px;
-  color: var(--text-secondary);
-  letter-spacing: 1px;
-}
-
-.stat-value {
-  flex: 1;
-  text-align: right;
-  font-size: 17px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.stat-pct {
-  width: 60px;
-  text-align: right;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
+/* 判定档位配色（结算界面判定列复用） */
 .stat-perfect { color: var(--phi); }
 .stat-good { color: var(--success); }
 .stat-bad { color: var(--warning); }
 .stat-miss { color: var(--c-color); }
 
-.stat-combo-row {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  margin-top: 4px;
-  padding-top: 12px;
-}
+/* ═══════ 结算画面（全屏） ═══════ */
+/* 设计：全屏柔焦曲绘 + 三段式信息架构。
+   横屏 = 左曲目 / 竖线 / 右成绩；竖屏 = 上曲目 / 下成绩。
+   统计一律用发丝线分隔，不用卡片、圆角块、阴影。 */
 
-/* ─── Phigros 风格结算 ─── */
-.results-layout-portrait,
-.results-layout-landscape {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  flex: 1;
-}
-
-.results-panel-phigros {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 14px 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 340px;
-  max-width: 680px;
-  width: 92vw;
-  min-height: 50vh;
-  max-height: 90vh;
-  overflow-y: auto;
-  opacity: 0;
-  transform: translateX(60px);
-  transition: all 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* 压暗遮罩 */
-.results-bg-overlay {
-  position: fixed; inset: 0; z-index: 0;
-  background: rgba(0,0,0,0.5);
-  pointer-events: none;
-}
-
-.results-panel-phigros.results-visible {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.results-layout-landscape .results-panel-phigros {
-  max-width: 900px;
-}
-
-.rp-landscape-body {
-  display: flex;
-  flex-direction: row;
-  gap: clamp(20px, 3vw, 36px);
-  align-items: stretch;
-  width: 100%;
-}
-
-.rp-left {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 200px;
-}
-
-.rp-right {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1;
-  border-left: 1px solid rgba(255,255,255,0.06);
-  padding-left: 32px;
-}
-
-/* ACC 行 */
-.result-acc-row {
-  text-align: center;
-  margin: 2px 0;
-}
-
-.result-acc-val {
-  font-size: 18px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.7);
-  letter-spacing: 2px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 6格统计：P/G/B/M + PP/RKS 同行 */
-.result-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 4px;
-  margin: 4px 0;
-  width: 100%;
-}
-
-.rsg-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 4px 2px;
-  background: rgba(255,255,255,0.02);
-  border-radius: 8px;
-}
-
-.rsg-val {
-  font-size: 18px;
-  font-weight: 800;
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-}
-
-.rsg-lbl {
-  font-size: 9px;
-  color: var(--text-secondary);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-/* RKS 行 — 合并到 stats grid 中，不单独显示 */
-.result-rks-row {
-  display: none;
-}
-
-.rks-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.rks-label {
-  font-size: 10px;
-  color: var(--text-secondary);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.rks-value {
-  font-size: 20px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 扩展区域 */
-.result-extra {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
-  cursor: pointer;
-}
-
-.result-extra.open {
-  max-height: 200px;
-}
-
-.re-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 4px 0;
-  font-size: 12px;
-  color: var(--text-secondary);
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-}
-
-.re-toggle {
-  font-size: 11px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  opacity: 0.5;
-  text-align: center;
-  transition: opacity 0.2s;
-}
-
-.re-toggle:hover { opacity: 0.8; }
-
-/* 按钮条 */
-.results-actions {
-  display: flex;
-  gap: 12px;
-  padding-top: 12px;
-  margin-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  width: 100%;
-}
-
-.results-actions .btn {
-  flex: 1;
-  min-width: 120px;
-  padding: 12px 20px;
-  font-size: 15px;
-  white-space: nowrap;
-}
-
-/* 看板娘卡片有台词时上移 */
-.results-panel-phigros.has-mascot {
-  margin-bottom: 40px;
-}
-/* 看板娘 — 屏幕底部居中 */
-.results-mascot {
-  position: fixed;
-  bottom: -8vmin;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  gap: 8px;
-  z-index: 10;
-  animation: mascotSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
-  pointer-events: none;
-}
-@keyframes mascotSlideUp {
-  from { opacity: 0; transform: translateX(-50%) translateY(40px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-/* 脑袋 — 圆形裁切只露头顶 */
-.mascot-head {
-  width: 20vmin;
-  height: 20vmin;
-  min-width: 130px;
-  min-height: 130px;
-  max-width: 180px;
-  max-height: 180px;
-  border-radius: 50%;
-  object-fit: cover;
-  object-position: top center;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-/* 气泡 — 居中布局：头在左，气泡在右，箭头指向左 */
-.mascot-bubble {
-  background: rgba(255,255,255,0.92);
-  color: #1a1a2e;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 10px 14px;
-  border-radius: 16px 16px 16px 4px;
-  max-width: 260px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+.rs-screen {
   position: relative;
-  margin-bottom: 10vmin;
-  line-height: 1.5;
-  pointer-events: auto;
-}
-.mascot-bubble::after {
-  content: '';
-  position: absolute;
-  bottom: 12px;
-  left: -8px;
-  width: 0; height: 0;
-  border-top: 8px solid transparent;
-  border-bottom: 8px solid transparent;
-  border-right: 10px solid rgba(255,255,255,0.92);
-}
-.mascot-link {
-  color: #3366DD;
-  text-decoration: underline;
-  font-weight: 700;
-}
-.mascot-link:hover { color: #2244AA; }
-
-/* ═══════ 新结算界面布局 ═══════ */
-
-/* 横屏：左侧 30% 封面+信息 */
-.rp-left-new {
-  flex: 0 0 30%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(28px, 5vh, 48px);
-  min-width: 0;
-}
-
-/* 正方形封面 */
-.rp-cover-sq {
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: clamp(8px, 1vw, 14px);
   overflow: hidden;
-  background: rgba(255,255,255,0.03);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-}
-.rp-cover-sq img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.rp-cover-sq span {
-  display: flex; align-items: center; justify-content: center;
-  width: 100%; height: 100%; font-size: 36px; opacity: 0.06; color: #fff;
+  background: #000;
 }
 
-/* 长方形信息卡片 */
-.rp-info-card {
+/* 背景：曲绘铺满并柔焦，靠遮罩分层压出对比 */
+.rs-bg {
+  position: fixed;
+  inset: -14%;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  filter: blur(46px) saturate(1.05) brightness(0.42);
+  animation: rsBgIn 1.1s ease-out both;
+}
+.rs-bg-static { filter: none; }
+
+@keyframes rsBgIn {
+  from { opacity: 0; transform: scale(1.04); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.rs-veil {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(130% 85% at 50% 6%, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.52) 58%, rgba(0,0,0,0.88) 100%),
+    linear-gradient(180deg, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.28) 42%, rgba(0,0,0,0.90) 100%);
+}
+
+.rs-body {
+  position: relative;
+  z-index: 1;
   width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: clamp(8px, 1vh, 12px) clamp(8px, 1vw, 12px);
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: clamp(8px, 1vw, 14px);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-.rp-info-title-row {
-  display: flex; align-items: stretch; gap: 10px;
-}
-.rp-info-text {
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column; gap: 2px;
-}
-.rp-info-title {
-  font-size: clamp(13px, 1.5vw, 18px);
-  font-weight: 800; color: #fff;
-  line-height: 1.2; word-break: break-word;
+  padding: clamp(18px, 3.4vh, 46px) clamp(20px, 3.6vw, 68px);
+  gap: clamp(12px, 2.2vh, 26px);
 }
 
-/* 难度方块（与谱面库列表一致） */
-.rp-diff-sq {
-  width: clamp(44px, 5vw, 54px);
-  aspect-ratio: 1;
-  border-radius: 8px; flex-shrink: 0;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-}
-.rp-diff-sq-const {
-  font-size: clamp(16px, 1.8vw, 22px);
-  font-weight: 800; line-height: 1;
-}
-.rp-diff-sq-label {
-  font-size: clamp(8px, 0.8vw, 10px);
-  font-weight: 700; opacity: 0.85; margin-top: 2px;
-}
+/* 入场：逐块上浮 */
+.rs-rise { opacity: 0; transform: translateY(16px); }
+.is-visible .rs-rise { animation: rsRise 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes rsRise { to { opacity: 1; transform: translateY(0); } }
 
-/* ACC + PP + RKS 同行 */
-.rp-acc-row {
-  display: flex; align-items: baseline; gap: 6px;
-  justify-content: center; flex-wrap: wrap;
-  padding: 4px 0;
-  border-top: 1px solid rgba(255,255,255,0.05);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.rp-acc {
-  font-size: clamp(14px, 1.5vw, 18px);
-  font-weight: 700; color: rgba(255,255,255,0.6);
-  font-family: var(--font-numeric);
-  letter-spacing: 1px;
-}
-.rp-acc-sep {
-  color: rgba(255,255,255,0.2); font-size: 14px;
-}
-.rp-pp-inline, .rp-rks-inline {
-  font-size: clamp(13px, 1.4vw, 16px);
-  font-weight: 700; letter-spacing: 1px;
-  font-family: var(--font-numeric);
-}
-.rp-pp-inline { color: #fff; }
-.rp-rks-inline { color: rgba(255,255,255,0.7); }
-.rp-diff-badge-sq {
-  display: inline-flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 4px 10px; border-radius: 8px;
-  min-width: 48px; min-height: 48px;
-}
-.rp-diff-const {
-  font-size: clamp(18px, 2.2vw, 28px);
-  font-weight: 800; color: #fff;
-}
-.rp-info-artist {
-  font-size: clamp(10px, 1vw, 12px); color: #999;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.rp-info-author {
-  font-size: clamp(10px, 1vw, 12px); color: #666;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-/* 竖分割线 */
-.rp-divider-v {
-  width: 1px;
-  align-self: stretch;
-  background: rgba(255,255,255,0.06);
-}
-
-/* 横屏：右侧 70% 数据 */
-.rp-right-new {
+/* ── 横屏：左曲目 / 竖线 / 右成绩 ── */
+.rs-landscape .rs-ls-grid {
   flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 30%) 1px minmax(0, 1fr);
+  gap: clamp(20px, 3vw, 52px);
+  align-items: center;
+}
+.rs-ls-divider {
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,0.16) 14%, rgba(255,255,255,0.16) 86%, transparent);
+}
+.rs-ls-left,
+.rs-ls-right {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: center;
   min-width: 0;
 }
+.rs-ls-right { gap: clamp(12px, 2.4vh, 30px); }
 
-/* 评级区块 */
-.rp-rating-block {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: clamp(16px, 2vw, 28px);
-}
-.rp-rating-score {
+/* ── 竖屏：曲目在上 / 成绩在下 ── */
+.rs-portrait .rs-pt-stack {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
+  justify-content: center;
+  gap: clamp(14px, 2.6vh, 30px);
 }
-.rp-rating-big {
-  font-size: clamp(60px, 8vw, 100px);
-  font-weight: 900; line-height: 0.85;
-  text-shadow: none;
-  letter-spacing: 0;
-  font-family: var(--font-rating);
-}
-.rp-rating-label {
-  display: none;
-}
-.rp-score-big {
-  font-size: clamp(28px, 3.5vw, 44px);
-  font-weight: 800; color: #fff;
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums; letter-spacing: 2px;
-}
-.rp-score-lbl {
-  font-size: 11px; color: var(--text-secondary);
-  letter-spacing: 4px; text-transform: uppercase;
-}
+.rs-pt-divider { width: 100%; height: 1px; background: rgba(255,255,255,0.10); }
+.rs-pt-body { display: flex; flex-direction: column; gap: clamp(12px, 2.4vh, 26px); }
 
-/* PP / RKS 行 */
-.rp-pp-row {
-  display: none;
-}
-.rp-pp-item { display: none; }
-.rp-pp-val { display: none; }
-.rp-pp-lbl { display: none; }
+/* ── 曲目 ── */
+.rs-hero { display: flex; flex-direction: column; gap: clamp(12px, 2vh, 22px); min-width: 0; }
+.rs-portrait .rs-hero { flex-direction: row; align-items: center; gap: clamp(12px, 3.6vw, 20px); }
 
-/* 统计网格 (4列) */
-.rp-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  margin: 6px 0 10px 0;
-}
-.rp-stats-grid-4 { grid-template-columns: repeat(4, 1fr); }
-.rps-item {
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 4px 2px; background: rgba(255,255,255,0.02); border-radius: 6px;
-}
-.rps-val {
-  font-size: clamp(14px, 1.6vw, 18px); font-weight: 800;
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums; color: #fff;
-}
-.rps-lbl {
-  font-size: 8px; color: var(--text-secondary);
-  letter-spacing: 1px; text-transform: uppercase;
-}
-
-/* ═══════ 竖屏布局 ═══════ */
-.rp-portrait-top {
-  display: flex; gap: 12px; align-items: center;
-  width: 100%;
-}
-.rp-portrait-cover {
-  width: clamp(70px, 22vw, 110px);
-  aspect-ratio: 1; border-radius: 10px; overflow: hidden;
+.rs-cover {
+  width: min(100%, 36vh);
+  aspect-ratio: 1;
   flex-shrink: 0;
-  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.04);
 }
-.rp-portrait-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.rp-portrait-cover span {
-  display: flex; align-items: center; justify-content: center;
-  width: 100%; height: 100%; font-size: 24px; opacity: 0.06; color: #fff;
+.rs-portrait .rs-cover { width: clamp(76px, 24vw, 118px); }
+.rs-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rs-cover span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 30px;
+  color: #fff;
+  opacity: 0.06;
 }
-.rp-portrait-info {
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column; gap: 2px;
-}
-.rp-portrait-title {
-  font-size: clamp(15px, 4.5vw, 22px);
-  font-weight: 800; color: #fff; line-height: 1.15;
+
+.rs-hero-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.rs-title {
+  font-size: clamp(19px, 3.4vh, 30px);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.15;
+  letter-spacing: 0.5px;
   word-break: break-word;
 }
-.rp-portrait-artist {
-  font-size: clamp(10px, 2.5vw, 12px); color: #666;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.rs-artist {
+  font-size: clamp(11px, 1.6vh, 14px);
+  color: rgba(255,255,255,0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.rp-portrait-diff {
-  display: flex; align-items: center; gap: 8px; margin-top: 2px;
+.rs-meta {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.2vw, 14px);
+  margin-top: clamp(4px, 1vh, 10px);
+  flex-wrap: wrap;
+}
+.rs-diff-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: clamp(38px, 6.4vh, 50px);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.rs-diff-badge b { font-size: clamp(14px, 2.2vh, 19px); font-weight: 800; line-height: 1; font-family: var(--font-numeric); }
+.rs-diff-badge i { font-style: normal; font-size: 8px; font-weight: 700; opacity: 0.85; margin-top: 2px; letter-spacing: 0.5px; }
+.rs-author { font-size: clamp(10px, 1.5vh, 13px); color: rgba(255,255,255,0.42); }
+.rs-auto {
+  padding: 2px 7px;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.65);
 }
 
-/* 横分割线 */
-.rp-divider-h {
-  width: 100%; height: 1px;
-  background: rgba(255,255,255,0.08);
-  margin: 8px 0;
-}
+/* ── 成绩 ── */
+.rs-score-block { display: flex; align-items: center; gap: clamp(14px, 2.6vw, 40px); min-width: 0; }
 
-/* 竖屏底部 */
-.rp-portrait-bottom {
-  display: flex; gap: 16px; width: 100%;
-}
-.rp-portrait-rating {
-  display: flex; flex-direction: column; align-items: center; gap: 0;
-  flex: 0 0 auto;
-}
-.rp-portrait-rating .rp-rating-big {
-  font-size: clamp(40px, 11vw, 70px);
-  text-shadow: none;
+.rs-rating {
   font-family: var(--font-rating);
+  font-weight: 900;
+  line-height: 0.82;
+  font-size: clamp(84px, 15vh, 190px);
+  animation: rsRatingIn 0.9s cubic-bezier(0.2, 1.05, 0.3, 1) both;
 }
-.rp-portrait-rating .rp-rating-label {
-  display: none;
+@keyframes rsRatingIn {
+  from { opacity: 0; transform: scale(0.84); }
+  to   { opacity: 1; transform: scale(1); }
 }
-.rp-portrait-rating .rp-score-big {
-  font-size: clamp(18px, 4.5vw, 26px);
+
+.rs-score-wrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rs-rating-label { font-size: clamp(10px, 1.5vh, 13px); font-weight: 700; letter-spacing: 5px; margin-bottom: 2px; }
+.rs-score {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(38px, 8.4vh, 82px);
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 2px;
+  line-height: 1;
+  white-space: nowrap;
 }
-.rp-portrait-data {
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column; gap: 4px; justify-content: center;
+/* 竖屏窄屏时评级与分数同行放不下，各收一档字号 */
+.rs-portrait .rs-score { font-size: clamp(28px, 9vw, 58px); letter-spacing: 1px; }
+.rs-portrait .rs-rating { font-size: clamp(64px, 19vw, 132px); }
+.rs-score-label { font-size: 9px; letter-spacing: 6px; color: var(--text-secondary); text-transform: uppercase; }
+.rs-inline-stats {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(14px, 2.4vw, 30px);
+  margin-top: clamp(6px, 1.4vh, 14px);
+  flex-wrap: wrap;
 }
-.rp-portrait-data .rp-pp-row {
-  border: none; padding: 2px 0; gap: 16px; justify-content: flex-start;
+.rs-stat { display: inline-flex; align-items: baseline; gap: 5px; }
+.rs-stat b {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(15px, 2.4vh, 23px);
+  font-weight: 800;
+  color: #fff;
 }
+.rs-stat i { font-style: normal; font-size: 8px; letter-spacing: 2px; color: var(--text-secondary); text-transform: uppercase; }
+.rs-stat em { font-style: normal; }
+
+/* 判定四列：发丝线分隔，无底色无圆角 */
+.rs-judgments {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid rgba(255,255,255,0.10);
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+.rs-j {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: clamp(10px, 2vh, 22px) 4px;
+}
+.rs-j + .rs-j::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 1px;
+  background: rgba(255,255,255,0.08);
+}
+.rs-j-val {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: clamp(22px, 4.6vh, 46px);
+  line-height: 1;
+}
+.rs-j-lbl { font-size: 8px; letter-spacing: 2px; color: var(--text-secondary); text-transform: uppercase; }
+
+/* 详细三项 */
+.rs-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.rs-d { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rs-d span:first-child { font-size: 8px; letter-spacing: 2px; color: var(--text-secondary); text-transform: uppercase; }
+.rs-d span:last-child { font-size: clamp(13px, 1.9vh, 17px); font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+
+/* 看板娘台词：只留文字，用左侧竖线做引用块 */
+.rs-mascot { display: flex; align-items: center; min-width: 0; }
+.rs-mascot-bubble {
+  font-size: clamp(12px, 1.7vh, 15px);
+  line-height: 1.55;
+  color: rgba(255,255,255,0.88);
+  border-left: 2px solid rgba(255,255,255,0.22);
+  padding-left: 12px;
+  min-width: 0;
+}
+.rs-mascot-link { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.rs-mascot-link:hover { opacity: 0.75; }
+
+/* 按钮条：贴底一行，上边一条发丝线 */
+.rs-actions {
+  display: flex;
+  gap: clamp(10px, 1.4vw, 16px);
+  flex-shrink: 0;
+  padding-top: clamp(10px, 1.8vh, 20px);
+  border-top: 1px solid rgba(255,255,255,0.10);
+}
+.rs-actions .btn {
+  flex: 1;
+  white-space: nowrap;
+  border-radius: 4px;
+  padding: clamp(11px, 1.9vh, 17px) 20px;
+  font-size: clamp(13px, 1.8vh, 15px);
+  letter-spacing: 3px;
+}
+/* 主操作纯白底黑字（AGENT.md §0.7），次操作描边 */
+.rs-actions .btn-primary { background: #fff; color: #000; border-color: #fff; backdrop-filter: none; }
+.rs-actions .btn-primary:hover { background: rgba(255,255,255,0.88); color: #000; }
+.rs-actions .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.20); color: rgba(255,255,255,0.85); }
+.rs-actions .btn-outline:hover { background: rgba(255,255,255,0.06); color: #fff; }
 
 .result-chart-constant {
   font-size: 13px;
@@ -6163,12 +5698,17 @@ body::after {
   position: relative;
   background-size: cover !important;
   background-position: center !important;
+  /* 滚动由里面那层 .cl2-detail-in 负责（它带 scrollbar-gutter: stable）。
+     外层如果也能滚，切歌时入场动画的 translateY(16px) 会立刻在外层造出一段
+     多余的滚动高度 → 闪出滚动条 → 面板被挤窄 → 动画结束又弹回去。
+     竖屏下详情面板本来就矮，表现最明显。 */
+  overflow: hidden;
 }
 .cl2-panel-detail > * { position: relative; z-index: 1; }
 
 /* 竖屏 */
 .cl2-portrait .cl2-panel-list { flex: 0 0 55%; min-height: 0; overflow-y: auto; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); }
-.cl2-portrait .cl2-panel-detail { flex: 1; min-height: 0; overflow-y: auto; border-top: none; }
+.cl2-portrait .cl2-panel-detail { flex: 1; min-height: 0; overflow: hidden; border-top: none; }
 
 /* ── 列表头 ── */
 .cl2-scroll { padding: 14px 12px; }
@@ -6204,7 +5744,7 @@ body::after {
   align-items: center;
 }
 .cl2-item:hover { background: rgba(255,255,255,0.03); }
-/* 选中高亮由滑动选择框 .cl2-selection 负责，item 自身不再着色 */
+/* 选中高亮由固定在中间的 .cl2-band 负责，item 自身不再着色 */
 .cl2-item.active { background: transparent; border-color: transparent; }
 .cl2-item-cover {
   width: 44px; height: 44px; border-radius: 8px;
@@ -6213,6 +5753,22 @@ body::after {
 }
 .cl2-item-cover img { width: 100%; height: 100%; object-fit: cover; }
 .cl2-item-cover span { font-size: 16px; opacity: 0.12; }
+
+/* 卡片背景：从曲绘/封面提出的主色，纯色块。
+   主色已经收进深色窄区间（相对亮度 ≤ 0.045），白字和次级灰字都压得住。
+   纯色块没有图片解码、没有 filter，列表滚动时零开销。 */
+.cl2-item-tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  animation: cl2ItemBgIn 0.3s ease-out both;
+}
+/* 主色是异步算出来的，淡入避免先黑一下再上色 */
+@keyframes cl2ItemBgIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 .cl2-item-body { flex: 1; min-width: 0; }
 .cl2-item-title { font-size: 13px; font-weight: 600; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cl2-item-meta { font-size: 10px; color: #555; display: flex; gap: 6px; margin-top: 2px; align-items: center; flex-wrap: wrap; }
@@ -6240,22 +5796,33 @@ body::after {
 .cl2-list-title { color: #ccc; }
 .cl2-delete { color: rgba(255,255,255,0.06); }
 
-/* ─── 滚动列表 ─── */
+/* ─── 滚动选取列表 ─── */
 .cl-scroll { display: flex; flex-direction: column; height: 100%; overflow: hidden; padding: 16px 16px 0; }
-.cl-scroll-list { position: relative; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-
-/* 选中选择框 — 平滑滑到选中项（transform 驱动，GPU 合成，iOS easing） */
-.cl2-selection {
-  position: absolute; left: 0; right: 0; top: 0; height: 0;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
-  transform: translateZ(0);
-  transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), height 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.18s ease;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
+/* 外层只负责放高亮框（它在滚动容器外面，所以不会被滚走、也不会被裁） */
+.cl-list-wrap { position: relative; flex: 1; min-height: 0; }
+.cl-scroll-list {
+  position: relative; height: 100%;
+  overflow-y: auto; overflow-x: hidden;
+  /* 居中吸附；实际对齐的是屏幕中线，靠 JS 写的 scroll-padding 把吸附区挪过去 */
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.cl-scroll-list::-webkit-scrollbar { display: none; }
+
+/* 高亮框：top / height 由 JS 按「屏幕中线」和行高写死，行本身不做任何缩放或位移 */
+.cl2-band {
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 68px;
+  border: 1px solid rgba(255,255,255,0.20);
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* 列表项就是一个普通行：尺寸统一，靠滚动位置决定谁是选中 */
+.cl2-row { scroll-snap-align: center; }
 
 /* 详情面板切换过渡（切换谱面时整体淡入上移） */
 @keyframes cl2DetailIn {

@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Lang } from '@/utils/lang';
 import { loadCharts, saveCharts } from '@/utils';
 import { HighScoreRecord } from '@/types';
-import { generateBlurredBg } from '@/utils/blurImage';
+import { generateBlurredBg, extractAccentColor } from '@/utils/blurImage';
 import { PREVIEW_VOLUME, PREVIEW_LOW_VOLUME, setPreviewVolume } from '@/utils/previewPlayer';
 import { isFav, toggleFav, subscribeFavs } from '@/utils/favStore';
 import { parseChartZip } from '@/utils/chartParser';
@@ -52,6 +52,21 @@ const getDiffStyle = (diff: string): { bg: string; fg: string } => {
 /** 跨挂载记住上次选中的歌曲索引 */
 let lastSelectedIdx = -1;
 
+/** 卡片背景：从曲绘（没有则封面）提取的主色，纯色块。
+ *  主色在 extractAccentColor 里已经收进深色窄区间（并把相对亮度压到 0.045 以下），
+ *  所以白字压上去对比度够。纯色块没有图片解码、也没有 filter，渲染开销可以忽略。 */
+const RowTint: React.FC<{ src: string }> = ({ src }) => {
+  const [tint, setTint] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setTint(null);
+    extractAccentColor(src).then(c => { if (alive && c) setTint(`rgb(${c.r}, ${c.g}, ${c.b})`); });
+    return () => { alive = false; };
+  }, [src]);
+  if (!tint) return null;
+  return <div className="cl2-item-tint" style={{ background: tint }} />;
+};
+
 export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, lang, highScores, uiBlur }) => {
   const [charts, setCharts] = useState<ChartPackage[]>([]);
   const [dbLoaded, setDbLoaded] = useState(false);
@@ -71,10 +86,12 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
 
   // 选曲预览：挂载 & 选中变化 → 上报 App 播放对应歌曲预览
   // 社区打开时跳过：避免导入谱面 charts 变化触发自动播放（音乐停不下来）
+  // 滚动选取会让选中快速跳变，这里 debounce 一下，别一路划过去就狂加载十几首歌
   useEffect(() => {
     if (communityOpenRef.current) return;
     const pkg = selected >= 0 && selected < charts.length ? charts[selected] : null;
-    onPreview(pkg?.songUrl ?? null);
+    const timer = setTimeout(() => onPreview(pkg?.songUrl ?? null), 220);
+    return () => clearTimeout(timer);
   }, [selected, charts, onPreview]);
   const [speed, setSpeed] = useState(5.0);
   const [autoPlay, setAutoPlay] = useState(false);
@@ -93,18 +110,23 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   // 社区打开标记：打开期间屏蔽选曲预览自动播放（避免导入/关闭时音乐停不下来）
   const communityOpenRef = useRef(false);
 
-  // 列表选择框：绝对定位高亮条，随选中项平滑滑动。
-  // 关键：用 useEffect（paint 后）测量 + React state 驱动 transform。若用
-  // useLayoutEffect 在绘制前同步改样式，浏览器同一帧只看到最终位置，transition
-  // 不会跨帧播放 → 选择框直接跳变（“闪”）。paint 后改值才能让浏览器从旧位置
-  // 平滑过渡到新位置。
-  const [selPos, setSelPos] = useState<{ top: number; height: number } | null>(null);
-  const selectedItemRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = selectedItemRef.current;
-    if (!el || selected < 0 || selected >= charts.length) { setSelPos(null); return; }
-    setSelPos({ top: el.offsetTop, height: el.offsetHeight });
-  }, [selected, charts, sortBy, landscape]);
+  // ═══ 滚动选取 ═══
+  // 就是一个普通列表：自由滚动，停在哪一格就选中哪一格。
+  // 高亮框固定在**整个屏幕的垂直中线**上（不是列表框自己的中线）——
+  // 列表框上面还有标题和排序行，按框的中线对齐会整体偏低，眼睛看着不对。
+  // 行本身没有任何缩放/位移，尺寸完全统一；位置全部读实测行中心（centersRef）。
+  const listRef = useRef<HTMLDivElement>(null);
+  const bandRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const centersRef = useRef<number[]>([]);     // 每行中心在内容坐标里的 y
+  const bandOffsetRef = useRef(0);             // 屏幕中线距列表顶部多少 px
+  const centerIdxRef = useRef(-1);             // 当前正中行号（sortedCharts 下标）
+  const scrollingRef = useRef(false);          // 用户正在滚（含惯性/点选平滑滚）
+  const scrollIdleRef = useRef(0);
+  const rafRef = useRef(0);
+  const lastScrollTopRef = useRef(-1);
+  const sortedRef = useRef<ChartPackage[]>([]);
+  const chartsRef = useRef<ChartPackage[]>([]);
 
   // 右键菜单
   const [ctxMenu, setCtxMenu] = useState<{ idx: number; x: number; y: number } | null>(null);
@@ -152,7 +174,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   const onDragEnd = (idx: number) => {
     if (!dragMoved.current) {
       if (swipedIdx === idx) setSwipedIdx(null);
-      else setSelected(idx);
+      // 点一下 = 把这张滚到正中；选中由滚动位置决定，不再直接 setSelected
+      else scrollRowToCenter(idx);
     }
     dragStartX.current = 0;
     dragMoved.current = false;
@@ -165,10 +188,6 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     if (uiBlur || !bgImgSrc) { setStaticBg(null); return; }
     generateBlurredBg(bgImgSrc, 40, 0.25).then(setStaticBg);
   }, [uiBlur, bgImgSrc]);
-  const wheelRef = useRef<HTMLDivElement>(null);
-  const touchStartY = useRef(0);
-  const touchMoved = useRef(false);
-
   useEffect(() => {
     const onResize = () => setLandscape(window.innerWidth > window.innerHeight);
     window.addEventListener('resize', onResize);
@@ -268,6 +287,167 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
       default: return a.title.localeCompare(b.title);
     }
   });
+  // 每次渲染同步给 ref，rAF / ResizeObserver 里读到的永远是最新的列表
+  sortedRef.current = sortedCharts;
+  chartsRef.current = charts;
+  // 选中项在排序后列表里的位置（用来决定给哪几行烘背景图）
+  const selSortedIdx = sortedCharts.findIndex(c => charts.indexOf(c) === selected);
+
+  // 背景图一旦给过就不再撤销（按文件名记）。之前是"离选中项超过 8 行就卸载"，
+  // 结果滚过去再滚回来时，卡片会先变回纯黑、再淡入颜色，看着很突然。
+  const bgKeysRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!uiBlur || selSortedIdx < 0) return;
+    const from = Math.max(0, selSortedIdx - 8);
+    const to = Math.min(sortedCharts.length - 1, selSortedIdx + 8);
+    let changed = false;
+    for (let i = from; i <= to; i++) {
+      const f = sortedCharts[i]?.fileName;
+      if (f && !bgKeysRef.current.has(f)) { bgKeysRef.current.add(f); changed = true; }
+    }
+    if (changed) force(x => x + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uiBlur, selSortedIdx, sortedCharts]);
+
+  /**
+   * 量中线、上下留白、每行中心的实测位置。
+   * 中线取**列表框自己的垂直中线** —— 原生 scroll-snap 对齐的就是这条线（滚动框中线），
+   * 两边天然一致，不用再额外挪吸附区，横竖屏都不会错位。
+   */
+  const measureWheel = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const rows = rowRefs.current;
+    let rowH = 68;
+    for (const r of rows) { if (r) { rowH = r.offsetHeight; break; } }
+
+    const off = el.clientHeight / 2;
+    bandOffsetRef.current = off;
+
+    // 上下留白：让第一行/最后一行也能滚到中线上
+    const pad = Math.max(0, (el.clientHeight - rowH) / 2);
+    if (Math.abs((parseFloat(el.style.paddingTop) || 0) - pad) > 0.5) {
+      el.style.paddingTop = `${pad}px`;
+      el.style.paddingBottom = `${pad}px`;
+    }
+    // 之前为了对齐屏幕中线写过 scroll-padding，这里清掉（现在不需要了）
+    if (el.style.scrollPaddingTop || el.style.scrollPaddingBottom) {
+      el.style.scrollPaddingTop = '';
+      el.style.scrollPaddingBottom = '';
+    }
+
+    if (bandRef.current) {
+      bandRef.current.style.top = `${off - rowH / 2}px`;
+      bandRef.current.style.height = `${rowH}px`;
+    }
+
+    // 留白改完再量，行中心才是最终位置
+    const centers: number[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      centers[i] = r ? r.offsetTop + r.offsetHeight / 2 : i * (rowH + 2) + pad + rowH / 2;
+    }
+    centersRef.current = centers;
+  }, []);
+
+  /** 离列表框中线最近的那一行 = 当前选中 */
+  const findCenter = useCallback(() => {
+    const el = listRef.current;
+    const centers = centersRef.current;
+    const n = centers.length;
+    if (!el || n === 0) return -1;
+    const at = el.scrollTop + bandOffsetRef.current;
+    let best = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < n; i++) {
+      const d = Math.abs(centers[i] - at);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  }, []);
+
+  /** 行没有做任何缩放/位移，所以这里只需要判断"正中那行换没换" */
+  const updateWheel = useCallback(() => {
+    const idx = findCenter();
+    if (idx < 0 || idx === centerIdxRef.current) return;
+    centerIdxRef.current = idx;
+    const c = sortedRef.current[idx];
+    const realIdx = c ? chartsRef.current.indexOf(c) : -1;
+    if (realIdx >= 0) setSelected(realIdx);
+  }, [findCenter]);
+
+  /** 滚动停下后兜一次底：万一没停在中线上（差得明显），平滑补过去 */
+  const settleWheel = useCallback(() => {
+    const el = listRef.current;
+    const idx = centerIdxRef.current;
+    const c = centersRef.current[idx];
+    if (!el || c === undefined) return;
+    const target = c - bandOffsetRef.current;
+    if (Math.abs(el.scrollTop - target) <= 2) return;
+    el.scrollTo({ top: target, behavior: 'smooth' });
+  }, []);
+
+  const handleWheelScroll = () => {
+    // 滚动期间不要被"外部选中变化"反向纠正，否则惯性滚动会被打断
+    scrollingRef.current = true;
+    clearTimeout(scrollIdleRef.current);
+    scrollIdleRef.current = window.setTimeout(() => { scrollingRef.current = false; settleWheel(); }, 160);
+
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      const el = listRef.current;
+      // 位置没动就整帧跳过（吸附、程序化滚动会甩出大量重复 scroll 事件）
+      if (!el || el.scrollTop === lastScrollTopRef.current) return;
+      lastScrollTopRef.current = el.scrollTop;
+      updateWheel();
+    });
+  };
+
+  /** 把某一行滚到中线上（点选时用，平滑滚动） */
+  const scrollRowToCenter = (realIdx: number, smooth = true) => {
+    const el = listRef.current;
+    if (!el) return;
+    const ci = sortedRef.current.findIndex(c => chartsRef.current.indexOf(c) === realIdx);
+    const center = centersRef.current[ci];
+    if (ci < 0 || center === undefined) return;
+    el.scrollTo({ top: center - bandOffsetRef.current, behavior: smooth ? 'smooth' : 'auto' });
+  };
+
+  // 列表尺寸变化（横竖屏、面板伸缩）→ 重新量中线/留白/行中心，再校一次选中
+  useLayoutEffect(() => {
+    const el = listRef.current;
+    if (!el || !dbLoaded) return;
+    measureWheel();
+    centerIdxRef.current = -1;   // 强制重算：行高/留白/中线都可能变了
+    updateWheel();
+    const ro = new ResizeObserver(() => {
+      measureWheel();
+      centerIdxRef.current = -1;
+      updateWheel();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [dbLoaded, measureWheel, updateWheel]);
+
+  // 外部改变选中（恢复上次、换排序、删除）→ 直接跳过去
+  useLayoutEffect(() => {
+    const el = listRef.current;
+    if (!el || !dbLoaded || scrollingRef.current) return;
+    const ci = sortedCharts.findIndex(c => charts.indexOf(c) === selected);
+    if (ci < 0) return;
+    measureWheel();
+    const center = centersRef.current[ci];
+    if (center === undefined) return;
+    el.scrollTo({ top: center - bandOffsetRef.current, behavior: 'auto' });
+    centerIdxRef.current = -1;
+    updateWheel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, dbLoaded, sortBy, favOnly, landscape, charts.length]);
+
+  // 卸载时清掉滚动空闲定时器
+  useEffect(() => () => clearTimeout(scrollIdleRef.current), []);
+
   // ═══════ 历史分数弹窗 ═══════
   const [showHistory, setShowHistory] = useState(false);
   const [showDiffInfo, setShowDiffInfo] = useState(false);
@@ -329,16 +509,23 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
           <p>{lang === 'zh' ? '点击导入添加 .zip 谱面' : 'Import a .zip chart'}</p>
         </div>
       ) : (
-        <div className="cl-scroll-list">
-          {/* 滑动选择框 — transform 驱动，平滑移动 */}
-          <div className="cl2-selection" style={selPos ? { transform: `translateY(${selPos.top}px)`, height: selPos.height, opacity: 1 } : { opacity: 0 }} />
-          {sortedCharts.map((c) => {
+        <div className="cl-list-wrap">
+          {/* 高亮框固定在屏幕中线上（top 由 JS 按屏幕中线算）。它在滚动容器外面，
+              所以不跟着内容滚、也不会被列表的 overflow 裁掉 */}
+          <div className="cl2-band" ref={bandRef} aria-hidden="true" />
+          <div className="cl-scroll-list" ref={listRef} onScroll={handleWheelScroll}>
+          {sortedCharts.map((c, i) => {
             const chs = highScores[c.fileName];
             const realIdx = charts.indexOf(c);
             const ds = getDiffStyle(c.difficulty);
             const isSwiped = swipedIdx === realIdx;
+            // 背景优先曲绘，没有曲绘就退化成封面
+            const bgSrc = c.illustrationUrl || c.coverUrl;
             return (
-            <div key={c.fileName} ref={realIdx === selected ? selectedItemRef : null} style={{ position: 'relative', overflow: 'hidden', borderRadius: 10, marginBottom: 2 }}>
+            <div key={c.fileName} ref={el => { rowRefs.current[i] = el; }} className="cl2-row" style={{ position: 'relative', overflow: 'hidden', borderRadius: 10, marginBottom: 2 }}>
+              {/* 卡片背景：曲绘（没有则封面）的主色块，只在开启 UI 模糊时给。
+                  按文件名记住"已经给过背景"的行，滚回去时不会再变回黑的 */}
+              {uiBlur && bgSrc && bgKeysRef.current.has(c.fileName) && <RowTint src={bgSrc} />}
               {/* iOS 滑动操作背景：导出（蓝）+ 删除（红） */}
               {isSwiped && (
               <div style={{
@@ -376,8 +563,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                   position: 'relative', zIndex: 1,
                   transform: isSwiped ? 'translateX(-128px)' : 'translateX(0)',
                   transition: 'transform 0.2s ease',
-                  // 选中高亮只由滑动选择框 .cl2-selection 负责；item 自身不再加背景，
-                  // 否则点击瞬间 item 自身先“闪”出背景框，再叠加选择框平移，出现两个选框
+                  // 选中高亮由固定在中间的 .cl2-band 负责；item 自身不上背景，
+                  // 否则滑出删除/导出时又会多出一层框
                   background: isSwiped ? '#141414' : 'transparent',
                   borderRadius: isSwiped ? '10px 0 0 10px' : 10,
                 }}
@@ -390,7 +577,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                     <div style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: '#eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>{c.title}</div>
                     <span className={`cl2-fav${isFav(c.fileName) ? ' on' : ''}`} onClick={e => { e.stopPropagation(); toggleFav(c.fileName); }} title={lang === 'zh' ? '喜爱' : 'Favorite'}>{isFav(c.fileName) ? '★' : '☆'}</span>
                   </div>
-                  <div style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.artist}{c.author ? ` · ${c.author}` : ''}</div>
+                  {/* 曲师/谱师：底色是主色块，这里比原来的 #666 提亮，保住 4.5:1 */}
+                  <div style={{ fontSize: 10, color: '#a8a8a8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.artist}{c.author ? ` · ${c.author}` : ''}</div>
                 </div>
                 {/* 最高分 — 与难度方块同高 (48px) */}
                 {chs && (
@@ -418,6 +606,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
               </div>
             </div>
           )})}
+          </div>
         </div>
       )}
       {/* 右键菜单 */}

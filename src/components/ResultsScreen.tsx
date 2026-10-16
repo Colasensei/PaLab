@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { GameResults } from '@/types';
-import { getRatingColor, getRatingLabel } from '@/utils';
-import { getAssetUrl } from '@/utils/assetStore';
+import { getRatingColor } from '@/utils';
+import { generateBlurredBg } from '@/utils/blurImage';
 
 import { t, Lang } from '@/utils/lang';
 
@@ -15,30 +15,45 @@ interface ResultsScreenProps {
   isTrial?: boolean;
   onAdjustParams?: () => void;
   onContinueToEditor?: () => void;
-  chartInfo?: { title: string; artist: string; author: string; difficulty: string; chartConstant: number; trackCount: number; coverUrl: string | null } | null;
+  uiBlur?: boolean;
+  chartInfo?: {
+    title: string;
+    artist: string;
+    author: string;
+    difficulty: string;
+    chartConstant: number;
+    trackCount: number;
+    coverUrl: string | null;
+    illustrationUrl?: string | null;
+  } | null;
 }
 
-function getPhigrosRating(rating: string): string {
-  switch (rating) { case 'AP': return 'Φ'; case 'V': return 'V'; default: return rating; }
-}
+// 难度方块配色与谱面库列表保持一致（只给方块上色，文字一律白/灰）
+const DIFF_STYLE: Record<string, { bg: string; fg: string }> = {
+  EZ: { bg: '#7EC8E3', fg: '#000' },
+  NM: { bg: '#FFFFFF', fg: '#000' },
+  HD: { bg: '#FF8C42', fg: '#000' },
+  IN: { bg: '#E53E3E', fg: '#fff' },
+  AT: { bg: '#1A1A1A', fg: '#fff' },
+};
 
-function getPhigrosLabel(rating: string, lang: Lang): string {
-  if (lang === 'zh') {
-    switch (rating) { case 'AP': return 'ALL PERFECT'; case 'V': return 'FULL COMBO'; default: return rating; }
-  }
-  switch (rating) { case 'AP': return 'ALL PERFECT'; case 'V': return 'FULL COMBO'; default: return rating; }
-}
+const ratingGlyph = (rating: string): string => (rating === 'AP' ? 'Φ' : rating);
+
+const ratingSubLabel = (rating: string): string =>
+  rating === 'AP' ? 'ALL PERFECT' : rating === 'V' ? 'FULL COMBO' : '';
 
 export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   results, onRestart, onBackToPanel, rks, rksChange, lang,
-  isTrial = false, onAdjustParams, onContinueToEditor, chartInfo,
+  isTrial = false, onAdjustParams, onContinueToEditor, chartInfo, uiBlur = true,
 }) => {
   const ratingColor = getRatingColor(results.rating);
-  const phigrosRating = getPhigrosRating(results.rating);
-  const phigrosLabel = getPhigrosLabel(results.rating, lang);
-  const [expanded, setExpanded] = useState(false);
+  const glyph = ratingGlyph(results.rating);
+  const subLabel = ratingSubLabel(results.rating);
+
   const [visible, setVisible] = useState(false);
   const [landscape, setLandscape] = useState(window.innerWidth > window.innerHeight);
+  const [shownScore, setShownScore] = useState(0);
+  const [staticBg, setStaticBg] = useState<string | null>(null);
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
@@ -47,7 +62,36 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // 分数滚动：一次 easeOut，别每帧重算
+  useEffect(() => {
+    if (!visible || results.score <= 0) { setShownScore(results.score); return; }
+    const dur = 820;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / dur);
+      setShownScore(Math.round(results.score * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [visible, results.score]);
+
+  // 关闭 UI 模糊时用离线生成的静态模糊图，和加载界面同一套逻辑
+  const bgSrc = chartInfo?.illustrationUrl || chartInfo?.coverUrl || null;
+  useEffect(() => {
+    if (!bgSrc || uiBlur) { setStaticBg(null); return; }
+    let alive = true;
+    generateBlurredBg(bgSrc, 48, 0.30).then(url => { if (alive) setStaticBg(url); });
+    return () => { alive = false; };
+  }, [bgSrc, uiBlur]);
+
   const acc = results.totalNotes > 0 ? (((results.perfect * 1.0 + results.good * 0.65) / results.totalNotes) * 100).toFixed(2) : '0.00';
+
+  const avgOffset = useMemo(() => {
+    const valid = results.noteResults.filter(r => r.judgment.offset !== Infinity);
+    return valid.length > 0 ? `${(valid.reduce((s, r) => s + Math.abs(r.judgment.offset), 0) / valid.length).toFixed(1)}ms` : '-';
+  }, [results.noteResults]);
 
   // Papori 台词，别 rerender 就换（
   const { mascotMsg, mascotLink } = useMemo(() => {
@@ -125,293 +169,143 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
     return { mascotMsg: msg, mascotLink: link };
   }, [results, isTrial, lang]);
 
-  const leftPanel = (
-    <>
-      {/* 评级大字 — 评级色发光 */}
-      <div className="result-rating" style={{ color: ratingColor, textShadow: `0 0 20px ${ratingColor}dd, 0 0 48px ${ratingColor}88, 0 0 96px ${ratingColor}44` }}>{phigrosRating}</div>
-      <div className="result-rating-label" style={{ color: ratingColor }}>{phigrosLabel}</div>
-      {/* 分 */}
-      <div className="result-score">{results.score.toLocaleString()}</div>
-      <div className="result-score-label">{t('score', lang)}</div>
-    </>
-  );
+  const diffKey = chartInfo?.difficulty || results.difficulty || '';
+  const diffStyle = DIFF_STYLE[diffKey] || { bg: '#FFFFFF', fg: '#000' };
+  const title = chartInfo?.title || results.songName || '—';
+  const artist = chartInfo?.artist || '—';
+  const author = chartInfo?.author || '—';
+  const constant = (chartInfo?.chartConstant ?? results.chartConstant ?? 0).toFixed(1);
+  const trackCount = chartInfo?.trackCount;
 
-  const rightPanel = (
-    <>
-      {/* 歌 */}
-      <div className="result-song-info">
-        {chartInfo ? (
-          <>
-            {chartInfo.coverUrl && <div className="result-cover-sm"><img src={chartInfo.coverUrl} alt="" /></div>}
-            <div className="result-chart-text">
-              <span className="result-song-name">{chartInfo.title}</span>
-              <span className="result-difficulty" style={{ color: chartInfo.difficulty === 'EZ' ? '#44BB44' : chartInfo.difficulty === 'NM' ? '#FFAA00' : chartInfo.difficulty === 'HD' ? '#FF4444' : chartInfo.difficulty === 'IN' ? '#AA44FF' : '#FF44AA' }}>{chartInfo.difficulty}</span>
-              <span className="result-chart-constant">{chartInfo.chartConstant.toFixed(1)}</span>
-            </div>
-          </>
-        ) : (
-          <>
-            {results.songName && <span className="result-song-name">{results.songName}</span>}
-            <span className="result-difficulty" style={{
-              color: results.difficulty === 'EZ' ? '#44BB44' : results.difficulty === 'NM' ? '#FFAA00' : results.difficulty === 'HD' ? '#FF4444' : results.difficulty === 'IN' ? '#AA44FF' : '#FF44AA'
-            }}>{results.difficulty}</span>
-            <span className="result-chart-constant">{results.chartConstant.toFixed(1)}</span>
-          </>
-        )}
-        {results.autoPlay && <span className="result-autoplay">AUTO</span>}
+  // ── 曲目区（横屏在左，竖屏在顶）
+  const hero = (
+    <div className="rs-hero rs-rise" style={{ animationDelay: '0.04s' }}>
+      <div className="rs-cover">
+        {chartInfo?.coverUrl ? <img src={chartInfo.coverUrl} alt="" /> : <span>::</span>}
       </div>
-
-      {/* ACC */}
-      <div className="result-acc-row">
-        <span className="result-acc-val">{acc}%</span>
-      </div>
-
-      {/* P/G/B/M + PP/RKS 六格 */}
-      <div className="result-stats-grid">
-        <div className="rsg-item"><span className="rsg-val stat-perfect">{results.perfect}</span><span className="rsg-lbl">Perfect</span></div>
-        <div className="rsg-item"><span className="rsg-val stat-good">{results.good}</span><span className="rsg-lbl">Good</span></div>
-        <div className="rsg-item"><span className="rsg-val stat-bad">{results.bad}</span><span className="rsg-lbl">Bad</span></div>
-        <div className="rsg-item"><span className="rsg-val stat-miss">{results.miss}</span><span className="rsg-lbl">Miss</span></div>
-        <div className="rsg-item">
-          <span className="rsg-val" style={{ color: ratingColor, fontSize: 16 }}>{results.pp.toFixed(2)}</span>
-          <span className="rsg-lbl">PP</span>
-        </div>
-        <div className="rsg-item">
-          <span className="rsg-val" style={{ fontSize: 16 }}>{results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
-          <span className="rsg-lbl">RKS</span>
-          {!results.autoPlay && rksChange && rksChange.new !== rksChange.old && (
-            <span className={`rks-change ${rksChange.new > rksChange.old ? 'rks-up' : 'rks-down'}`} style={{ fontSize: 9 }}>
-              {rksChange.new > rksChange.old ? '↑' : '↓'}{(rksChange.new - rksChange.old).toFixed(2)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* 详细 */}
-      <div className={`result-extra ${expanded ? 'open' : ''}`} onClick={() => setExpanded(!expanded)}>
-        <div className="re-row"><span>{t('total.notes', lang)}</span><span>{results.totalNotes}</span></div>
-        <div className="re-row"><span>{t('max.combo', lang)}</span><span>{results.maxCombo}</span></div>
-        <div className="re-row"><span>{t('avg.offset', lang)}</span><span>
-          {(() => {
-            const valid = results.noteResults.filter(r => r.judgment.offset !== Infinity);
-            return valid.length > 0 ? `${(valid.reduce((s, r) => s + Math.abs(r.judgment.offset), 0) / valid.length).toFixed(1)}ms` : '-';
-          })()}
-        </span></div>
-      </div>
-      <div className="re-toggle" onClick={() => setExpanded(!expanded)}>
-        {expanded ? t('collapse', lang) : t('click.for.details', lang)}
-      </div>
-    </>
-  );
-
-  // 横屏：左30%封面+信息 / 右70%评级+分+数据
-  const diffColor = chartInfo
-    ? (chartInfo.difficulty === 'EZ' ? '#7EC8E3' : chartInfo.difficulty === 'NM' ? '#FFFFFF' : chartInfo.difficulty === 'HD' ? '#FF8C42' : chartInfo.difficulty === 'IN' ? '#E53E3E' : '#1A1A1A')
-    : '#FFFFFF';
-  const diffFg = chartInfo?.difficulty === 'AT' ? '#fff' : '#000';
-
-  const landscapeInfoLeft = (
-    <div className="rp-info-left">
-      {/* 正方形封面 */}
-      <div className="rp-cover-sq">
-        {chartInfo?.coverUrl
-          ? <img src={chartInfo.coverUrl} alt="" />
-          : <span>::</span>
-        }
-      </div>
-      {/* 标题左 + 难度方块右 */}
-      <div className="rp-info-title-row">
-        <div className="rp-info-text">
-          <div className="rp-info-title">{chartInfo?.title || results.songName || '—'}</div>
-          <div className="rp-info-artist">{chartInfo?.artist || '—'}</div>
-          <div className="rp-info-author">{lang === 'zh' ? '谱师: ' : 'By: '}{chartInfo?.author || '—'}</div>
-        </div>
-        <div className="rp-diff-sq" style={{ background: diffColor, color: diffFg }}>
-          <div className="rp-diff-sq-const">{chartInfo ? chartInfo.chartConstant.toFixed(1) : results.chartConstant.toFixed(1)}</div>
-          <div className="rp-diff-sq-label">{chartInfo?.difficulty || results.difficulty || '?'} · {chartInfo?.trackCount || 4}K</div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const landscapeDataRight = (
-    <div className="rp-data-right">
-      {/* 评级 + 分数 — 横排 */}
-      <div className="rp-rating-block">
-        <div className="rp-rating-big" style={{ color: ratingColor, textShadow: `0 0 20px ${ratingColor}dd, 0 0 48px ${ratingColor}88, 0 0 96px ${ratingColor}44` }}>{phigrosRating}</div>
-        <div className="rp-rating-score">
-          <div className="rp-score-big">{results.score.toLocaleString()}</div>
-          <div className="rp-score-lbl">{t('score', lang)}</div>
-        </div>
-      </div>
-      {/* ACC + PP + RKS 同行 */}
-      <div className="rp-acc-row">
-        <span className="rp-acc">{acc}%</span>
-        <span className="rp-acc-sep">·</span>
-        <span className="rp-pp-inline" style={{ color: ratingColor }}>PP {results.pp.toFixed(2)}</span>
-        <span className="rp-acc-sep">·</span>
-        <span className="rp-rks-inline">RKS {results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
-        {!results.autoPlay && rksChange && rksChange.new !== rksChange.old && (
-          <span className={`rks-change ${rksChange.new > rksChange.old ? 'rks-up' : 'rks-down'}`}>
-            {rksChange.new > rksChange.old ? '↑' : '↓'}{(rksChange.new - rksChange.old).toFixed(2)}
+      <div className="rs-hero-text">
+        <div className="rs-title">{title}</div>
+        <div className="rs-artist">{artist}</div>
+        <div className="rs-meta">
+          <span className="rs-diff-badge" style={{ background: diffStyle.bg, color: diffStyle.fg }}>
+            <b>{constant}</b>
+            <i>{diffKey || '?'}{trackCount ? ` · ${trackCount}K` : ''}</i>
           </span>
-        )}
-      </div>
-      <div className="rp-stats-grid">
-        <div className="rps-item"><span className="rps-val stat-perfect">{results.perfect}</span><span className="rps-lbl">Perfect</span></div>
-        <div className="rps-item"><span className="rps-val stat-good">{results.good}</span><span className="rps-lbl">Good</span></div>
-        <div className="rps-item"><span className="rps-val stat-bad">{results.bad}</span><span className="rps-lbl">Bad</span></div>
-        <div className="rps-item"><span className="rps-val stat-miss">{results.miss}</span><span className="rps-lbl">Miss</span></div>
-      </div>
-      {/* 额外数据折叠 */}
-      <div className={`result-extra ${expanded ? 'open' : ''}`} onClick={() => setExpanded(!expanded)}>
-        <div className="re-row"><span>{t('total.notes', lang)}</span><span>{results.totalNotes}</span></div>
-        <div className="re-row"><span>{t('max.combo', lang)}</span><span>{results.maxCombo}</span></div>
-        <div className="re-row"><span>{t('avg.offset', lang)}</span><span>
-          {(() => {
-            const valid = results.noteResults.filter(r => r.judgment.offset !== Infinity);
-            return valid.length > 0 ? `${(valid.reduce((s, r) => s + Math.abs(r.judgment.offset), 0) / valid.length).toFixed(1)}ms` : '-';
-          })()}
-        </span></div>
-      </div>
-      <div className="re-toggle" onClick={() => setExpanded(!expanded)}>
-        {expanded ? t('collapse', lang) : t('click.for.details', lang)}
-      </div>
-    </div>
-  );
-
-  // ═══════ 新竖屏布局 ═══════
-  const portraitTop = (
-    <div className="rp-portrait-top">
-      <div className="rp-portrait-cover">
-        {chartInfo?.coverUrl
-          ? <img src={chartInfo.coverUrl} alt="" />
-          : <span>::</span>
-        }
-      </div>
-      <div className="rp-portrait-info">
-        <div className="rp-portrait-title">{chartInfo?.title || results.songName || '—'}</div>
-        <div className="rp-portrait-artist">{chartInfo?.artist || '—'}{chartInfo?.author ? ` · ${chartInfo.author}` : ''}</div>
-        <div className="rp-portrait-diff">
-          <span className="rp-diff-badge-sq" style={{ background: diffColor, color: diffFg }}>
-            <span className="rp-diff-sq-const">{chartInfo ? chartInfo.chartConstant.toFixed(1) : results.chartConstant.toFixed(1)}</span>
-            <span className="rp-diff-sq-label">{chartInfo?.difficulty || results.difficulty || '?'} · {chartInfo?.trackCount || 4}K</span>
-          </span>
+          <span className="rs-author">{lang === 'zh' ? '谱师 ' : 'By '}{author}</span>
+          {results.autoPlay && <span className="rs-auto">AUTO</span>}
         </div>
       </div>
     </div>
   );
 
-  const portraitBottom = (
-    <div className="rp-portrait-bottom">
-      <div className="rp-portrait-rating">
-        <div className="rp-rating-big" style={{ color: ratingColor, textShadow: `0 0 18px ${ratingColor}dd, 0 0 44px ${ratingColor}88, 0 0 84px ${ratingColor}44` }}>{phigrosRating}</div>
-        <div className="rp-score-big">{results.score.toLocaleString()}</div>
-      </div>
-      <div className="rp-portrait-data">
-        <div className="rp-acc-row">
-          <span className="rp-acc">{acc}%</span>
-          <span className="rp-acc-sep">·</span>
-          <span className="rp-pp-inline" style={{ color: ratingColor }}>PP {results.pp.toFixed(2)}</span>
-          <span className="rp-acc-sep">·</span>
-          <span className="rp-rks-inline">RKS {results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
-        </div>
-        <div className="rp-pp-row" style={{ display: 'none' }}>
-          <div className="rp-pp-item">
-            <span className="rp-pp-val" style={{ color: ratingColor }}>{results.pp.toFixed(2)}</span>
-            <span className="rp-pp-lbl">PP</span>
-          </div>
-          <div className="rp-pp-item">
-            <span className="rp-pp-val">{results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</span>
-            <span className="rp-pp-lbl">RKS</span>
+  // ── 成绩区
+  const scoreBlock = (
+    <div className="rs-score-block rs-rise" style={{ animationDelay: '0.10s' }}>
+      <div className="rs-rating" style={{ color: ratingColor, textShadow: `0 0 22px ${ratingColor}cc, 0 0 52px ${ratingColor}77, 0 0 110px ${ratingColor}44` }}>{glyph}</div>
+      <div className="rs-score-wrap">
+        {subLabel && <div className="rs-rating-label" style={{ color: ratingColor }}>{subLabel}</div>}
+        <div className="rs-score">{shownScore.toLocaleString()}</div>
+        <div className="rs-score-label">{t('score', lang)}</div>
+        <div className="rs-inline-stats">
+          <span className="rs-stat"><b>{acc}%</b><i>ACC</i></span>
+          <span className="rs-stat"><b style={{ color: ratingColor }}>{results.pp.toFixed(2)}</b><i>PP</i></span>
+          <span className="rs-stat">
+            <b>{results.autoPlay || rks < 0 ? '--' : rks.toFixed(2)}</b><i>RKS</i>
             {!results.autoPlay && rksChange && rksChange.new !== rksChange.old && (
-              <span className={`rks-change ${rksChange.new > rksChange.old ? 'rks-up' : 'rks-down'}`}>
-                {rksChange.new > rksChange.old ? '↑' : '↓'}{(rksChange.new - rksChange.old).toFixed(2)}
-              </span>
+              <em className={`rks-change ${rksChange.new > rksChange.old ? 'rks-up' : 'rks-down'}`}>
+                {rksChange.new > rksChange.old ? '↑' : '↓'}{Math.abs(rksChange.new - rksChange.old).toFixed(2)}
+              </em>
             )}
-          </div>
-        </div>
-        <div className="rp-stats-grid rp-stats-grid-4">
-          <div className="rps-item"><span className="rps-val stat-perfect">{results.perfect}</span><span className="rps-lbl">Perfect</span></div>
-          <div className="rps-item"><span className="rps-val stat-good">{results.good}</span><span className="rps-lbl">Good</span></div>
-          <div className="rps-item"><span className="rps-val stat-bad">{results.bad}</span><span className="rps-lbl">Bad</span></div>
-          <div className="rps-item"><span className="rps-val stat-miss">{results.miss}</span><span className="rps-lbl">Miss</span></div>
-        </div>
-        {/* 额外数据折叠 */}
-        <div className={`result-extra ${expanded ? 'open' : ''}`} onClick={() => setExpanded(!expanded)}>
-          <div className="re-row"><span>{t('total.notes', lang)}</span><span>{results.totalNotes}</span></div>
-          <div className="re-row"><span>{t('max.combo', lang)}</span><span>{results.maxCombo}</span></div>
-          <div className="re-row"><span>{t('avg.offset', lang)}</span><span>
-            {(() => {
-              const valid = results.noteResults.filter(r => r.judgment.offset !== Infinity);
-              return valid.length > 0 ? `${(valid.reduce((s, r) => s + Math.abs(r.judgment.offset), 0) / valid.length).toFixed(1)}ms` : '-';
-            })()}
-          </span></div>
-        </div>
-        <div className="re-toggle" onClick={() => setExpanded(!expanded)}>
-          {expanded ? t('collapse', lang) : t('click.for.details', lang)}
+          </span>
         </div>
       </div>
+    </div>
+  );
+
+  const judgments = (
+    <div className="rs-judgments rs-rise" style={{ animationDelay: '0.16s' }}>
+      <div className="rs-j"><span className="rs-j-val stat-perfect">{results.perfect}</span><span className="rs-j-lbl">Perfect</span></div>
+      <div className="rs-j"><span className="rs-j-val stat-good">{results.good}</span><span className="rs-j-lbl">Good</span></div>
+      <div className="rs-j"><span className="rs-j-val stat-bad">{results.bad}</span><span className="rs-j-lbl">Bad</span></div>
+      <div className="rs-j"><span className="rs-j-val stat-miss">{results.miss}</span><span className="rs-j-lbl">Miss</span></div>
+    </div>
+  );
+
+  const details = (
+    <div className="rs-details rs-rise" style={{ animationDelay: '0.22s' }}>
+      <div className="rs-d"><span>{t('total.notes', lang)}</span><span>{results.totalNotes}</span></div>
+      <div className="rs-d"><span>{t('max.combo', lang)}</span><span>{results.maxCombo}</span></div>
+      <div className="rs-d"><span>{t('avg.offset', lang)}</span><span>{avgOffset}</span></div>
+    </div>
+  );
+
+  const mascot = mascotMsg ? (
+    <div className="rs-mascot rs-rise" style={{ animationDelay: '0.28s' }}>
+      <div className="rs-mascot-bubble">
+        {mascotLink ? (
+          <span>{lang === 'zh' ? '杂鱼、杂鱼~ 还不赶紧去 ' : 'Noob~ Go to '}
+            <a href={mascotLink} target="_blank" rel="noopener noreferrer" className="rs-mascot-link">eatkano</a>
+            {lang === 'zh' ? ' 练习底力？' : ' to practice!'}
+          </span>
+        ) : <span>{mascotMsg}</span>}
+      </div>
+    </div>
+  ) : null;
+
+  const actions = (
+    <div className="rs-actions rs-rise" style={{ animationDelay: '0.34s' }}>
+      {isTrial ? (
+        <>
+          <button className="btn btn-outline" onClick={onAdjustParams}>
+            {lang === 'zh' ? '不保存并退出' : 'Discard & Exit'}
+          </button>
+          <button className="btn btn-primary" onClick={onContinueToEditor}>
+            {lang === 'zh' ? '继续' : 'Continue'}
+          </button>
+        </>
+      ) : (
+        <>
+          <button className="btn btn-primary" onClick={onRestart}>{t('retry', lang)}</button>
+          <button className="btn btn-outline" onClick={onBackToPanel}>{t('back', lang)}</button>
+        </>
+      )}
     </div>
   );
 
   return (
-    <div className="screen results-screen" style={{ position: 'relative' }}>
-      {/* 曲绘模糊背景 + 压暗 */}
-      {chartInfo?.coverUrl && <div className="gameplay-cover-bg" style={{ backgroundImage: `url(${chartInfo.coverUrl})`, position: 'fixed', filter: 'blur(40px) brightness(0.3)' }} />}
-      <div className="results-bg-overlay" />
-      <div className={landscape ? 'results-layout-landscape' : 'results-layout-portrait'} style={{ position: 'relative', zIndex: 1 }}>
-        <div className={`results-panel-phigros ${visible ? 'results-visible' : ''} ${mascotMsg ? 'has-mascot' : ''}`}>
-          {landscape ? (
-            <div className="rp-landscape-body">
-              <div className="rp-left-new">{landscapeInfoLeft}</div>
-              <div className="rp-divider-v" />
-              <div className="rp-right-new">{landscapeDataRight}</div>
-            </div>
-          ) : (
-            <>
-              {portraitTop}
-              <div className="rp-divider-h" />
-              {portraitBottom}
-            </>
-          )}
-          <div className="results-actions">
-            {isTrial ? (
-              <>
-                <button className="btn btn-outline" onClick={onAdjustParams}>
-                  {lang === 'zh' ? '不保存并退出' : 'Discard & Exit'}
-                </button>
-                <button className="btn btn-primary" onClick={onContinueToEditor} style={{ background: 'linear-gradient(135deg, #4488FF, #3366DD)', border: 'none' }}>
-                  {lang === 'zh' ? '继续' : 'Continue'}
-                </button>
-              </>
-            ) : (
-              <>
-                <button className="btn btn-primary" onClick={onRestart}>{t('retry', lang)}</button>
-                <button className="btn btn-outline" onClick={onBackToPanel}>{t('back', lang)}</button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 看板娘 — 屏幕底部 */}
-      {mascotMsg && (
-        <div className="results-mascot">
-          <img src={getAssetUrl('14.png', '/14.png')} alt="mascot" className="mascot-head" />
-          <div className="mascot-bubble">
-            {mascotLink ? (
-              <span>{lang === 'zh' ? '杂鱼、杂鱼~ 还不赶紧去 ' : 'Noob~ Go to '}
-                <a href={mascotLink} target="_blank" rel="noopener noreferrer" className="mascot-link">eatkano</a>
-                {lang === 'zh' ? ' 练习底力？' : ' to practice!'}
-              </span>
-            ) : (
-              <span>{mascotMsg}</span>
-            )}
-          </div>
-        </div>
+    <div className="screen rs-screen">
+      {bgSrc && (uiBlur
+        ? <div className="rs-bg" style={{ backgroundImage: `url(${bgSrc})` }} />
+        : <div className="rs-bg rs-bg-static" style={{ backgroundImage: `url(${staticBg || bgSrc})` }} />
       )}
+      <div className="rs-veil" />
+
+      <div className={`rs-body ${landscape ? 'rs-landscape' : 'rs-portrait'}${visible ? ' is-visible' : ''}`}>
+        {landscape ? (
+          <div className="rs-ls-grid">
+            <div className="rs-ls-left">{hero}</div>
+            <div className="rs-ls-divider" />
+            <div className="rs-ls-right">
+              {scoreBlock}
+              {judgments}
+              {details}
+              {mascot}
+            </div>
+          </div>
+        ) : (
+          <div className="rs-pt-stack">
+            {hero}
+            <div className="rs-pt-divider" />
+            <div className="rs-pt-body">
+              {scoreBlock}
+              {judgments}
+              {details}
+              {mascot}
+            </div>
+          </div>
+        )}
+        {actions}
+      </div>
     </div>
   );
 };
-
