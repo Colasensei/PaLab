@@ -71,3 +71,7 @@ public/version.json
 
 # 临时对话记录文件
 Untitled-1.txt
+dialog.txt
+
+# DSH 会话回滚数据
+.dsh/
