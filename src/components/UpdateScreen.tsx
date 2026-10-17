@@ -108,7 +108,7 @@ export const UpdateScreen: React.FC<Props> = ({ lang, pendingUpdate, devMode = f
                   <span className="update-progress-speed">{dlSpeed.toFixed(0)} KB/s</span>
                 </div>
               ) : dlState === 'done' ? (
-                <p className="update-status" style={{ color: '#44BB44' }}>{lang === 'zh' ? '下载完成，文件已保存' : 'Download complete'}</p>
+                <p className="update-status" style={{ color: '#9BC8A8' }}>{lang === 'zh' ? '下载完成，文件已保存' : 'Download complete'}</p>
               ) : dlState === 'error' ? (
                 <>
                   <p className="update-status update-error">{dlErr || (lang === 'zh' ? '下载失败' : 'Failed')}</p>

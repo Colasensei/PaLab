@@ -18,7 +18,7 @@ function constantToLabel(c: number, advanced: boolean): string {
   return constantToDifficulty(c);
 }
 function constantToColor(c: number, advanced: boolean): string {
-  return getDiffColor(constantToLabel(c, advanced)) || '#FF44AA';
+  return getDiffColor(constantToLabel(c, advanced)) || '#C9A0C0';
 }
 
 export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onConfirm, onBack, lang, devMode = false }) => {

@@ -190,7 +190,7 @@ export const SongPanel: React.FC<SongPanelProps> = ({
                   <span className="sp-adv-label">{t('timing.ms', lang)}</span>
                   <div className="sp-adv-timing">
                     <div className="sp-adv-timing-item">
-                      <span className="sp-adv-timing-letter" style={{ color: '#FFD700' }}>P</span>
+                      <span className="sp-adv-timing-letter" style={{ color: '#00E29F' }}>P</span>
                       <input type="number" value={timeB} onChange={e => setTimeB(+e.target.value)} min={10} max={200} className="sp-adv-input" />
                     </div>
                     <div className="sp-adv-timing-item">
@@ -198,7 +198,7 @@ export const SongPanel: React.FC<SongPanelProps> = ({
                       <input type="number" value={timeA} onChange={e => setTimeA(+e.target.value)} min={30} max={500} className="sp-adv-input" />
                     </div>
                     <div className="sp-adv-timing-item">
-                      <span className="sp-adv-timing-letter" style={{ color: '#FFBB33' }}>B</span>
+                      <span className="sp-adv-timing-letter" style={{ color: '#C8B58E' }}>B</span>
                       <input type="number" value={timeC} onChange={e => setTimeC(+e.target.value)} min={50} max={500} className="sp-adv-input" />
                     </div>
                     <button className="sp-adv-btn" onClick={handleTimingApply}>{t('apply', lang)}</button>

@@ -50,8 +50,8 @@ const getDiffStyle = (diff: string): { bg: string; fg: string } => {
   switch (diff) {
     case 'EZ': return { bg: '#7EC8E3', fg: '#000' };
     case 'NM': return { bg: '#FFFFFF', fg: '#000' };
-    case 'HD': return { bg: '#FF8C42', fg: '#000' };
-    case 'IN': return { bg: '#E53E3E', fg: '#fff' };
+    case 'HD': return { bg: '#C98A8A', fg: '#000' };
+    case 'IN': return { bg: '#B85C5C', fg: '#fff' };
     case 'AT': return { bg: '#1A1A1A', fg: '#fff' };
     default: return { bg: 'rgba(255,255,255,0.15)', fg: '#fff' };
   }
@@ -724,7 +724,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
             onClick={(e) => { e.stopPropagation(); handleDelete(ctxMenu.idx, e as any); setCtxMenu(null); }}
             style={{
               padding: '8px 14px', borderRadius: 6, cursor: 'pointer',
-              color: '#E53E3E', fontSize: 13, fontWeight: 600,
+              color: '#B85C5C', fontSize: 13, fontWeight: 600,
             }}
           >{lang === 'zh' ? '删除' : 'Delete'}</div>
         </div>

@@ -25,7 +25,7 @@ const DIFFS = ['EZ', 'NM', 'HD', 'IN', 'AT'];
 const DIFF_STYLE: Record<string, { bg: string; fg: string }> = {
   EZ: { bg: '#7EC8E3', fg: '#000' },
   NM: { bg: '#FFFFFF', fg: '#000' },
-  HD: { bg: '#FF8C42', fg: '#000' },
+  HD: { bg: '#C98A8A', fg: '#000' },
   IN: { bg: '#E53E3E', fg: '#fff' },
   AT: { bg: '#1A1A1A', fg: '#fff' },
 };

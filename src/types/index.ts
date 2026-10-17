@@ -32,7 +32,7 @@ export function getDiffColor(diff: string): string {
 
 /** @deprecated 使用 getDiffColor() 代替 */
 export const DIFF_COLORS: Record<string, string> = {
-  EZ: '#44BB44', NM: '#FFAA00', HD: '#FF4444', IN: '#AA44FF', AT: '#FF44AA',
+  EZ: '#9BC8A8', NM: '#C8B58E', HD: '#C98A8A', IN: '#8FA8D8', AT: '#C9A0C0',
 };
 
 export interface TimingWindows {

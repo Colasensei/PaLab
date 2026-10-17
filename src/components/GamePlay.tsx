@@ -800,7 +800,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       ? '0 0 10px rgba(255,255,255,0.3)'
       : state.hasGood
         ? '0 0 20px rgba(68,136,255,0.5)'
-        : '0 0 20px rgba(255,215,0,0.5)',
+        : '0 0 20px rgba(0,226,159,0.5)',
   };
 
   const onPressWithFX = useCallback((track: number) => {
@@ -823,13 +823,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           // 球状皮肤：判定成功 → 音符球本身变色（Perfect 黄 / Good 蓝），画在判定线
           if (isBall) {
             const c = performance.now();
-            ballFxRef.current = [...ballFxRef.current.filter(f => c - f.time < 450), { track, color: jt === 'perfect' ? '#FFD700' : '#4488FF', time: c }];
+            ballFxRef.current = [...ballFxRef.current.filter(f => c - f.time < 450), { track, color: jt === 'perfect' ? '#00E29F' : '#4488FF', time: c }];
           }
         }
       } else if (result.judgmentType === 'bad' && isBall) {
         // 提前按：球变红渐渐消失
         const c = performance.now();
-        ballFxRef.current = [...ballFxRef.current.filter(f => c - f.time < 450), { track, color: '#FF4444', time: c }];
+        ballFxRef.current = [...ballFxRef.current.filter(f => c - f.time < 450), { track, color: '#C98A8A', time: c }];
       }
     }
     setKeysDown(prev => new Set(prev).add(track));

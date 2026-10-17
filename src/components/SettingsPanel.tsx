@@ -253,7 +253,7 @@ const RepairPanel: React.FC<{ lang: Lang; onBack: () => void }> = ({ lang, onBac
             <div className="st-card" key={f.key}>
               <span className="st-label" style={{ display: 'block', marginBottom: 8 }}>{lang === 'zh' ? f.labelZh : f.labelEn}</span>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, color: st === 'ok' ? '#44BB44' : st === 'error' ? '#FF4444' : 'var(--text-secondary)', minWidth: 40 }}>
+                <span style={{ fontSize: 11, color: st === 'ok' ? '#9BC8A8' : st === 'error' ? '#C98A8A' : 'var(--text-secondary)', minWidth: 40 }}>
                   {st === 'loading' ? '...' : st === 'ok' ? 'OK' : st === 'error' ? (lang === 'zh' ? '失败' : 'Fail') : '-'}
                 </span>
                 <button className="st-file-btn" onClick={() => download(f)} disabled={st === 'loading'}>
@@ -301,7 +301,7 @@ const PersonalizePanel: React.FC<{
           <span className="st-label" style={{ display: 'block', marginBottom: 8 }}>{lang === 'zh' ? '游戏内背景' : 'In-Game Background'}</span>
           <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>{lang === 'zh' ? '选择后强制覆盖谱面本身的曲绘 / 封面 / 视频背景。' : 'Overrides the chart\'s own illustration / cover / video background.'}</p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, color: gameBgOk ? '#44BB44' : 'var(--text-secondary)', minWidth: 30 }}>{gameBgOk ? 'OK' : '-'}</span>
+            <span style={{ fontSize: 11, color: gameBgOk ? '#9BC8A8' : 'var(--text-secondary)', minWidth: 30 }}>{gameBgOk ? 'OK' : '-'}</span>
             <input type="file" accept="image/*" onChange={impBg} id="per-bg" className="file-input" />
             <label htmlFor="per-bg" className="st-file-btn">{gameBgOk ? (lang === 'zh' ? '更换' : 'Change') : (lang === 'zh' ? '选取' : 'Pick')}</label>
             {gameBgOk && <button className="st-clear-btn" onClick={clrBg}>{lang === 'zh' ? '清除' : 'Clear'}</button>}
@@ -491,7 +491,7 @@ const LatencyPanel: React.FC<{ lang: Lang; offset: number; onSave: (o: number) =
             />
             <span style={{
               fontSize: 22, fontWeight: 800, minWidth: 64, fontVariantNumeric: 'tabular-nums',
-              color: value === 0 ? '#aaa' : value > 0 ? '#FFD700' : '#44BBFF',
+              color: value === 0 ? '#aaa' : value > 0 ? '#00E29F' : '#44BBFF',
             }}>
               {value > 0 ? '+' : ''}{value}ms
             </span>

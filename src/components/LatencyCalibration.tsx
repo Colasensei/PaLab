@@ -101,7 +101,7 @@ const LatencyInputPanel: React.FC<{ lang: Lang; currentOffset: number; onSave: (
       }}>
         {!running && !result && <><div style={{ fontSize: 36, opacity: 0.4 }}>{currentOffset}ms</div><div style={{ display: 'flex', gap: 8 }}><button className="st-action-btn" onClick={start}>{lang === 'zh' ? '开始校准' : 'Start'}</button><button className="st-action-btn" style={{ background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.2)' }} onClick={() => onSave(0)}>{lang === 'zh' ? '归零' : 'Zero'}</button></div></>}
         {running && <><div style={{ fontSize: 28, fontWeight: 700 }}>{count}/{TOT}</div><div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{lang === 'zh' ? '按空格键或点击此处' : 'Press Space or tap here'}</div></>}
-        {result && !running && <><div style={{ fontSize: 14, fontWeight: 600, color: '#44BB44', textAlign: 'center' }}>{result}</div><div style={{ display: 'flex', gap: 8 }}>
+        {result && !running && <><div style={{ fontSize: 14, fontWeight: 600, color: '#9BC8A8', textAlign: 'center' }}>{result}</div><div style={{ display: 'flex', gap: 8 }}>
           <button className="st-action-btn" onClick={start}>{lang === 'zh' ? '重试' : 'Retry'}</button>
           {!saved && <button className="st-save-btn" style={{ width: 'auto', padding: '10px 20px' }} onClick={() => { const no = parseInt(result.split('->')[1]) || currentOffset; onSave(no); setSaved(true); }}>{lang === 'zh' ? '保存' : 'Save'}</button>}
           <button className="st-action-btn" style={{ background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.2)' }} onClick={() => onSave(0)}>{lang === 'zh' ? '归零' : 'Zero'}</button>
