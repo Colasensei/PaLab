@@ -2426,8 +2426,8 @@ body::after {
 /* 左上暂停 — 极小 */
 .hud-left {
   position: absolute;
-  top: 10px;
-  left: 14px;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: calc(14px + env(safe-area-inset-left, 0px));
   z-index: 20;
   display: flex;
   align-items: center;
@@ -2542,7 +2542,7 @@ body::after {
 /* 中上 Combo */
 .hud-center {
   position: absolute;
-  top: 10px;
+  top: calc(10px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
@@ -2552,8 +2552,8 @@ body::after {
 /* 右上分数 — 更小更淡 */
 .hud-right {
   position: absolute;
-  top: 10px;
-  right: 14px;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  right: calc(14px + env(safe-area-inset-right, 0px));
   z-index: 20;
 }
 
@@ -7946,7 +7946,9 @@ body::after {
   transform: scale(1.15);
   clip-path: polygon(150% 26%, 214% 26%, 164% 74%, 100% 74%);
   transition: clip-path 0.46s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: clip-path;
+  /* 不要用 will-change: clip-path：移动端会为它单独建层导致动画中闪一下 */
+  backface-visibility: hidden;
+  contain: paint;
 }
 
 /* LV.xx：从上方砸到平行四边形正中 */
@@ -8057,5 +8059,56 @@ body::after {
 /* 竖屏没有两栏，不需要那么宽 */
 @media (orientation: portrait) {
   .cp-panel { max-width: 620px; }
+}
+
+
+/* 竖屏顶部的挖孔/刘海：居中 HUD（连击）会被顶置挖孔压住。
+   env() 在部分机型返回 0，所以竖屏再额外让出 22px；
+   注意只是把 UI 往下挪，状态栏本身仍然是隐藏的。 */
+@media (orientation: portrait) {
+  .hud-center { top: calc(10px + env(safe-area-inset-top, 0px) + 22px); }
+  .hud-left { top: calc(10px + env(safe-area-inset-top, 0px) + 22px); }
+  .hud-right { top: calc(10px + env(safe-area-inset-top, 0px) + 22px); }
+}
+
+/* RKS 提升动画：压暗 + 可选模糊，居中数字 */
+.rks-gain-overlay {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(0, 0, 0, 0.74);
+  display: flex; align-items: center; justify-content: center;
+  animation: screenFadeIn 0.22s ease-out;
+}
+.rks-gain-overlay.blurred {
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+.rks-gain-box {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  animation: rksGainIn 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes rksGainIn {
+  0%   { opacity: 0; transform: scale(2.2); }
+  60%  { opacity: 1; transform: scale(0.94); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.rks-gain-label {
+  font-family: var(--font-hud);
+  font-size: 12px; font-weight: 600; letter-spacing: 8px;
+  color: rgba(255, 255, 255, 0.35);
+}
+.rks-gain-num {
+  font-family: var(--font-hud);
+  font-size: clamp(48px, 11vw, 96px); font-weight: 800; line-height: 1;
+  color: #fff; font-variant-numeric: tabular-nums;
+}
+.rks-gain-delta {
+  font-family: var(--font-hud);
+  font-size: clamp(15px, 3vw, 22px); font-weight: 700; letter-spacing: 2px;
+  color: #FFD700;
+  animation: rksDeltaIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both;
+}
+@keyframes rksDeltaIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
 }
 

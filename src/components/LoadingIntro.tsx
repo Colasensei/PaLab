@@ -14,14 +14,15 @@ import React, { useEffect, useRef, useState } from 'react';
  *
  * 时序：
  *   1. clip-path 从右侧飞入，停在屏幕中央成平行四边形
- *   2. 定数 ≥ 24：LV.xx 从上方砸在平行四边形正中
+ *   2. AT（定数 ≥ 20）：LV.xx 从上方砸在平行四边形正中
  *   3. 数字淡出，clip-path 展开铺满整屏
  *   4. **铺满的那一刻** onCovered()：App 在这时切到加载界面
  *      （不能等淡出完再切，否则淡出露出的是原界面）
  *   5. 转场淡出，露出加载界面自己的 UI，然后 onDone() 卸载
  */
 
-const HEAVY_LEVEL = 24;
+/* AT 门槛：定数 ≥ 20 都会播 LV 数字动画 */
+const HEAVY_LEVEL = 20;
 
 /** 右侧屏幕外（元素是全屏大小，所以坐标按屏幕百分比算） */
 const CLIP_OFF = 'polygon(150% 26%, 214% 26%, 164% 74%, 100% 74%)';

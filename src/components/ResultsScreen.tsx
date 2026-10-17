@@ -77,6 +77,33 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
     return () => cancelAnimationFrame(raf);
   }, [visible, results.score]);
 
+  /**
+   * RKS 提升动画：结算入场（分数滚动 820ms）结束后再播，
+   * 数字从旧 RKS 滚到新 RKS，背景压暗（开了 UI 模糊再叠一层模糊）。
+   */
+  const rksUp = !results.autoPlay && !!rksChange && rksChange.new > rksChange.old;
+  const [rksShow, setRksShow] = useState(false);
+  const [rksShown, setRksShown] = useState(rksChange?.old ?? 0);
+  useEffect(() => {
+    if (!rksUp) return;
+    const timer = window.setTimeout(() => setRksShow(true), 1150);
+    return () => clearTimeout(timer);
+  }, [rksUp]);
+  useEffect(() => {
+    if (!rksShow || !rksChange) return;
+    const from = rksChange.old, to = rksChange.new, dur = 720;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / dur);
+      setRksShown(from + (to - from) * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    const hide = window.setTimeout(() => setRksShow(false), 2400);
+    return () => { cancelAnimationFrame(raf); clearTimeout(hide); };
+  }, [rksShow, rksChange]);
+
   // 关闭 UI 模糊时用离线生成的静态模糊图，和加载界面同一套逻辑
   const bgSrc = chartInfo?.illustrationUrl || chartInfo?.coverUrl || null;
   useEffect(() => {
@@ -306,6 +333,16 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
         )}
         {actions}
       </div>
+
+      {rksShow && rksChange && (
+        <div className={`rks-gain-overlay${uiBlur ? ' blurred' : ''}`} onClick={() => setRksShow(false)}>
+          <div className="rks-gain-box">
+            <div className="rks-gain-label">RKS</div>
+            <div className="rks-gain-num">{rksShown.toFixed(2)}</div>
+            <div className="rks-gain-delta">+{(rksChange.new - rksChange.old).toFixed(2)}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
