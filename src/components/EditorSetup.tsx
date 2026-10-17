@@ -4,9 +4,14 @@ import { analyzeAudio } from '@/utils';
 import { Note } from '@/types';
 import JSZip from 'jszip';
 import { parseOsuBeatmap, extractOsuLabel } from '@/utils/osuParser';
+import { parseMalodyChart, readMcSummary, isMcImportable } from '@/utils/malodyParser';
+import { BpmChange } from '@/utils/bpmMap';
 
 interface EditorConfig {
   bpm: number;
+  bpmChanges?: BpmChange[];
+  /** 拍 0 所在的音频时刻（ms），Malody 导入带 offset 时非 0 */
+  beatOrigin?: number;
   trackCount: number;
   songUrl: string;
   songFileName: string;
@@ -16,6 +21,8 @@ interface EditorConfig {
   author?: string;
   coverUrl?: string;
   coverFileName?: string;
+  illustrationUrl?: string;
+  illustrationFileName?: string;
   videoUrl?: string;
   videoFileName?: string;
 }
@@ -43,10 +50,18 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
   const osuZipRef = useRef<JSZip | null>(null);
   const [importingOsu, setImportingOsu] = useState(false);
   const [osuChoices, setOsuChoices] = useState<{ path: string; label: string }[] | null>(null);
+  const mcInputRef = useRef<HTMLInputElement>(null);
+  const mcZipRef = useRef<JSZip | null>(null);
+  const [importingMc, setImportingMc] = useState(false);
+  const [mcChoices, setMcChoices] = useState<{ path: string; label: string }[] | null>(null);
   const pendingRef = useRef<{ file: File; url: string; rd: { bpm: number } | null } | null>(null);
   // 谱面包导入（zip/osu）待确认：同意才执行 commit，取消则 revoke urls
   const pendingImportRef = useRef<{ urls: string[]; commit: () => void } | null>(null);
   const existingNotesRef = useRef<Note[] | undefined>(undefined);
+  // Zip 谱面包导入时要一起恢复的图片/视频
+  const [cover, setCover] = useState<{ url: string; name: string } | null>(null);
+  const [illus, setIllus] = useState<{ url: string; name: string } | null>(null);
+  const [video, setVideo] = useState<{ url: string; name: string } | null>(null);
 
   const handleSongSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -116,6 +131,12 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
       songUrl,
       songFileName: songName,
       existingNotes: existingNotesRef.current,
+      coverUrl: cover?.url,
+      coverFileName: cover?.name,
+      illustrationUrl: illus?.url,
+      illustrationFileName: illus?.name,
+      videoUrl: video?.url,
+      videoFileName: video?.name,
     });
   };
 
@@ -157,9 +178,36 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
         try { rd = await analyzeAudio(audioFile); } catch { /* */ }
       }
       const url = songBlob ? URL.createObjectURL(songBlob) : null;
+      // 封面 / 曲绘 / 背景视频：之前这里只捞了音频和音符，
+      // 「保存为 Zip → 再导入继续改」一趟下来视频和封面就没了，这里一并恢复
+      const imgBlob = async (names: string[]): Promise<{ blob: Blob; name: string } | null> => {
+        for (const n of names) {
+          const f = zip.file(n);
+          if (f) return { blob: await f.async('blob'), name: n };
+        }
+        let hit: { blob: Blob; name: string } | null = null;
+        for (const n of names) {
+          const base = n.split('/').pop()!;
+          let entry: JSZip.JSZipObject | null = null;
+          zip.forEach((relPath, f) => { if (!entry && !f.dir && relPath.split('/').pop() === base) entry = f; });
+          if (entry) { hit = { blob: await (entry as JSZip.JSZipObject).async('blob'), name: base }; break; }
+        }
+        return hit;
+      };
+      const coverHit = await imgBlob(['cover.png', 'cover.jpg']);
+      const illusHit = await imgBlob(['illustration.png', 'illustration.jpg']);
+      let videoHit: { blob: Blob; name: string } | null = null;
+      let videoEntry: JSZip.JSZipObject | null = null;
+      zip.forEach((relPath, f) => { if (!videoEntry && !f.dir && /^video\./i.test(relPath)) videoEntry = f; });
+      if (videoEntry) videoHit = { blob: await (videoEntry as JSZip.JSZipObject).async('blob'), name: (videoEntry as JSZip.JSZipObject).name };
+
+      const coverObjUrl = coverHit ? URL.createObjectURL(coverHit.blob) : null;
+      const illusObjUrl = illusHit ? URL.createObjectURL(illusHit.blob) : null;
+      const videoObjUrl = videoHit ? URL.createObjectURL(videoHit.blob) : null;
+
       // 弹免责声明，同意后才真正应用
       pendingImportRef.current = {
-        urls: url ? [url] : [],
+        urls: [url, coverObjUrl, illusObjUrl, videoObjUrl].filter((u): u is string => !!u),
         commit: () => {
           if (url) {
             if (songUrl) URL.revokeObjectURL(songUrl);
@@ -170,6 +218,9 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
           else if (info.config?.bpm) setBpm(String(info.config.bpm));
           if (info.config?.trackCount) setTrackCount(info.config.trackCount);
           if (info.title) setSongName(info.title);
+          if (coverObjUrl && coverHit) setCover({ url: coverObjUrl, name: coverHit.name });
+          if (illusObjUrl && illusHit) setIllus({ url: illusObjUrl, name: illusHit.name });
+          if (videoObjUrl && videoHit) setVideo({ url: videoObjUrl, name: videoHit.name });
           existingNotesRef.current = chartNotes;
         },
       };
@@ -294,6 +345,125 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
     }
   };
 
+  // Malody 谱面包导入 (.mcz)
+  // .mcz 就是个 zip：0/audio.ogg + 0/background.jpg + 每个难度一个 .mc
+  // 注意官方谱包是多模式混装（Key/Catch/Pad/Ring/Slide + Taiko 的 .tja），
+  // 而且来自 macOS 的压缩包里还有 __MACOSX/ 和 ._ 开头的 AppleDouble 垃圾。
+  const handleMcImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportingMc(true);
+    try {
+      const zip = await JSZip.loadAsync(file);
+      mcZipRef.current = zip;
+
+      const mcPaths: string[] = [];
+      zip.forEach((relPath, entry) => {
+        if (entry.dir) return;
+        if (relPath.startsWith('__MACOSX') || /(^|\/)\._/.test(relPath)) return;
+        if (/\.mc$/i.test(relPath)) mcPaths.push(relPath);
+      });
+      if (mcPaths.length === 0) {
+        alert(lang === 'zh' ? '谱面包中未找到 .mc 谱面文件' : 'No .mc chart file found in the pack');
+        return;
+      }
+
+      // 只留能导入的：Key 模式 + 支持的键数
+      const importable: { path: string; label: string }[] = [];
+      let skipped = 0;
+      for (const p of mcPaths) {
+        let text: string;
+        try { text = await zip.file(p)!.async('string'); } catch { continue; }
+        const s = readMcSummary(text);
+        if (!s) continue;
+        if (!isMcImportable(s)) { skipped++; continue; }
+        importable.push({ path: p, label: s.version ? `${s.title} [${s.version}]` : s.title });
+      }
+      if (importable.length === 0) {
+        alert(lang === 'zh'
+          ? `谱面包里没有可导入的谱面\n找到 ${mcPaths.length} 个 .mc，其中 ${skipped} 个不是 2/4/6/8 键的 Key 模式`
+          : `No importable chart\nFound ${mcPaths.length} .mc files, ${skipped} not in supported key mode`);
+        return;
+      }
+
+      if (importable.length === 1) {
+        await finishMcImport(importable[0].path);
+      } else {
+        setMcChoices(importable);
+      }
+    } catch {
+      alert(lang === 'zh' ? 'Malody 谱面包解析失败' : 'Failed to parse Malody pack');
+    } finally {
+      setImportingMc(false);
+      if (mcInputRef.current) mcInputRef.current.value = '';
+    }
+  };
+
+  const finishMcImport = async (path: string) => {
+    const zip = mcZipRef.current;
+    setMcChoices(null);
+    if (!zip) return;
+    try {
+      const text = await zip.file(path)!.async('string');
+      const parsed = parseMalodyChart(text);
+      if (parsed.notes.length === 0) {
+        alert(lang === 'zh' ? '该谱面没有音符' : 'This chart has no notes');
+        return;
+      }
+      // 音频：优先用谱面里 type=1 音频事件指向的文件，找不到就按扩展名兜底
+      const audioEntry = findAudioInZip(zip, parsed.audioFilename);
+      if (!audioEntry) {
+        alert(lang === 'zh' ? '谱面包中未找到音频文件' : 'No audio file found in the pack');
+        return;
+      }
+      const blob = await audioEntry.async('blob');
+      const url = URL.createObjectURL(blob);
+      const urls = [url];
+      let coverUrl: string | undefined;
+      let coverFileName: string | undefined;
+      if (parsed.backgroundFilename) {
+        const imgEntry = findImageInZip(zip, parsed.backgroundFilename);
+        if (imgEntry) {
+          const imgBlob = (await imgEntry.async('blob')) as Blob;
+          const ext = (parsed.backgroundFilename.split('.').pop() || 'png').toLowerCase();
+          const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', bmp: 'image/bmp' };
+          const typed: Blob = imgBlob.type ? imgBlob : new Blob([imgBlob], { type: mimeMap[ext] || 'image/png' });
+          coverUrl = URL.createObjectURL(typed);
+          urls.push(coverUrl);
+          coverFileName = parsed.backgroundFilename;
+        }
+      }
+      pendingImportRef.current = {
+        urls,
+        commit: () => {
+          if (songUrl) URL.revokeObjectURL(songUrl);
+          onConfirm({
+            bpm: parsed.bpm,
+            bpmChanges: parsed.bpmChanges,
+            beatOrigin: parsed.beatOrigin,
+            trackCount: parsed.trackCount,
+            songUrl: url,
+            songFileName: parsed.title || path,
+            existingNotes: parsed.notes,
+            title: parsed.title,
+            artist: parsed.artist,
+            author: parsed.creator,
+            coverUrl,
+            coverFileName,
+          });
+        },
+      };
+      setShowDisclaimer(true);
+    } catch (err) {
+      const msg = (err as Error).message;
+      if (msg === 'bad_json') alert(lang === 'zh' ? '谱面文件不是合法的 JSON' : 'Chart file is not valid JSON');
+      else if (msg === 'not_key') alert(lang === 'zh' ? '不是 Key 模式谱面（Malody 的键模式才支持）' : 'Not a Key-mode chart (only key mode is supported)');
+      else if (msg === 'unsupported_tracks') alert(lang === 'zh' ? '仅支持 2 / 4 / 6 / 8 键的谱面' : 'Only 2 / 4 / 6 / 8-key charts are supported');
+      else if (msg === 'no_bpm') alert(lang === 'zh' ? '谱面缺少 BPM 信息' : 'Chart has no BPM data');
+      else alert(lang === 'zh' ? '导入失败：' + msg : 'Import failed: ' + msg);
+    }
+  };
+
   return (
     <div className="screen config-screen">
       <div className="glass-panel config-panel">
@@ -331,8 +501,16 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
                 ) : (lang === 'zh' ? '导入 OSU 谱面包' : 'Import osu! pack')}
               </label>
             </div>
+            <div className="cp-file-row" style={{ flex: 1, minWidth: 0 }}>
+              <input ref={mcInputRef} type="file" accept=".mcz,.zip" onChange={handleMcImport} className="file-input" id="es-mc-file" disabled={importingMc} />
+              <label htmlFor="es-mc-file" className={`cp-file-btn cp-file-btn-compact${importingMc ? ' cp-file-btn-loading' : ''}`}>
+                {importingMc ? (
+                  <><span className="cp-btn-spinner" />{lang === 'zh' ? '导入中...' : 'Importing...'}</>
+                ) : (lang === 'zh' ? '导入 Malody 谱面包' : 'Import Malody pack')}
+              </label>
+            </div>
           </div>
-          <p className="cp-hint">{lang === 'zh' ? '导入已有的谱面包或 osu! (.osz) 谱面包进行编辑' : 'Import existing chart package or osu! (.osz) beatmap pack'}</p>
+          <p className="cp-hint">{lang === 'zh' ? '导入已有的谱面包、osu! (.osz) 或 Malody (.mcz) 谱面包进行编辑' : 'Import existing chart package, osu! (.osz) or Malody (.mcz) beatmap pack'}</p>
         </div>
 
         <div className="cp-section">
@@ -394,6 +572,20 @@ export const EditorSetup: React.FC<Props> = ({ onConfirm, onBack, lang }) => {
             <div className="cp-disclaimer-body" style={{ maxHeight: '50vh', overflowY: 'auto' }}>
               {osuChoices.map(c => (
                 <button key={c.path} className="osu-choice-btn" onClick={() => finishOsuImport(c.path)}>{c.label}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Malody 多谱面选择 */}
+      {mcChoices && (
+        <div className="cp-disclaimer-overlay" onClick={() => setMcChoices(null)}>
+          <div className="cp-disclaimer" onClick={e => e.stopPropagation()}>
+            <div className="cp-disclaimer-title">{lang === 'zh' ? '选择要导入的谱面' : 'Select a chart'}</div>
+            <div className="cp-disclaimer-body" style={{ maxHeight: '50vh', overflowY: 'auto' }}>
+              {mcChoices.map(c => (
+                <button key={c.path} className="osu-choice-btn" onClick={() => finishMcImport(c.path)}>{c.label}</button>
               ))}
             </div>
           </div>

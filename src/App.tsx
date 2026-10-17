@@ -25,6 +25,9 @@ import {
 import { checkUpdate, getLocalVersion, UpdateInfo } from '@/utils/updateChecker';
 import { getAllPackages, getReadAnnouncements, markAllAnnouncementsRead, SW_ANNOUNCEMENT, LsPackage } from '@/utils/lingyanspace';
 import { learnFromLibrary, resetMlProgress } from '@/utils/mlLearner';
+import { prewarmBlurBg } from '@/utils/blurImage';
+import { getSavedEditorSettings } from '@/components/VisualEditor';
+import { loadAsset, ASSET_KEYS } from '@/utils/assetStore';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { App as CapacitorApp } from '@capacitor/app';
 import '@/styles/global.css';
@@ -208,7 +211,7 @@ const App: React.FC = () => {
   const [manualDuration, setManualDuration] = useState<number>(0);
 
   // 可视化编辑器流程
-  const [editorConfig, setEditorConfig] = useState<{ bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; videoUrl?: string; videoFileName?: string; videoBlur?: boolean; videoSound?: boolean } | null>(null);
+  const [editorConfig, setEditorConfig] = useState<{ bpm: number; bpmChanges?: import('@/utils/bpmMap').BpmChange[]; beatOrigin?: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; illustrationUrl?: string; illustrationFileName?: string; videoUrl?: string; videoFileName?: string; videoBlur?: boolean; videoSound?: boolean } | null>(null);
   const [editorNotes, setEditorNotes] = useState<Note[]>([]);
   const [fromEditor, setFromEditor] = useState(false);
 
@@ -226,6 +229,21 @@ const App: React.FC = () => {
   const gameStartTimeRef = useRef<number>(0);
   /** 游戏加载期间的后台任务（音频预加载等），由 handleStart/handleRestart 设置 */
   const loadingTaskRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  /** 谱面库里的视频以 data: URL 存着，播放前转成 blob: URL 才能稳定解码 */
+  const videoObjUrlRef = useRef<string | null>(null);
+  const toPlayableVideoUrl = useCallback(async (url?: string | null): Promise<string | undefined> => {
+    if (!url) return undefined;
+    if (!url.startsWith('data:')) return url;
+    try {
+      const blob = await (await fetch(url)).blob();
+      if (videoObjUrlRef.current) URL.revokeObjectURL(videoObjUrlRef.current);
+      const objUrl = URL.createObjectURL(blob);
+      videoObjUrlRef.current = objUrl;
+      return objUrl;
+    } catch {
+      return url;
+    }
+  }, []);
 
   // 启动时加载谱面列表缓存（用于页面加载动画的随机背景）
   useEffect(() => {
@@ -508,7 +526,7 @@ const App: React.FC = () => {
   const goToManualConfig = useCallback(() => navigateTo('manual-config'), [navigateTo]);
   const goToEditorSetup = useCallback(() => navigateTo('editor-setup'), [navigateTo]);
 
-  const handleEditorConfirm = useCallback((cfg: { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; videoUrl?: string; videoFileName?: string }) => {
+  const handleEditorConfirm = useCallback((cfg: { bpm: number; bpmChanges?: import('@/utils/bpmMap').BpmChange[]; beatOrigin?: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; illustrationUrl?: string; illustrationFileName?: string; videoUrl?: string; videoFileName?: string }) => {
     setEditorConfig(cfg);
     navigateTo('visual-editor');
   }, [navigateTo]);
@@ -517,6 +535,9 @@ const App: React.FC = () => {
   const handleEditorSave = useCallback((notes: Note[], splits: BrainSplitSection[] = [], video?: { url?: string; fileName?: string; blur: boolean; sound: boolean }) => {
     if (!editorConfig) return;
     setEditorNotes(notes);
+    // 变速段由可视化编辑器 stash 在模块级，这里取出来挂进 config，
+    // 这样一路带到 ChartEditor 的导出（不影响游玩：游玩只认时间戳）
+    setConfig(prev => ({ ...prev, bpmChanges: getSavedEditorSettings().bpmChanges || [], beatOrigin: getSavedEditorSettings().beatOrigin || 0 }));
     // 提前加载歌，防止 ChartEditor 里 blob URL 挂（
     let songDataUrl: string | null = null;
     if (editorConfig.songUrl) {
@@ -540,6 +561,7 @@ const App: React.FC = () => {
       chartAuthor: editorConfig.author,
       coverUrl: editorConfig.coverUrl,
       coverFileName: editorConfig.coverFileName,
+      illustrationUrl: editorConfig.illustrationUrl,
       videoUrl: video?.url ?? editorConfig.videoUrl,
       videoBlur: video?.blur ?? true,
       videoSound: video?.sound ?? false,
@@ -573,6 +595,7 @@ const App: React.FC = () => {
       chartAuthor: editorConfig.author,
       coverUrl: editorConfig.coverUrl,
       coverFileName: editorConfig.coverFileName,
+      illustrationUrl: editorConfig.illustrationUrl,
       videoUrl: video?.url ?? editorConfig.videoUrl,
       videoBlur: video?.blur ?? true,
       videoSound: video?.sound ?? false,
@@ -649,11 +672,22 @@ const App: React.FC = () => {
       resetMlProgress();
       tasks.push(async () => { await learnFromLibrary(); });
     }
+    // 预生成游戏内模糊背景：加载界面本来就有 2.5~4 秒，把真高斯卷积挪到这里，
+    // 进游玩时背景图已经算好并缓存，不需要"先生成再替换"。
+    const bgForBlur = loadAsset(ASSET_KEYS.gameBg)
+      || chartSource?.illustrationUrl || chartSource?.coverUrl || null;
+    if ((settings.gameBgBlur ?? true) && bgForBlur) {
+      tasks.push(async () => {
+        try {
+          await prewarmBlurBg(bgForBlur, getDevOverride('u_bgBlur'), getDevOverride('u_bgBrightness'));
+        } catch { /* 生成失败就用 CSS 模糊兜底，不影响开局 */ }
+      });
+    }
     loadingTaskRef.current = tasks.length > 0
       ? async () => { await Promise.all(tasks.map(t => t())); }
       : undefined;
     navigateTo('loading');
-  }, [config, duration, navigateTo, fromEditor]);
+  }, [config, duration, navigateTo, fromEditor, chartSource, settings.gameBgBlur]);
 
   const handleLoadingComplete = useCallback(() => {
     gameStartTimeRef.current = performance.now();
@@ -784,6 +818,7 @@ const App: React.FC = () => {
 
   const handleGameBack = useCallback(() => {
     audioManager.stop();
+    if (videoObjUrlRef.current) { URL.revokeObjectURL(videoObjUrlRef.current); videoObjUrlRef.current = null; }
     setResults(null);
     chartGeneratedRef.current = false;
     clearTimeout(animRef.current);
@@ -831,7 +866,9 @@ const App: React.FC = () => {
         judgeLineColor: settings.judgeLineColor,
         autoPlay,
         splits: infoConfig.splits || undefined,
-        videoUrl: pkg.videoUrl || undefined,
+        bpmChanges: infoConfig.bpmChanges || undefined,
+        beatOrigin: infoConfig.beatOrigin || undefined,
+        videoUrl: await toPlayableVideoUrl(pkg.videoUrl),
         videoBlur: infoConfig.videoBlur ?? true,
         videoSound: infoConfig.videoSound ?? false,
       };

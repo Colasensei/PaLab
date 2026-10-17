@@ -48,7 +48,7 @@ export interface GameConfig {
   bpm: number;
   timeSignature: TimeSignature;
   trackCount: TrackCount;
-  /** 谱面定数 (1.0~25.0)，决定谱面难度的一切 */
+  /** 谱面定数 (0.0~30.0，30 不可达，软天花板压在 29.5)，决定谱面难度的一切 */
   chartConstant: number;
   timingWindows: TimingWindows;
   /** 流速倍率，默认1.0 */
@@ -73,6 +73,11 @@ export interface GameConfig {
   snapToBeat?: boolean;
   /** 是否生成 hold 长条（默认 true） */
   enableHolds?: boolean;
+  /** 变速段（[start,end] 内用该 BPM）。只影响编辑器的节拍网格与对齐，
+   *  游玩照旧按时间戳走，所以没有这个字段的旧谱面行为完全不变 */
+  bpmChanges?: import('@/utils/bpmMap').BpmChange[];
+  /** 拍 0 所在的音频时刻（ms）；0/未定义 = 拍 0 就是音频起点 */
+  beatOrigin?: number;
   /** 脑裂段（部分轨道反转）：编辑器/自动生成产生，游玩时视觉反转 */
   splits?: BrainSplitSection[];
   /** 谱面背景视频（dataURL/ObjectURL），优先于封面背景 */
@@ -92,6 +97,8 @@ export interface GameConfig {
   chartArtist?: string;
   chartAuthor?: string;
   coverUrl?: string;
+  /** 曲绘（游玩时的模糊背景/谱面库背景，缺省时退回 coverUrl） */
+  illustrationUrl?: string;
   coverFileName?: string;
 }
 

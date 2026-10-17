@@ -8,9 +8,9 @@ import type { ChartPackage } from '@/components/ChartLibrary';
 
 /** 难度选项（导出时可自由选择，对应定数区间） */
 const DIFF_OPTIONS = ['EZ', 'NM', 'HD', 'IN', 'AT'];
-/** 选择难度时设定的推荐定数（各难度区间中值，与 constantToDifficulty 阈值一致） */
+/** 选择难度时带出的定数起点（各区间中值附近，仅作为起点，之后可以随便调） */
 const DIFF_RECOMMEND: Record<string, number> = {
-  EZ: 3.0, NM: 7.0, HD: 10.5, IN: 14.0, AT: 17.0,
+  EZ: 3.0, NM: 9.0, HD: 15.0, IN: 19.0, AT: 25.0,
 };
 
 interface Props {
@@ -33,6 +33,8 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
   const [songDataUrl, setSongDataUrl] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [chartConst, setChartConst] = useState(config.chartConstant);
+  // 难度标签归用户自己选：定数怎么调都不再反推覆盖它，导出时以用户选的为准
+  const [diffLabel, setDiffLabel] = useState<string>(() => constantToDifficulty(config.chartConstant));
 
   // 预先将 blob URL 转为稳定的 data URL
   useEffect(() => {
@@ -65,7 +67,20 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
   const coverRef = useRef<HTMLInputElement>(null);
   const illusRef = useRef<HTMLInputElement>(null);
 
-  const diffLabel = constantToDifficulty(chartConst);
+  // 预填曲绘：谱面包里带 illustration.png 时要能原样带回去，否则再导出一趟就丢了
+  useEffect(() => {
+    if (!config.illustrationUrl) return;
+    if (config.illustrationUrl.startsWith('blob:')) {
+      fetch(config.illustrationUrl).then(r => r.blob()).then(b => {
+        const reader = new FileReader();
+        reader.onload = () => { setIllusDataUrl(reader.result as string); setIllusFileName('illustration.png'); };
+        reader.readAsDataURL(b);
+      }).catch(() => {});
+    } else {
+      setIllusDataUrl(config.illustrationUrl);
+      setIllusFileName('illustration.png');
+    }
+  }, [config.illustrationUrl]);
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,7 +116,7 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
       difficulty: diffLabel,
       chartConstant: chartConst,
       description,
-      config: { bpm: config.bpm, trackCount: config.trackCount, chartConstant: chartConst, speed: config.speedMultiplier, splits: config.splits, videoUrl: videoBlob && videoExt ? `video.${videoExt}` : undefined, videoBlur: config.videoBlur ?? true, videoSound: config.videoSound ?? false },
+      config: { bpm: config.bpm, bpmChanges: config.bpmChanges, beatOrigin: config.beatOrigin || undefined, trackCount: config.trackCount, chartConstant: chartConst, speed: config.speedMultiplier, splits: config.splits, videoUrl: videoBlob && videoExt ? `video.${videoExt}` : undefined, videoBlur: config.videoBlur ?? true, videoSound: config.videoSound ?? false },
     };
     zip.file('info.json', JSON.stringify(info, null, 2));
     zip.file('chart.json', JSON.stringify(notes));
@@ -243,7 +258,7 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
         {/* 难度与定数（可自由编辑） */}
         <div className="st-card ce-locked">
           <div className="ce-locked-row"><span className="st-label">{lang === 'zh' ? '难度' : 'Difficulty'}</span>
-            <select className="ce-select" value={diffLabel} onChange={e => setChartConst(DIFF_RECOMMEND[e.target.value])}>
+            <select className="ce-select" value={diffLabel} onChange={e => { setDiffLabel(e.target.value); setChartConst(DIFF_RECOMMEND[e.target.value] ?? chartConst); }}>
               {DIFF_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
@@ -252,12 +267,12 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
             <div className="ce-const-adj">
               <button className="ce-const-btn" onClick={() => setChartConst(c => Math.max(1, c - 0.5))} disabled={chartConst <= 1}>−</button>
               <span className="ce-const-val">{chartConst.toFixed(1)}</span>
-              <button className="ce-const-btn" onClick={() => setChartConst(c => Math.min(25, c + 0.5))} disabled={chartConst >= 25}>+</button>
+              <button className="ce-const-btn" onClick={() => setChartConst(c => Math.min(30, c + 0.5))} disabled={chartConst >= 30}>+</button>
             </div>
           </div>
           <div className="ce-locked-row"><span className="st-label">BPM</span><span className="ce-locked-val">{config.bpm}</span></div>
           <div className="ce-locked-row ce-locked-row-last"><span className="st-label">{lang === 'zh' ? '轨道' : 'Tracks'}</span><span className="ce-locked-val">{config.trackCount}K</span></div>
-          <p className="ce-locked-hint">{lang === 'zh' ? '难度与定数可自由调整' : 'Difficulty & const are editable'}</p>
+          <p className="ce-locked-hint">{lang === 'zh' ? '难度由你自己选，定数按需微调' : 'Difficulty is yours to pick; tune the const as needed'}</p>
         </div>
 
         <button className="btn btn-primary" onClick={handleExport} disabled={exporting}

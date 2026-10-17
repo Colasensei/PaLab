@@ -3,8 +3,9 @@ import { Lang } from '@/utils/lang';
 import { getDevOverride } from '@/utils/devOverrides';
 import { Note, BrainSplitSection } from '@/types';
 import { normalizeSplits } from '@/utils/brainSplit';
+import { BpmTimeline, BpmChange } from '@/utils/bpmMap';
 
-interface EditorConfig { bpm: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; videoUrl?: string; videoFileName?: string; }
+interface EditorConfig { bpm: number; bpmChanges?: BpmChange[]; beatOrigin?: number; trackCount: number; songUrl: string; songFileName: string; existingNotes?: Note[]; title?: string; artist?: string; author?: string; coverUrl?: string; coverFileName?: string; videoUrl?: string; videoFileName?: string; }
 interface VideoOptions { url?: string; fileName?: string; blur: boolean; sound: boolean; }
 interface Props { config: EditorConfig; onBack: () => void; onSave: (notes: Note[], splits: BrainSplitSection[], video: VideoOptions) => void; onTrial: (notes: Note[], splits: BrainSplitSection[], video: VideoOptions) => void; lang: Lang; latencyOffset: number; }
 type AlignMode = 'none' | 'beat' | 'half' | 'quarter';
@@ -13,18 +14,39 @@ interface PlacedNote { id: number; track: number; startBeat: number; endBeat: nu
 // 模块级存着，别让浮点往返误差坑了（
 let _savedPlacedNotes: PlacedNote[] = [];
 let _savedSplits: BrainSplitSection[] = [];
-let _savedSettings: { align: string; speed: number; invertScroll: boolean } = { align: 'beat', speed: 5.0, invertScroll: true };
+let _savedSettings: { align: string; speed: number; invertScroll: boolean; bpmChanges?: BpmChange[]; beatOrigin?: number } = { align: 'beat', speed: 5.0, invertScroll: true, bpmChanges: [], beatOrigin: 0 };
 export function getSavedPlacedNotes() { return _savedPlacedNotes; }
 export function getSavedSplits() { return _savedSplits; }
 export function getSavedEditorSettings() { return _savedSettings; }
 
 export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, onSave, onTrial, lang, latencyOffset }) => {
   const [bpm, setBpm] = useState(initialConfig.bpm);
+  // 变速：所有「时间 ↔ 节拍」换算都走这条时间轴（没有变速时退化成单 BPM 线性映射）
+  const [bpmChanges, setBpmChanges] = useState<BpmChange[]>(initialConfig.bpmChanges || []);
+  // 拍 0 的音频时刻：Malody 导入的谱面带 offset 时不为 0，网格才不会和音符错开
+  const beatOrigin = initialConfig.beatOrigin || 0;
+  const timeline = useMemo(() => new BpmTimeline(bpm, bpmChanges, beatOrigin), [bpm, bpmChanges, beatOrigin]);
   const [speed, setSpeed] = useState(5.0);
   const [align, setAlign] = useState<AlignMode>('beat');
   const [notes, setNotes] = useState<PlacedNote[]>([]);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const addBpmChange = useCallback(() => {
+    // 变速 = 一个时间点 + 新 BPM，从该点一直生效到下一个变速点（和音乐软件一致）
+    const t = Math.max(0, Math.round(currentTime * 1000));
+    setBpmChanges(prev => {
+      const rest = prev.filter(c => Math.abs(c.time - t) > 1);   // 同一时刻只留一个
+      return [...rest, { time: t, bpm: Math.min(600, Math.max(30, bpm * 2)) }]
+        .sort((a, b) => a.time - b.time);
+    });
+  }, [currentTime, bpm]);
+  const updateBpmChange = useCallback((i: number, patch: Partial<BpmChange>) => {
+    setBpmChanges(prev => prev.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
+  }, []);
+  const removeBpmChange = useCallback((i: number) => {
+    setBpmChanges(prev => prev.filter((_, idx) => idx !== i));
+  }, []);
+
   const [duration, setDuration] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [hoveredNote, setHoveredNote] = useState<number | null>(null);
@@ -102,8 +124,8 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
       noteIdRef.current = 0;
       setNotes(initialConfig.existingNotes.map(n => ({
         id: ++noteIdRef.current, track: n.track,
-        startBeat: Math.round((n.startTime / 1000) * initialConfig.bpm / 60 * 100) / 100,
-        endBeat: Math.round((n.endTime / 1000) * initialConfig.bpm / 60 * 100) / 100,
+        startBeat: Math.round(timeline.timeToBeat(n.startTime) * 100) / 100,
+        endBeat: Math.round(timeline.timeToBeat(n.endTime) * 100) / 100,
         startTime: n.startTime / 1000,
         endTime: n.endTime / 1000,
       })));
@@ -130,10 +152,10 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
     return () => cancelAnimationFrame(tickRafRef.current);
   }, [playing, latencyOffset]);
 
-  const beatToTime = useCallback((beat: number) => beat * 60 / bpm, [bpm]);
+  const beatToTime = useCallback((beat: number) => timeline.beatToTime(beat) / 1000, [timeline]);
   const timeToY = useCallback((t: number) => JUDGE_Y - (t - scrollOffset) * PX_PER_SEC, [scrollOffset, PX_PER_SEC]);
   const yToTime = useCallback((y: number) => scrollOffset + (JUDGE_Y - y) / PX_PER_SEC, [scrollOffset, PX_PER_SEC]);
-  const yToBeat = useCallback((y: number) => yToTime(y) * bpm / 60, [yToTime, bpm]);
+  const yToBeat = useCallback((y: number) => timeline.timeToBeat(yToTime(y) * 1000), [yToTime, timeline]);
   const snap = useCallback((beat: number) => {
     if (align === 'none') return beat;
     const step = align === 'half' ? 0.5 : align === 'quarter' ? 0.25 : 1;
@@ -200,21 +222,23 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
     const lines: { beat: number; y: number; strong: boolean; label?: string; timeSec: number; measure: number }[] = [];
     const step = align === 'quarter' ? 0.25 : align === 'half' ? 0.5 : 1;
     const songDur = duration || 180;
-    const endBeat = songDur * bpm / 60;
     const beatsPerMeasure = 4; // 默认 4/4
     const vs = Math.max(0, scrollOffset - 6);
     const ve = Math.min(songDur, scrollOffset + 6);
-    for (let b = Math.floor(vs * bpm / 60 / step) * step; b <= endBeat + step / 2; b += step) {
-      const t = b * 60 / bpm;
-      if (t < vs || t > ve + step) continue;
-      if (b < 0) continue;
-      const strong = Math.abs(b % 1) < 0.001;
-      const measure = Math.floor(b / beatsPerMeasure) + 1;
-      lines.push({ beat: b, y: timeToY(t), strong, timeSec: t, measure,
-        label: b === 0 ? 'START' : Math.abs(t - songDur) < 0.15 ? 'END' : undefined });
+    // 节拍线交给时间轴生成：变速段内会按该段的 BPM 细分，跨段处节拍连续不断档
+    for (const l of timeline.beatLines(vs * 1000, ve * 1000, step, beatsPerMeasure)) {
+      if (l.beat < 0) continue;
+      lines.push({
+        beat: l.beat,
+        y: timeToY(l.timeSec),
+        strong: Math.abs(l.beat % 1) < 0.001,
+        timeSec: l.timeSec,
+        measure: l.measure,
+        label: l.beat === 0 ? 'START' : Math.abs(l.timeSec - songDur) < 0.15 ? 'END' : undefined,
+      });
     }
     return lines;
-  }, [bpm, speed, scrollOffset, align, timeToY, duration]);
+  }, [timeline, speed, scrollOffset, align, timeToY, duration]);
 
   const pushUndo = useCallback(() => {
     undoStackRef.current.push(notesRef.current);
@@ -608,7 +632,36 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
             </div>
           )}
           <div className="ve-panel-sec"><label className="ve-label">BPM</label><input type="number" className="ve-input" value={bpm} onChange={e => setBpm(parseInt(e.target.value) || 120)} min={30} max={300} /></div>
-          <div className="ve-panel-sec"><label className="ve-label">{lang === 'zh' ? '流速' : 'Speed'}</label><input type="range" className="ve-range" min={1} max={12} step={0.5} value={speed} onChange={e => setSpeed(parseFloat(e.target.value))} /><span className="ve-val">{speed.toFixed(1)}x</span></div>
+          <div className="ve-panel-sec">
+            <label className="ve-label">{lang === 'zh' ? '变速点 · 秒 / BPM' : 'BPM Change · s / BPM'}</label>
+            {bpmChanges.length === 0 && (
+              <span className="ve-val" style={{ fontSize: 9, opacity: 0.45 }}>{lang === 'zh' ? '无 · 全程用上方 BPM' : 'none'}</span>
+            )}
+            {/* 面板固定 200px（内容区 168px），所以用 grid 定列宽：
+                1fr 由剩余空间算出来，两个输入框绝对不可能撑破容器 */}
+            {bpmChanges.map((c, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 18px', gap: 3, alignItems: 'center' }}>
+                <input type="number" className="ve-input"
+                  style={{ width: '100%', minWidth: 0, padding: '2px 3px', fontSize: 12, textAlign: 'center' }}
+                  step={0.1} min={0}
+                  value={Math.round(c.time / 100) / 10}
+                  onChange={e => updateBpmChange(i, { time: Math.max(0, Math.round((parseFloat(e.target.value) || 0) * 1000)) })}
+                  title={lang === 'zh' ? '变速时刻（秒）' : 'time (s)'} />
+                <input type="number" className="ve-input"
+                  style={{ width: '100%', minWidth: 0, padding: '2px 3px', fontSize: 12, textAlign: 'center' }}
+                  min={30} max={600}
+                  value={c.bpm}
+                  onChange={e => updateBpmChange(i, { bpm: parseInt(e.target.value) || 120 })}
+                  title="BPM" />
+                <button className="ve-btn ve-btn-reset"
+                  style={{ padding: 0, width: 18, height: 18, fontSize: 10, lineHeight: '16px' }}
+                  onClick={() => removeBpmChange(i)}>✕</button>
+              </div>
+            ))}
+            <button className="ve-btn ve-btn-reset" style={{ marginTop: 4 }} onClick={addBpmChange}>
+              {lang === 'zh' ? '+ 在当前位置加变速' : '+ Add at cursor'}
+            </button>
+          </div>
           <div className="ve-panel-sec"><label className="ve-label">{lang === 'zh' ? '对齐' : 'Snap'}</label><div className="ve-align-row">{(['none','quarter','half','beat'] as AlignMode[]).map(m => (<button key={m} className={`ve-align-btn${align===m?' active':''}`} onClick={()=>setAlign(m)}>{m==='none'?(lang==='zh'?'无':'Off'):m==='quarter'?'1/4':m==='half'?'1/2':'1/1'}</button>))}</div></div>
           <div className="ve-panel-sec"><label className="ve-check-label"><input type="checkbox" checked={invertScroll} onChange={e => setInvertScroll(e.target.checked)} /><span>{lang === 'zh' ? '反转鼠标滚轮' : 'Invert Scroll'}</span></label></div>
           <div className="ve-panel-sec">
@@ -635,8 +688,8 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
             <input ref={videoInputRef} type="file" accept="video/*" onChange={handleVideoChange} style={{ display: 'none' }} />
           </div>
           <div className="ve-panel-sec ve-panel-actions">
-            <button className="ve-btn ve-btn-save" onClick={() => { _savedPlacedNotes = [...notes]; _savedSplits = [...splits]; _savedSettings = { align, speed, invertScroll }; onSave(toNotes(), normalizeSplits(splits), { url: videoUrl, fileName: videoFileName, blur: videoBlur, sound: videoSound }); }}>{lang === 'zh' ? '保存并离开' : 'Save & Exit'}</button>
-            <button className="ve-btn ve-btn-trial" onClick={() => { _savedPlacedNotes = [...notes]; _savedSplits = [...splits]; _savedSettings = { align, speed, invertScroll }; onTrial(toNotes(), normalizeSplits(splits), { url: videoUrl, fileName: videoFileName, blur: videoBlur, sound: videoSound }); }}>{lang === 'zh' ? '试玩' : 'Trial'}</button>
+            <button className="ve-btn ve-btn-save" onClick={() => { _savedPlacedNotes = [...notes]; _savedSplits = [...splits]; _savedSettings = { align, speed, invertScroll, bpmChanges, beatOrigin }; onSave(toNotes(), normalizeSplits(splits), { url: videoUrl, fileName: videoFileName, blur: videoBlur, sound: videoSound }); }}>{lang === 'zh' ? '保存并离开' : 'Save & Exit'}</button>
+            <button className="ve-btn ve-btn-trial" onClick={() => { _savedPlacedNotes = [...notes]; _savedSplits = [...splits]; _savedSettings = { align, speed, invertScroll, bpmChanges, beatOrigin }; onTrial(toNotes(), normalizeSplits(splits), { url: videoUrl, fileName: videoFileName, blur: videoBlur, sound: videoSound }); }}>{lang === 'zh' ? '试玩' : 'Trial'}</button>
             <button className="ve-btn ve-btn-reset" onClick={() => setShowReset(true)}>{lang === 'zh' ? '重置' : 'Reset'}</button>
             <button className="ve-btn ve-btn-back" onClick={() => setShowExit(true)}>{lang === 'zh' ? '返回（不保存）' : 'Back (Discard)'}</button>
           </div>

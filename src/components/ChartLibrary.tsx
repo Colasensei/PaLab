@@ -127,6 +127,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   const lastScrollTopRef = useRef(-1);
   const sortedRef = useRef<ChartPackage[]>([]);
   const chartsRef = useRef<ChartPackage[]>([]);
+  const selectedRef = useRef(-1);
 
   // 右键菜单
   const [ctxMenu, setCtxMenu] = useState<{ idx: number; x: number; y: number } | null>(null);
@@ -218,6 +219,29 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   // 选谱时用谱面自带流速
   useEffect(() => { if (sel) setSpeed(sel.speed ?? 5.0); }, [selected]);
 
+  /**
+   * 改流速 → 写回这张谱面自己的 speed 并落库。
+   *
+   * 之前这里只 setSpeed（组件内 state），从来没写回谱面数据，
+   * 所以再次选中时上面那个 useEffect 会把它还原成包里原本的 config.speed：
+   * 包里本来就带流速的谱面看起来"能记住"，没带的就每次都回到 5.0。
+   * 滑杆拖动会连续触发，所以落库做个防抖，避免每移动一格就写一次 IndexedDB。
+   */
+  const speedSaveTimer = useRef(0);
+  const handleSpeedChange = useCallback((v: number) => {
+    setSpeed(v);
+    clearTimeout(speedSaveTimer.current);
+    speedSaveTimer.current = window.setTimeout(() => {
+      const list = chartsRef.current;
+      const idx = selectedRef.current;
+      if (idx < 0 || idx >= list.length) return;
+      if (list[idx].speed === v) return;
+      const next = list.map((c, i) => (i === idx ? { ...c, speed: v } : c));
+      setCharts(next);
+      saveCharts(next);
+    }, 350);
+  }, []);
+
   const handleDelete = (i: number, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = charts.filter((_, idx) => idx !== i);
@@ -290,6 +314,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   // 每次渲染同步给 ref，rAF / ResizeObserver 里读到的永远是最新的列表
   sortedRef.current = sortedCharts;
   chartsRef.current = charts;
+  selectedRef.current = selected;
   // 选中项在排序后列表里的位置（用来决定给哪几行烘背景图）
   const selSortedIdx = sortedCharts.findIndex(c => charts.indexOf(c) === selected);
 
@@ -734,14 +759,14 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                   <span onClick={() => setShowDiffInfo(false)} style={{ fontSize: 18, color: '#666', cursor: 'pointer' }}>✕</span>
                 </div>
                 <div style={{ fontSize: 'clamp(12px,1.2vw,14px)', color: '#999', lineHeight: 1.8 }}>
-                  <p>{lang === 'zh' ? '难度定数范围：1.0 ~ 25.0' : 'Range: 1.0 ~ 25.0'}</p>
+                  <p>{lang === 'zh' ? '难度定数范围：0.0 ~ 30.0' : 'Range: 0.0 ~ 30.0'}</p>
                   {(['EZ','NM','HD','IN','AT'] as const).map(d => {
                     const ds = getDiffStyle(d);
                     return (
                       <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                         <span style={{ background: ds.bg, color: ds.fg, fontSize: 12, fontWeight: 700, padding: '1px 8px', borderRadius: 4 }}>{d}</span>
                         <span style={{ color: '#777' }}>
-                          {d === 'EZ' ? '1.0-4.9' : d === 'NM' ? '5.0-7.9' : d === 'HD' ? '8.0-11.9' : d === 'IN' ? '12.0-15.9' : '16.0-25.0'}
+                          {d === 'EZ' ? '0.0-5.9' : d === 'NM' ? '6.0-11.9' : d === 'HD' ? '12.0-17.9' : d === 'IN' ? '18.0-19.9' : '20.0-30.0'}
                           {d === sel.difficulty && <span style={{ color: '#fff', marginLeft: 6 }}>← {lang === 'zh' ? '当前' : 'current'}</span>}
                         </span>
                       </div>
@@ -861,7 +886,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
             {/* Speed */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 'clamp(9px,0.9vw,11px)', color: '#999', fontWeight: 600, minWidth: 42 }}>SPEED</span>
-              <input type="range" min={1} max={10} step={0.1} value={speed} onChange={e => setSpeed(parseFloat(e.target.value))} style={{ flex: 1, accentColor: '#fff', height: 4 }} />
+              <input type="range" min={1} max={10} step={0.1} value={speed} onChange={e => handleSpeedChange(parseFloat(e.target.value))} style={{ flex: 1, accentColor: '#fff', height: 4 }} />
               <span style={{ fontSize: 'clamp(10px,1.1vw,13px)', fontWeight: 700, color: '#fff', minWidth: 36, textAlign: 'right' }}>{speed.toFixed(1)}x</span>
             </div>
             {/* Target */}

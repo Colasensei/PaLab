@@ -47,7 +47,9 @@ function getDifficultyParams(
   const trackFactor = Math.pow(4 / Math.max(2, trackCount), 0.25);
 
   // 期望总 NPS：把双押/hold/峰值加成折算掉（约 0.35 定数）
-  const effC = Math.max(1.0, (c - 0.35) / trackFactor);
+  // 定数区间已放宽到 0~30，constantToNps 在 16 以上改成线性外推，
+  // 所以高定数现在能真正推出更密的谱，而不是挤在同一个密度上。
+  const effC = Math.max(0, (c - 0.35) / trackFactor);
   const targetNps = constantToNps(effC);
 
   // 每拍 tick 数 → 每秒 tick 数

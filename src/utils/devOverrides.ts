@@ -591,10 +591,10 @@ export const DEFAULT_OVERRIDES: DevOverrides = {
   aa_localFrames: 5,
 
   // Difficulty
-  d_ezMax: 5.0,
-  d_nmMax: 9.0,
-  d_hdMax: 12.5,
-  d_inMax: 16.0,
+  d_ezMax: 6.0,
+  d_nmMax: 12.0,
+  d_hdMax: 18.0,
+  d_inMax: 20.0,
 
   // Other
   devClicks: 5,
@@ -631,13 +631,34 @@ export const DEFAULT_OVERRIDES: DevOverrides = {
   invincibleMode: false,
 };
 
+/**
+ * 改过默认值的键：旧默认 → 新默认。
+ *
+ * 开发者面板只要保存过一次，就会把全部键写进 localStorage，之后改代码里的默认值不再生效。
+ * 加载时把「仍等于旧默认值」的项迁移到新默认；用户手动改过的值（不等于旧默认）保持不动。
+ */
+const REBASED_DEFAULTS: Partial<Record<keyof DevOverrides, [number, number][]>> = {
+  // 2026-xx：AT 的门槛从 24 下调到 20
+  d_inMax: [[24.0, 20.0]],
+};
+
 /** 加载开发者覆盖参数 */
 export function loadDevOverrides(): DevOverrides {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_OVERRIDES };
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_OVERRIDES, ...parsed };
+    const merged = { ...DEFAULT_OVERRIDES, ...parsed };
+    const bag = merged as unknown as Record<string, unknown>;
+    for (const key of Object.keys(REBASED_DEFAULTS)) {
+      if (typeof bag[key] !== 'number') continue;
+      let next = bag[key] as number;
+      for (const [from, to] of REBASED_DEFAULTS[key as keyof DevOverrides]!) {
+        if (next === from) next = to;
+      }
+      if (next !== bag[key]) bag[key] = next;
+    }
+    return merged;
   } catch {
     return { ...DEFAULT_OVERRIDES };
   }

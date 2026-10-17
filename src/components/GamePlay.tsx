@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import {
   Note, GameConfig, GameResults, JudgmentType, TrackCount, resolveKeys,
+  constantToDifficulty, getDiffColor,
 } from '@/types';
 import { useGameEngine, useInput } from '@/hooks';
 import { audioManager } from '@/utils';
@@ -144,8 +145,24 @@ function warmupAudioOnGesture() {
 async function preloadAudio() {
   if (audioPreloaded) return;
   try {
-    audioCtx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 });
+    // 【延迟】不要强制 sampleRate。旧版写死 48000，设备原生是 44100 时会多一道重采样，
+    // 在 Android 上直接体现为几十毫秒的输出延迟。让系统自己挑原生采样率最快。
+    audioCtx = new AudioContext({ latencyHint: 'interactive' });
     if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+
+    // 【延迟】切回前台立刻恢复上下文。Android 上被系统挂起后，
+    // 第一次 resume 可能要 50~200ms —— 如果这次 resume 落在打击音效的路径里，
+    // 那一下音效就是"明显迟到"。所以要在用户碰屏幕之前就把上下文拉起来。
+    try {
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && audioCtx && audioCtx.state !== 'running') {
+          audioCtx.resume().catch(() => {});
+        }
+      });
+      window.addEventListener('pageshow', () => {
+        if (audioCtx && audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+      });
+    } catch { /* 忽略 */ }
 
     // 缓存 gain 参数（只在 preload 时读一次 localStorage）
     _cachedGainMax = getDevOverride('a_hitGainMax');
@@ -171,6 +188,15 @@ async function preloadAudio() {
     // 设初始 gain（之后只在 setHitVolume 里更新）
     hitGain.gain.value = Math.min(_cachedGainMax, hitVolume * _cachedGainMul);
     audioPreloaded = true;
+
+    // 打出真实延迟数字，方便判断"延迟大"到底是设备输出延迟还是别的原因
+    try {
+      const ctxAny = audioCtx as AudioContext & { outputLatency?: number };
+      console.info(
+        `[音频] 采样率 ${audioCtx.sampleRate}Hz / baseLatency ${((audioCtx.baseLatency || 0) * 1000).toFixed(1)}ms` +
+        ` / outputLatency ${((ctxAny.outputLatency ?? 0) * 1000).toFixed(1)}ms`,
+      );
+    } catch { /* 忽略 */ }
 
     // 预热音频管线——无声爆一个脉冲，让 AudioContext 调度器"热起来"
     // Android WebView 首次 play 调度延迟可差 10-15ms，预热后稳定在 2-5ms
@@ -231,17 +257,11 @@ export function getHitVolume() { return hitVolume; }
 
 function playHitSound() {
   if (audioCtx && hitBuffer && hitGain) {
-    // 快速 resume（移动端切后台回来可能 suspend）；先等 resume 完成再调度，避免掉音/延迟
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume().then(() => {
-        const src = audioCtx!.createBufferSource();
-        src.buffer = hitBuffer!;
-        src.connect(hitGain!);
-        src.start(0);
-        src.onended = () => { try { src.disconnect(); } catch {} };
-      }).catch(() => {});
-      return;
-    }
+    // 【延迟】上下文被挂起时**不等待 resume**。
+    // 挂起的上下文时间轴是冻结的，直接 start() 会排队到恢复的那一刻播放；
+    // 旧版写成 resume().then(() => start())，凭空多了一个 Promise 调度，
+    // 而且 resume 本身在 Android 上可能要几十到上百毫秒。
+    if (audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
     const src = audioCtx.createBufferSource();
     src.buffer = hitBuffer;
     src.connect(hitGain);
@@ -565,12 +585,21 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const comboKThreshold = useMemo(() => getDevOverride('u_comboKFormat'), []);
   const scoreKThreshold = useMemo(() => getDevOverride('u_scoreKFormat'), []);
 
-  // 模糊：开 → CSS 实时；关 → 预生成静态图（但游戏内背景模糊关闭时直接用不模糊原图）
+  // 游戏内背景模糊：优先用**预生成的静态模糊图**，不再用实时 CSS blur。
+  // CSS blur 每帧都要重新光栅化整屏背景，是游玩时最大的性能负担之一；
+  // 预生成图是一次性成本，滚动画布时零开销。
+  // 生成期间（几十毫秒）先用 CSS blur 兜底，所以不会出现"先清晰后变糊"的跳变。
   const [blurredBg, setBlurredBg] = useState<string | null>(null);
   useEffect(() => {
-    if (uiBlur || gameBgBlur === false || !effBgUrl) { setBlurredBg(null); return; }
-    generateBlurredBg(effBgUrl, bgBlurVal, bgBrightnessVal).then(setBlurredBg);
-  }, [effBgUrl, bgBlurVal, bgBrightnessVal, uiBlur, gameBgBlur]);
+    if (gameBgBlur === false || !effBgUrl) { setBlurredBg(null); return; }
+    let alive = true;
+    generateBlurredBg(effBgUrl, bgBlurVal, bgBrightnessVal).then(url => {
+      if (alive) setBlurredBg(url);
+    });
+    return () => { alive = false; };
+  }, [effBgUrl, bgBlurVal, bgBrightnessVal, gameBgBlur]);
+  /** 静态模糊图就绪后就不需要 CSS blur 了 */
+  const useBakedBg = gameBgBlur && !!blurredBg;
 
   const [gameHeight, setGameHeight] = useState(window.innerHeight - gameTopMargin);
   // 皮肤：标准 / 球状
@@ -641,11 +670,46 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   const leadInTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const songStartedRef = useRef(true);
 
+  // 谱面背景视频引用（提前声明：前摇结束、真正开唱时要由这里启动它）
+  const videoBgRef = useRef<HTMLVideoElement>(null);
+  // 视频解不出来（编码不支持、数据坏了）时退回封面背景，别让玩家对着黑屏猜
+  const [videoBroken, setVideoBroken] = useState(false);
+  useEffect(() => { setVideoBroken(false); }, [config.videoUrl]);
+
+  // 视频没显示出来到底是哪一环挡的，打一行日志方便定位
+  useEffect(() => {
+    if (!config.videoUrl) return;
+    const mb = (config.videoUrl.length / 1024 / 1024).toFixed(1);
+    const renderOn = getDevOverride('perf_bgCoverRender');
+    console.info(`[视频] 有背景视频（约 ${mb}MB）| 视频背景开关=${videoBg} | 自定义游戏背景=${!!gameBgOverride} | 渲染开关=${renderOn}`);
+  }, [config.videoUrl, videoBg, gameBgOverride]);
+
+  /**
+   * 启动背景视频，并把它对齐到时间轴 0 点。
+   *
+   * 视频元素原本带 autoPlay，一挂载就自己播了；而前摇（READY?）期间
+   * 音符时间轴是冻结的，于是视频已经跑了半秒多、谱面还没动 —— 这就是对不上的原因。
+   * 现在改成：只有真正开唱的这一刻（markStarted）才启动视频。
+   */
+  const startVideoSync = useCallback(() => {
+    const v = videoBgRef.current;
+    if (!v) return;
+    try {
+      v.currentTime = 0;
+      const p = v.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch { /* 视频不可用就别管 */ }
+  }, []);
+
   // 开局统一入口：有前摇则延迟 leadInMs 放歌（期间谱面冻结、进度条不走、显示 READY?）
   const beginSong = useCallback(() => {
     if (leadInTimerRef.current) { clearTimeout(leadInTimerRef.current); leadInTimerRef.current = null; }
     // 歌曲真正开始播放的时刻 = perf 外推时钟的 0 点（与音符时间轴 0 对齐）
-    const markStarted = () => { songStartPerfRef.current = performance.now(); };
+    const markStarted = () => {
+      songStartPerfRef.current = performance.now();
+      // 背景视频跟着这一刻启动，否则会被前摇提前跑掉
+      startVideoSync();
+    };
     if (leadInMs > 0) {
       songStartedRef.current = false;
       leadInActiveRef.current = true;
@@ -681,7 +745,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         markStarted();
       }
     }
-  }, [leadInMs, hasSong, musicVolume]);
+  }, [leadInMs, hasSong, musicVolume, startVideoSync]);
 
   // 引擎倒计时结束时恢复音频（前摇期间暂停后恢复 → 重跑前摇）
   const handleEngineResume = useCallback(() => {
@@ -690,11 +754,20 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     // 倒计时时长 → 音符跳变到错误位置）。随后解除 canvas 暂停冻结。
     totalPauseRef.current += performance.now() - pauseTimeRef.current;
     setPaused(false);
-    // 恢复背景视频（暂停时已被 doPause 暂停）
+    if (!hasSong) {
+      // 无歌：直接用性能时钟，视频立即可恢复
+      videoBgRef.current?.play().catch(() => {});
+      return;
+    }
+    if (leadInMs > 0 && !songStartedRef.current) {
+      // 会重跑前摇：视频交给 markStarted 在真正开唱那一刻启动，
+      // 不能在这里 play()，否则视频又比谱面先跑
+      beginSong();
+      return;
+    }
+    audioManager.resume();
+    // 中途恢复（无前摇重跑）：视频从暂停位置继续，和音频同一时刻
     videoBgRef.current?.play().catch(() => {});
-    if (!hasSong) return;
-    if (leadInMs > 0 && !songStartedRef.current) beginSong();
-    else audioManager.resume();
   }, [hasSong, leadInMs, beginSong]);
 
   const { state, start, setPaused: engineSetPaused, handlePress, handleRelease, resultsRef: engineResultsRef, holdActiveRef: engineHoldsRef } = useGameEngine({
@@ -1016,9 +1089,6 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     }, effCleanInterval);
     return () => clearInterval(iv);
   }, [effects.length]);
-
-  // 谱面背景视频引用（用于暂停/恢复同步）
-  const videoBgRef = useRef<HTMLVideoElement>(null);
 
   const doPause = useCallback(() => {
     // 前摇期间暂停：取消待播的歌曲，避免暂停时突然出声
@@ -1468,20 +1538,30 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     <div className={`screen gameplay-screen${!gameBgBlur ? ' game-bg-solid' : ''}`} style={{ background: config.bgColor }}
     >
       {/* 背景：谱面视频优先（muted 硬件解码 + CSS 模糊，保证流畅），否则封面模糊图 */}
-      {perfBgCover && !gameBgOverride && videoBg && config.videoUrl && (
+      {perfBgCover && !gameBgOverride && videoBg && config.videoUrl && !videoBroken && (
         <video
           ref={videoBgRef}
           className="gameplay-cover-bg gameplay-video-bg"
           src={config.videoUrl}
-          autoPlay muted={!config.videoSound} loop playsInline preload="metadata"
+          muted={!config.videoSound} loop playsInline preload="metadata"
+          onError={() => {
+            setVideoBroken(true);
+            const v = videoBgRef.current;
+            console.warn('[视频] 背景视频无法播放，已退回封面背景', {
+              error: v?.error?.code,
+              message: v?.error?.message,
+              src: String(config.videoUrl).slice(0, 48),
+            });
+          }}
           style={!gameBgBlur ? { filter: 'none' } : (config.videoBlur === false ? { filter: 'brightness(0.45)' } : undefined)}
         />
       )}
-      {/* 封面背景：有游戏内背景覆盖时用它；否则无视频时才用谱面封面/曲绘 */}
-      {perfBgCover && effBgUrl && (gameBgOverride || !videoBg || !config.videoUrl) && (
+      {/* 封面背景：有游戏内背景覆盖时用它；否则无视频（或视频放不出来）时才用谱面封面/曲绘 */}
+      {perfBgCover && effBgUrl && (gameBgOverride || !videoBg || !config.videoUrl || videoBroken) && (
         <div className="gameplay-cover-bg" style={{
-          backgroundImage: `url(${(!gameBgBlur || uiBlur) ? effBgUrl : blurredBg})`,
-          filter: gameBgBlur ? (uiBlur ? `blur(${bgBlurVal}px) brightness(${bgBrightnessVal})` : 'none') : 'none',
+          backgroundImage: `url(${useBakedBg ? blurredBg : effBgUrl})`,
+          // 静态图里已经烘好了模糊和亮度，所以不再叠 CSS filter
+          filter: gameBgBlur ? (useBakedBg ? 'none' : `blur(${bgBlurVal}px) brightness(${bgBrightnessVal})`) : 'none',
           transform: `scale(${gameBgBlur ? bgScaleVal : 1})`,
         }} />
       )}
@@ -1532,8 +1612,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         <span className="hud-song-name">{config.songFileName || (lang === 'zh' ? '未命名' : 'Untitled')}</span>
         <span className="hud-song-diff">
           Lv.{config.chartConstant.toFixed(1)}&nbsp;
-          <span style={{ color: config.chartConstant >= 16 ? '#FF44AA' : config.chartConstant >= 12.5 ? '#AA44FF' : config.chartConstant >= 9 ? '#FF4444' : config.chartConstant >= 5 ? '#FFAA00' : '#44BB44' }}>
-            {config.chartConstant >= 16 ? 'AT' : config.chartConstant >= 12.5 ? 'IN' : config.chartConstant >= 9 ? 'HD' : config.chartConstant >= 5 ? 'NM' : 'EZ'}
+          <span style={{ color: getDiffColor(constantToDifficulty(config.chartConstant)) }}>
+            {constantToDifficulty(config.chartConstant)}
           </span>
         </span>
       </div>

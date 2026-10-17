@@ -171,15 +171,29 @@ RKS 是最强 20 次游玩 PP 的平均值，类似 osu! 的 pp 系统或 Phigro
 
 | 定数范围                | 难度标签   | 分界参数      | 默认值  |
 | ------------------- | ------ | --------- | ---- |
-| $\lt c_1$           | **EZ** | `d_ezMax` | 5.0  |
-| $c_1 \le c \lt c_2$ | **NM** | `d_nmMax` | 9.0  |
-| $c_2 \le c \lt c_3$ | **HD** | `d_hdMax` | 12.5 |
-| $c_3 \le c \lt c_4$ | **IN** | `d_inMax` | 16.0 |
+| $\lt c_1$           | **EZ** | `d_ezMax` | 6.0  |
+| $c_1 \le c \lt c_2$ | **NM** | `d_nmMax` | 12.0 |
+| $c_2 \le c \lt c_3$ | **HD** | `d_hdMax` | 18.0 |
+| $c_3 \le c \lt c_4$ | **IN** | `d_inMax` | 20.0 |
 | $\ge c_4$           | **AT** | —         | —    |
 
-### 7.2 定数范围
+AT 的门槛是 **20.0**：定数要过 20 才算 AT，20 以下一律 IN 及以下。
+（导出谱面时难度标签由作者自己选，不按定数反推——见 `ChartEditor`。）
 
-chartConstant 有效范围：**1.0 ~ 18.0**（普通模式）/ **0 ~ 25.0**（开发高级模式）。
+> 注：0~18 一档 6 分均分，18~20 是 IN，20~30 是 AT 且 30 不可达，
+> 所以 AT 实际落在 20.0~29.5 这段。
+
+### 7.2 定数范围与软天花板
+
+对外区间为 **0.0 ~ 30.0**，但 **30.0 不可达**。
+
+$\text{softCap}(x) = \begin{cases} \max(0, x) & x \le 26 \\ 26 + 4\tanh\left(\dfrac{x - 26}{4}\right) & x > 26 \end{cases}$
+
+再兜一刀上限 **29.5**。
+
+- 26 以下**完全线性**，所以低中难度谱面的定数与旧版一致，不会突然全部跳变。
+- 26 以上平滑饱和：要到 29.5 需要原始值 ≥ 40（约 NPS 28），现实谱面不存在。
+- 效果：**再难的谱也只会停在 29.0~29.4**，不会出现"人人 29.9"，也不会像旧版那样在 25 处硬封顶把所有高难谱压成同一个数。
 
 ---
 
@@ -208,27 +222,34 @@ $\text{trackFactor} = \left(\frac{4}{\max(2, \text{trackCount})}\right)^{0.25}$
 | $(1.0, 3.0]$    | $3.0 + (\text{NPS} - 1.0) \times 2.5$                     |
 | $(3.0, 5.0]$    | $8.0 + (\text{NPS} - 3.0) \times 1.75$                    |
 | $(5.0, 8.0]$    | $11.5 + (\text{NPS} - 5.0) \times 1.5$                    |
-| $(8.0, \infty)$ | $16.0 + \min(1, \frac{\text{NPS} - 8.0}{2.0}) \times 2.0$ |
+| $(8.0, \infty)$ | $16.0 + (\text{NPS} - 8.0) \times 1.2$                    |
 
 $\text{baseScore} \mathrel{*}= \text{trackFactor}$
 
-> 参考点：NPS 1→3 (EZ)，NPS 3→8 (HD)，NPS 5→11.5 (IN)，NPS 8→16 (AT)。
+> 参考点：NPS 1→3 (EZ)，NPS 3→8 (NM)，NPS 5→11.5 (HD)，NPS 8→16 (HD)，NPS 12→20.8 (IN)，NPS 17→26.8 (AT)，NPS 20→30.4（由软天花板压到 29.2）。
+
+> **8 以上这一段改过（2026-10 难度体制改革）：** 旧版是 $16.0 + \min(9, \text{NPS} - 8)$，
+> 也就是 NPS 17 就封顶 25，导致所有高密度谱面（尤其从 osu! 转来的 mania 谱）全挤在 25 分不出来。
+> 现在改成继续线性外推，把 25~30 这段空间还给真正难的谱。
 
 ### 8.4 加成
 
-| 加成项     | 公式                                             | 范围      |
-| ------- | ---------------------------------------------- | ------- |
-| 双押加成    | $\text{doubleRatio} \times 1.2$                | 0 ~ 1.2 |
-| Hold 加成 | $\text{holdRatio} \times 0.6$                  | 0 ~ 0.6 |
-| 峰值加成    | $\max(0, \text{maxWindowNps} - 8) \times 0.25$ | 0 ~ 1.0 |
-| 脑裂加成    | $\min(2.0, \text{splitCoverage} \times 4.0)$   | 0 ~ 2.0 |
+| 加成项     | 公式                                                     | 范围      |
+| ------- | ------------------------------------------------------ | ------- |
+| 双押加成    | $\text{doubleRatio} \times 1.2$                        | 0 ~ 1.2 |
+| Hold 加成 | $\text{holdRatio} \times 0.6$                          | 0 ~ 0.6 |
+| 峰值加成    | $\min(2.0,\ \max(0, \text{maxWindowNps} - 8) \times 0.25)$ | 0 ~ 2.0 |
+| 脑裂加成    | $\min(2.0, \text{splitCoverage} \times 4.0)$           | 0 ~ 2.0 |
 
-$\text{chartConstant} = \text{clamp}((\text{baseScore} + \text{doubleBonus} + \text{holdBonus} + \text{peakBonus} + \text{splitBonus}) \times 0.93,\ 1.0,\ 18.0)$
+$\text{chartConstant} = \text{round1}\Big(\text{softCap}\big((\text{baseScore} + \text{doubleBonus} + \text{holdBonus} + \text{peakBonus} + \text{splitBonus}) \times 0.93\big)\Big)$
 
 最终保留一位小数。
 
 > **0.93 校准（2026-08 新增）：** 实测分析定级整体偏高，统一 ×0.93 下调（实际难度通常低于分析值）。
 > `splitCoverage` 为脑裂段覆盖时长占全曲比例，仅在有脑裂段（`splits`）时生效。
+
+> **峰值加成改了上限（2026-10）：** 旧版没有上限，密集谱面能白送 8 分，是"难谱全部爆表"的元凶之一。
+> 现在封在 2.0。
 
 > **自洽保证：** 自动生成器 (`src/utils/chartGenerator.ts`) 与手动分析器共用同一 NPS↔定数映射
 > (`npsToConstant` / `constantToNps`)，因此「选定定数生成 → 丢进编辑器分析」的 round-trip 结果 ≈ 原定数。

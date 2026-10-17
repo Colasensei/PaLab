@@ -75,3 +75,6 @@ dialog.txt
 
 # DSH 会话回滚数据
 .dsh/
+
+# 谱面爬虫（独立 Python 工具，不进仓库）
+PalabChartCrawler/

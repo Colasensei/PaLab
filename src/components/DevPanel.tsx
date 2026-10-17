@@ -267,7 +267,7 @@ export const DevPanel: React.FC<Props> = ({ lang, settings, onSave, onBack }) =>
         <NumInput lang={lang} label="EZ 上限" tip={L('定数<此值= EZ', 'Constant < this = EZ')} defKey="d_ezMax" value={ov.d_ezMax} min={1} max={20} step={0.5} onChange={v => set('d_ezMax', v)} />
         <NumInput lang={lang} label="NM 上限" tip={L('定数<此值= NM', 'Constant < this = NM')} defKey="d_nmMax" value={ov.d_nmMax} min={1} max={20} step={0.5} onChange={v => set('d_nmMax', v)} />
         <NumInput lang={lang} label="HD 上限" tip={L('定数<此值= HD', 'Constant < this = HD')} defKey="d_hdMax" value={ov.d_hdMax} min={1} max={20} step={0.5} onChange={v => set('d_hdMax', v)} />
-        <NumInput lang={lang} label="IN 上限" tip={L('定数≥此值= AT', 'Constant >= this = AT')} defKey="d_inMax" value={ov.d_inMax} min={1} max={20} step={0.5} onChange={v => set('d_inMax', v)} />
+        <NumInput lang={lang} label="IN 上限" tip={L('定数≥此值= AT（默认 20）', 'Constant >= this = AT (default 20)')} defKey="d_inMax" value={ov.d_inMax} min={1} max={30} step={0.5} onChange={v => set('d_inMax', v)} />
       </div>);
 
       /* ══════ 生成 ══════ */
