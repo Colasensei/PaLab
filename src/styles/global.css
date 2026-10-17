@@ -2427,22 +2427,6 @@ body::after {
   gap: 6px;
 }
 
-.btn-pause {
-  padding: 4px 2px;
-  background: none;
-  border: none;
-  border-radius: 0;
-  font-family: var(--font-hud);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 4px;
-  color: rgba(255, 255, 255, 0.38);
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.18s ease;
-}
-.btn-pause:hover { color: rgba(255, 255, 255, 0.9); }
-.btn-pause:active { color: #EFC96B; }
 
 .fps-counter {
   font-family: var(--font-hud);
@@ -2910,71 +2894,28 @@ body::after {
 
 /* ============ 暂停遮罩 ============ */
 .pause-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(4, 6, 8, 0.74);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  animation: pauseFadeIn 0.18s ease-out;
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  animation: screenFadeIn 0.2s ease-out;
 }
-@keyframes pauseFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+.pause-panel {
+  width: 380px; max-width: 88vw;
+  background: #1a1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex; flex-direction: column; gap: 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
-
-.pause-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 28px;
-  min-width: 168px;
+.pause-title { font-size: clamp(20px, 4vw, 28px); letter-spacing: 6px; }
+.pause-actions {
+  display: flex; flex-direction: row; gap: 10px;
+  align-items: stretch;
 }
-.pause-label {
-  font-family: var(--font-hud);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 10px;
-  color: rgba(255, 255, 255, 0.3);
-  padding-left: 2px;
-}
-.pause-menu {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  width: 100%;
-}
-.pause-item {
-  position: relative;
-  width: 100%;
-  padding: 12px 0 12px 14px;
-  background: none;
-  border: none;
-  border-radius: 0;
-  text-align: left;
-  font-family: var(--font-hud);
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: 4px;
-  color: rgba(255, 255, 255, 0.55);
-  cursor: pointer;
-  transition: color 0.18s ease, letter-spacing 0.18s ease;
-}
-.pause-item::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 50%;
-  width: 2px; height: 0;
-  transform: translateY(-50%);
-  background: #EFC96B;
-  transition: height 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.pause-item:hover { color: #fff; letter-spacing: 5px; }
-.pause-item:hover::before { height: 60%; }
-.pause-item-quit:hover { color: #C98A8A; }
-.pause-item-quit:hover::before { background: #C98A8A; }
+.pause-actions .btn { flex: 1; padding: 10px 12px; font-size: 13px; letter-spacing: 1px; }
 
 .rewind-overlay {
   position: fixed;

@@ -1606,7 +1606,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
       {/* HUD */}
       <div className="hud-left">
-        <button className="btn btn-small btn-pause" onClick={handlePause}>{lang === 'zh' ? '暂停' : 'Pause'}</button>
+        <button className="btn btn-small btn-outline" onClick={handlePause}>{lang === 'zh' ? '暂停' : 'Pause'}</button>
         {showFPS && <span className="fps-counter">{fps}<em>FPS</em></span>}
         
       </div>
@@ -1768,12 +1768,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       {/* 暂停遮罩 */}
       {paused && state.pauseRewind <= 0 && (
         <div className="pause-overlay" onPointerDown={e => e.stopPropagation()}>
-          <div className="pause-inner">
-            <div className="pause-label">{lang === 'zh' ? '暂停' : 'PAUSED'}</div>
-            <div className="pause-menu">
-              <button className="pause-item" onClick={handleResume}>{lang === 'zh' ? '继续' : 'Resume'}</button>
-              <button className="pause-item" onClick={handleRetry}>{lang === 'zh' ? '重试' : 'Retry'}</button>
-              <button className="pause-item pause-item-quit" onClick={handleQuit}>{t('quit', lang)}</button>
+          <div className="pause-panel">
+            <h2 className="cms-title pause-title">{lang === 'zh' ? '暂停' : 'PAUSED'}</h2>
+            <div className="pause-actions">
+              <button className="btn btn-primary" onClick={handleResume}>{lang === 'zh' ? '继续' : 'Resume'}</button>
+              <button className="btn btn-outline" onClick={handleRetry}>{lang === 'zh' ? '重试' : 'Retry'}</button>
+              <button className="btn btn-outline" onClick={handleQuit}>{t('quit', lang)}</button>
             </div>
           </div>
         </div>
