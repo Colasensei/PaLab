@@ -8114,7 +8114,7 @@ body::after {
 }
 
 
-/* ═══ 启动动画（每次进入软件一次，总长约 5.6s） ═══
+/* ═══ 启动动画（每次进入软件一次，总长约 7.2s） ═══
    黑底和文字分两层：文字出现后不再淡出，只淡黑底，主界面 logo 与它重合即为无缝。 */
 .splash-root {
   position: fixed; inset: 0; z-index: 1200;
@@ -8139,7 +8139,7 @@ body::after {
   font-size: clamp(20px, 4.6vw, 40px);
   font-weight: 600;
   color: #fff;
-  animation: splashPage 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: splashPage 2.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 /* 竖屏：PAGE / Studio 分两行 */
 @media (orientation: portrait) {
@@ -8152,8 +8152,8 @@ body::after {
 }
 @keyframes splashPage {
   0%   { opacity: 0; transform: translate(-50%, -50%) translateY(6px); letter-spacing: 16px; }
-  36%  { opacity: 1; transform: translate(-50%, -50%); letter-spacing: 10px; }
-  76%  { opacity: 1; transform: translate(-50%, -50%); letter-spacing: 10px; }
+  23%  { opacity: 1; transform: translate(-50%, -50%); letter-spacing: 10px; }
+  77%  { opacity: 1; transform: translate(-50%, -50%); letter-spacing: 10px; }
   100% { opacity: 0; transform: translate(-50%, -50%); letter-spacing: 12px; }
 }
 
@@ -8163,12 +8163,12 @@ body::after {
   width: min(34vh, 46vw);
   max-width: 320px;
   height: auto;
-  animation: splashMark 1.46s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: splashMark 2.26s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes splashMark {
   0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
-  30%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  72%  { opacity: 1; transform: translate(-50%, -50%) scale(1.01); }
+  20%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  78%  { opacity: 1; transform: translate(-50%, -50%) scale(1.01); }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1.03); }
 }
 

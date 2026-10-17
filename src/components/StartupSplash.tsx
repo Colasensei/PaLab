@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 /**
- * 启动动画（每次进入软件播一次），总长约 5.6 秒。
+ * 启动动画（每次进入软件播一次），总长约 7.2 秒。
  *
  * 全黑 → 「PAGE Studio」淡入淡出 → xWhite.png 淡入淡出 → 「Palab」
  *
@@ -76,11 +76,11 @@ interface Props {
 
 const T = {
   pageStart: 100,
-  markStart: 1500,
-  palabStart: 2960,
-  blackFade: 4360,   // 黑底开始淡出（文字保持不动）
-  unmount: 5400,     // 这一份卸载（此时黑底已全透明，主界面 logo 与它重合）
-  done: 5600,
+  markStart: 2300,    // PAGE Studio：1.4s -> 2.2s
+  palabStart: 4560,   // xWhite 图：1.46s -> 2.26s
+  blackFade: 5960,    // 黑底开始淡出（文字保持不动）
+  unmount: 7000,      // 这一份卸载（此时黑底已全透明，主界面 logo 与它重合）
+  done: 7200,
 };
 
 export const StartupSplash: React.FC<Props> = ({ onDone }) => {
