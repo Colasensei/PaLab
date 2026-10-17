@@ -239,12 +239,14 @@ const App: React.FC = () => {
     introNextRef.current = after;
     setLoadingIntro({ level, bg });
   }, []);
-  const finishLoadingIntro = useCallback(() => {
-    setLoadingIntro(null);
+  /** 平行四边形铺满的瞬间切到加载界面（必须在这里切，不能等淡出完，否则淡出露出的是原界面） */
+  const coverLoadingIntro = useCallback(() => {
     const fn = introNextRef.current;
     introNextRef.current = null;
     fn?.();
   }, []);
+  /** 淡出完毕，卸载转场 */
+  const finishLoadingIntro = useCallback(() => setLoadingIntro(null), []);
 
   const toPlayableVideoUrl = useCallback(async (url?: string | null): Promise<string | undefined> => {
     if (!url) return undefined;
@@ -1110,7 +1112,7 @@ const App: React.FC = () => {
 
       {/* 进入加载界面的转场：盖在当前界面上飞入平行四边形 */}
       {loadingIntro && (
-        <LoadingIntro level={loadingIntro.level} bgUrl={loadingIntro.bg} onDone={finishLoadingIntro} />
+        <LoadingIntro level={loadingIntro.level} bgUrl={loadingIntro.bg} onCovered={coverLoadingIntro} onDone={finishLoadingIntro} />
       )}
 
       {/* 返回键已移至顶栏 Logo 左侧 */}

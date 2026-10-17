@@ -8021,55 +8021,58 @@ body::after {
 .li-root {
   position: fixed; inset: 0; z-index: 999;
   overflow: hidden;
-  transition: opacity 0.26s ease;
+  transition: opacity 0.3s ease;
 }
 .li-root.li-fading { opacity: 0; }
-.li-dim {
+
+/*
+  平行四边形：一块「全屏大小、始终带同样模糊」的图层，只靠 clip-path 变形。
+  不能用「小方块 + scale 放大」——filter 的模糊半径在 transform 之前生效，
+  放大 9 倍等于把模糊也放大 9 倍，铺满后跟加载界面自己的背景（.ld-bg）对不上。
+  这里的 filter / transform / background 三者和 .ld-bg 完全一致，
+  所以铺满后淡出时是无缝的，看起来就是「平行四边形变成了加载界面的背景」。
+*/
+.li-shape {
   position: absolute; inset: 0;
-  background: rgba(0, 0, 0, 0.82);
-  transition: opacity 0.24s ease;
-}
-  45%  { transform: translate(-50%, -50%) scale(1.02); }
-  70%  { transform: translate(-50%, -48%) scale(0.99); }
-  100% { transform: translate(-50%, -47%) scale(1); }
+  background-color: #101014;
+  background-size: cover;
+  background-position: center;
+  filter: blur(15px) brightness(0.5);
+  transform: scale(1.15);
+  clip-path: polygon(150% 26%, 214% 26%, 164% 74%, 100% 74%);
+  transition: clip-path 0.46s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: clip-path;
 }
 
-/* LV.xx：重重砸下来 */
+/* LV.xx：从上方砸到平行四边形正中 */
 .li-lv {
-  position: absolute; left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
+  position: absolute;
+  left: 50%; top: 50%;
   display: flex; align-items: baseline; gap: 10px;
   white-space: nowrap;
-  animation: liLvSlam 0.42s cubic-bezier(0.7, 0, 0.9, 0.2) both;
   pointer-events: none;
+  animation: liLvSlam 0.4s cubic-bezier(0.55, 0, 0.85, 0.35) both;
 }
-.li-lv.li-lv-out { opacity: 0; transition: opacity 0.2s ease; }
 .li-lv-tag {
-  font-size: clamp(20px, 4vw, 34px); font-weight: 800; letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.55);
+  font-family: var(--font-hud);
+  font-size: clamp(15px, 3vw, 26px);
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.5);
 }
 .li-lv-num {
   font-family: var(--font-hud);
-  font-size: clamp(68px, 16vw, 150px); font-weight: 800; line-height: 0.9;
-  color: #fff; letter-spacing: -2px;
+  font-size: clamp(52px, 11vw, 112px);
+  font-weight: 800;
+  line-height: 0.9;
+  color: #fff;
+  letter-spacing: -2px;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 40px rgba(255, 255, 255, 0.35);
+  text-shadow: 0 6px 40px rgba(0, 0, 0, 0.55);
 }
 @keyframes liLvSlam {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(2.6); }
-  55%  { opacity: 1; transform: translate(-50%, -50%) scale(0.94); }
-  75%  { transform: translate(-50%, -50%) scale(1.03); }
+  0%   { opacity: 0; transform: translate(-50%, -190%) scale(2.1); }
+  58%  { opacity: 1; transform: translate(-50%, -50%) scale(0.92); }
+  78%  { transform: translate(-50%, -50%) scale(1.06); }
   100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-
-/* 平行四边形：右 → 中 → 铺满整屏 */
-.li-shape {
-  position: absolute; left: 50%; top: 50%;
-  width: 64vw; height: 38vh;
-  margin: -19vh 0 0 -32vw;
-  background: rgba(30, 30, 30, 0.9);
-  background-size: cover; background-position: center;
-  filter: blur(20px) brightness(0.5);
-      transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
 }
