@@ -2078,6 +2078,13 @@ body::after {
 .ld-bg-static {
   filter: brightness(0.5);
 }
+/*
+  加载界面本身永远不做 screenFadeIn：它是全屏视图，从转场铺满之后出现，
+  带着 translateX(24px) 位移淡入会和转场接不上（看起来就是"又从右往左淡了一下"）。
+  这条不依赖 skipScreenAnim 的时序，任何路径进加载界面都直接生效。
+*/
+.ld-screen { animation: none !important; }
+
 .ld-overlay {
   position: absolute; inset: 0;
   background: rgba(0,0,0,0.18);
