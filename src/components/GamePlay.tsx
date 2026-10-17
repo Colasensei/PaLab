@@ -1270,7 +1270,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             if (reachedLineInAuto) {
               if (!autoFxRef.current.has(note.id)) {
                 autoFxRef.current.add(note.id);
-                ballFxRef.current.push({ track: note.track, color: '#FFD700', time: performance.now() });
+                ballFxRef.current.push({ track: note.track, color: '#00E29F', time: performance.now() });
               }
               continue;
             }
@@ -1639,7 +1639,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
         <span className="hud-song-name">{config.songFileName || (lang === 'zh' ? '未命名' : 'Untitled')}</span>
         <span className="hud-song-diff">
           Lv.{config.chartConstant.toFixed(1)}&nbsp;
-          <span style={{ color: getDiffColor(constantToDifficulty(config.chartConstant)) }}>
+          <span style={{ color: 'rgba(255,255,255,0.62)' }}>
             {constantToDifficulty(config.chartConstant)}
           </span>
         </span>
@@ -1768,12 +1768,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       {/* 暂停遮罩 */}
       {paused && state.pauseRewind <= 0 && (
         <div className="pause-overlay" onPointerDown={e => e.stopPropagation()}>
-          <div className="glass-panel pause-panel" style={{ minWidth: pausePanelMaxW, minHeight: pausePanelMinH }}>
-            <h2 style={{ fontSize: pauseTitleFontSize }}>{lang === 'zh' ? '暂停' : 'PAUSED'}</h2>
-            <div className="pause-buttons">
-              <button className="pause-sym-btn pause-sym-resume" onClick={handleResume} title={lang === 'zh' ? '继续' : 'Resume'}>▶</button>
-              <button className="pause-sym-btn pause-sym-retry" onClick={handleRetry} title={lang === 'zh' ? '重试' : 'Retry'}>⟳</button>
-              <button className="pause-sym-btn pause-sym-quit" onClick={handleQuit} title={t('quit', lang)}>✕</button>
+          <div className="pause-inner">
+            <div className="pause-label">{lang === 'zh' ? '暂停' : 'PAUSED'}</div>
+            <div className="pause-menu">
+              <button className="pause-item" onClick={handleResume}>{lang === 'zh' ? '继续' : 'Resume'}</button>
+              <button className="pause-item" onClick={handleRetry}>{lang === 'zh' ? '重试' : 'Retry'}</button>
+              <button className="pause-item pause-item-quit" onClick={handleQuit}>{t('quit', lang)}</button>
             </div>
           </div>
         </div>
@@ -1841,7 +1841,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
       {/* 完成动画 — 从底部飞出大字 */}
       {state.isFinished && (
-        <div className="game-finish-text">
+        <div className={`game-finish-text${!state.hasBreak && !state.hasGood ? ' is-ap' : !state.hasBreak ? ' is-fc' : ''}`}>
           {state.hasBreak || state.hasGood ? (state.hasBreak ? 'COMPLETE' : 'FULL COMBO') : 'ALL PERFECT'}
         </div>
       )}

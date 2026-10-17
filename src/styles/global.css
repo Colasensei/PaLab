@@ -233,7 +233,7 @@
   --danger: #FF5555;
   --success: #66DD66;
   --warning: #FFBB33;
-  --phi: #FFD700;
+  --phi: #00E29F;
   --v-color: #AAAAAA;
   --s-color: #AAAAAA;
   --a-color: #66DD66;
@@ -2034,7 +2034,7 @@ body::after {
 .high-score-value {
   font-size: 20px;
   font-weight: 700;
-  color: #FFD700;
+  color: #00E29F;
   flex: 1;
 }
 
@@ -2309,7 +2309,7 @@ body::after {
 
 .double-icon {
   background: transparent;
-  border: 2px solid #FFD700;
+  border: 2px solid #00E29F;
   box-shadow: 0 0 8px 2px rgba(255, 215, 0, 0.5);
 }
 
@@ -2419,7 +2419,7 @@ body::after {
 /* 左上暂停 — 极小 */
 .hud-left {
   position: absolute;
-  top: 12px;
+  top: 10px;
   left: 14px;
   z-index: 20;
   display: flex;
@@ -2429,20 +2429,31 @@ body::after {
 
 .btn-pause {
   position: relative;
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 7px 2px 7px 14px;
+  padding: 6px 0 7px;
   background: none;
   border: none;
   border-radius: 0;
   font-family: var(--font-hud);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 6px;
-  color: rgba(255, 255, 255, 0.62);
+  letter-spacing: 5px;
+  color: rgba(255, 255, 255, 0.42);
   cursor: pointer;
   user-select: none;
-  transition: color 0.18s ease, letter-spacing 0.18s ease;
+  transition: color 0.2s ease, letter-spacing 0.2s ease;
 }
+.btn-pause::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 0; height: 1px;
+  background: #00E29F;
+  transition: width 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.btn-pause:hover { color: #fff; letter-spacing: 6px; }
+.btn-pause:hover::after { width: 100%; }
+.btn-pause:active { color: #00E29F; }
+.btn-pause:active::after { width: 100%; }
 .btn-pause::before {
   content: '';
   position: absolute;
@@ -2561,7 +2572,7 @@ body::after {
 /* 中上 Combo */
 .hud-center {
   position: absolute;
-  top: 8px;
+  top: 10px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
@@ -2578,6 +2589,7 @@ body::after {
 
 .hud-score {
   font-family: var(--font-hud);
+  text-align: right;
   font-size: 20px;
   font-weight: 600;
   color: rgba(255,255,255,0.7);
@@ -2749,12 +2761,12 @@ body::after {
 
 .note.double {
   animation: doubleNoteBorder 0.35s ease-in-out infinite alternate;
-  outline-color: #FFD700 !important;
+  outline-color: #00E29F !important;
 }
 
 @keyframes doubleNoteBorder {
-  from { outline-color: rgba(255,215,0,0.3) !important; outline-offset: 2px; }
-  to   { outline-color: #FFD700 !important; outline-offset: 4px; }
+  from { outline-color: rgba(0,226,159,0.28) !important; outline-offset: 2px; }
+  to   { outline-color: #00E29F !important; outline-offset: 4px; }
 }
 
 /* Bad/Miss 音符变红消失 */
@@ -2906,7 +2918,7 @@ body::after {
   font-size: 72px;
   color: #FFD700;
   animation: retryBounce 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  text-shadow: 0 0 40px rgba(255,215,0,0.5);
+  text-shadow: 0 0 40px rgba(0,226,159,0.45);
 }
 @keyframes retryBounce {
   0%   { transform: translateY(100vh) scale(0.3); opacity: 0; }
@@ -2921,107 +2933,70 @@ body::after {
 .pause-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(4, 6, 8, 0.74);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
-  animation: pauseFadeIn 0.3s ease-out;
+  animation: pauseFadeIn 0.18s ease-out;
 }
-
 @keyframes pauseFadeIn {
-  from { opacity: 0; backdrop-filter: blur(0px); transform: scale(0.95); }
-  to { opacity: 1; backdrop-filter: blur(8px); transform: scale(1); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-.pause-panel {
-  animation: pausePanelIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+.pause-inner {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 280px;
-  min-height: 200px;
+  align-items: flex-start;
+  gap: 28px;
+  min-width: 168px;
 }
-
-@keyframes pausePanelIn {
-  from { opacity: 0; transform: translateY(20px) scale(0.9); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+.pause-label {
+  font-family: var(--font-hud);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  padding-left: 2px;
 }
-
-.pause-panel h2 {
-  font-size: 32px;
-  margin-bottom: 20px;
-  letter-spacing: 8px;
-  text-align: center;
-}
-
-.pause-buttons {
+.pause-menu {
   display: flex;
-  flex-direction: row;
-  gap: 24px;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
 }
-
-/* 暂停面板纯符号按钮 */
-.pause-sym-btn {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.04);
-  color: var(--text-primary);
-  font-size: 28px;
+.pause-item {
+  position: relative;
+  width: 100%;
+  padding: 12px 0 12px 14px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  font-family: var(--font-hud);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  font-family: var(--font-main);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  transition: color 0.18s ease, letter-spacing 0.18s ease;
 }
-.pause-sym-btn:hover {
-  transform: scale(1.12);
-  border-color: rgba(255,255,255,0.35);
-  background: rgba(255,255,255,0.1);
+.pause-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  width: 2px; height: 0;
+  transform: translateY(-50%);
+  background: #00E29F;
+  transition: height 0.18s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.pause-sym-btn:active {
-  transform: scale(0.94);
-  transition: all 0.08s;
-}
-.pause-sym-resume {
-  color: #FFD700;
-  border-color: rgba(255,215,0,0.3);
-  box-shadow: 0 0 20px rgba(255,215,0,0.12);
-}
-.pause-sym-resume:hover {
-  border-color: rgba(255,215,0,0.55);
-  box-shadow: 0 0 36px rgba(255,215,0,0.22);
-}
-.pause-sym-retry {
-  color: #6BC5FF;
-  border-color: rgba(107,197,255,0.3);
-  box-shadow: 0 0 20px rgba(107,197,255,0.12);
-}
-.pause-sym-retry:hover {
-  border-color: rgba(107,197,255,0.55);
-  box-shadow: 0 0 36px rgba(107,197,255,0.22);
-}
-.pause-sym-quit {
-  color: #FF6B6B;
-  border-color: rgba(255,107,107,0.3);
-  box-shadow: 0 0 20px rgba(255,107,107,0.12);
-}
-.pause-sym-quit:hover {
-  border-color: rgba(255,107,107,0.55);
-  box-shadow: 0 0 36px rgba(255,107,107,0.22);
-}
+.pause-item:hover { color: #fff; letter-spacing: 5px; }
+.pause-item:hover::before { height: 60%; }
+.pause-item-quit:hover { color: #C98A8A; }
+.pause-item-quit:hover::before { background: #C98A8A; }
 
-/* 恢复倒计时覆层 */
 .rewind-overlay {
   position: fixed;
   inset: 0;
@@ -4082,26 +4057,29 @@ body::after {
 /* ─── 歌曲完成飞字动画 ─── */
 .game-finish-text {
   position: absolute;
-  bottom: 10%;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 48px;
-  font-weight: 900;
-  letter-spacing: 8px;
-  color: #FFD700;
-  text-shadow: 0 0 40px rgba(255,215,0,0.6), 0 0 80px rgba(255,215,0,0.3);
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-hud);
+  font-size: clamp(38px, 8.5vw, 92px);
+  font-weight: 800;
+  letter-spacing: 10px;
+  color: #fff;
   z-index: 200;
-  animation: finishFly 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   pointer-events: none;
   white-space: nowrap;
+  animation: finishSlam 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.game-finish-text.is-ap { color: #00E29F; }
+.game-finish-text.is-fc { color: #5B9DFF; }
+@keyframes finishSlam {
+  0%   { opacity: 0; transform: scale(3.4); letter-spacing: 46px; }
+  52%  { opacity: 1; transform: scale(0.93); letter-spacing: 10px; }
+  76%  { transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
-@keyframes finishFly {
-  0% { opacity: 0; transform: translateX(-50%) translateY(60px); }
-  15% { opacity: 1; transform: translateX(-50%) translateY(0); }
-  75% { opacity: 1; transform: translateX(-50%) translateY(-30px); }
-  100% { opacity: 0; transform: translateX(-50%) translateY(-100px); }
-}
 
 .hud-acc {
   font-family: var(--font-hud);
@@ -8076,3 +8054,6 @@ body::after {
   78%  { transform: translate(-50%, -50%) scale(1.06); }
   100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
+
+/* 通过加载转场进场时，跳过 screen-stack 的位移淡入，避免与转场打架 */
+.screen-stack.no-anim .screen-layer { transition: none !important; }

@@ -235,6 +235,8 @@ const App: React.FC = () => {
   /** 进入加载界面前的转场：在**当前界面**上飞入平行四边形，铺满后再切到加载界面 */
   const introNextRef = useRef<(() => void) | null>(null);
   const [loadingIntro, setLoadingIntro] = useState<{ level: number; bg: string | null } | null>(null);
+  /** 通过转场进场时跳过页面切换动画，避免和转场打架 */
+  const [skipScreenAnim, setSkipScreenAnim] = useState(false);
   const beginLoadingIntro = useCallback((level: number, bg: string | null, after: () => void) => {
     introNextRef.current = after;
     setLoadingIntro({ level, bg });
@@ -246,7 +248,10 @@ const App: React.FC = () => {
     fn?.();
   }, []);
   /** 淡出完毕，卸载转场 */
-  const finishLoadingIntro = useCallback(() => setLoadingIntro(null), []);
+  const finishLoadingIntro = useCallback(() => {
+    setLoadingIntro(null);
+    window.setTimeout(() => setSkipScreenAnim(false), 80);
+  }, []);
 
   const toPlayableVideoUrl = useCallback(async (url?: string | null): Promise<string | undefined> => {
     if (!url) return undefined;
@@ -1091,7 +1096,7 @@ const App: React.FC = () => {
 
       {/* ── Records 系统已移至独立页面 ── */}
 
-      <div className="screen-stack">
+      <div className={`screen-stack${skipScreenAnim ? ' no-anim' : ''}`}>
         {screenStack.map((s, i) => {
           const isFront = i === screenStack.length - 1;
           const isSingle = screenStack.length === 1;
