@@ -12,6 +12,39 @@ import React, { useEffect, useRef, useState } from 'react';
  *   - 黑底彻底透明后再过一小会儿才卸载这一份，交接时两者像素一致，等于没切。
  */
 
+/**
+ * 启动动画配音：public 下有三组各 4 个变体的 wav，对应动画的三个阶段。
+ * 每次启动时每组各随机挑一个播放，这样每次开头的念白都不完全一样。
+ */
+const SPLASH_VOICES = {
+  page: [
+    'pagestudio_12000_50_0.7_euler_rmvpe_0key_v=0.wav',
+    'pagestudio_14000_50_0.7_euler_rmvpe_0key_v=0.wav',
+    'pagestudio_28000_50_0.7_euler_rmvpe_0key_v=0.wav',
+    'pagestudio_30000_50_0.7_euler_rmvpe_0key_v=0.wav',
+  ],
+  mark: [
+    'atomusic_12000_50_0.7_euler_rmvpe_0key_v=0.wav',
+    'atomusic_14000_50_0.7_euler_rmvpe_0key_v=0.wav',
+    'atomusic_28000_50_0.7_euler_rmvpe_0key_v=0.wav',
+    'atomusic_30000_50_0.7_euler_rmvpe_0key_v=0.wav',
+  ],
+  palab: [
+    'palab_12000_50_0.7_euler_rmvpe_0key_v=0.wav',
+    'palab_14000_50_0.7_euler_rmvpe_0key_v=0.wav',
+    'palab_28000_50_0.7_euler_rmvpe_0key_v=0.wav',
+    'palab_30000_50_0.7_euler_rmvpe_0key_v=0.wav',
+  ],
+} as const;
+
+type VoiceStage = keyof typeof SPLASH_VOICES;
+
+/** 从一组里随机挑一个（文件名带 = 号，做一次 URL 编码） */
+function pickVoice(stage: VoiceStage): string {
+  const list = SPLASH_VOICES[stage];
+  return encodeURI(list[Math.floor(Math.random() * list.length)]);
+}
+
 interface Props {
   onDone: () => void;
 }
@@ -56,13 +89,33 @@ export const StartupSplash: React.FC<Props> = ({ onDone }) => {
       else onDoneRef.current();
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); audioRef.current?.pause(); };
   }, []);
+
+  // 三段的配音：每段只在刚进入时播一次，不随每帧重渲染重播
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playedRef = useRef<Record<VoiceStage, boolean>>({ page: false, mark: false, palab: false });
+  const playVoice = (stage: VoiceStage) => {
+    if (playedRef.current[stage]) return;
+    playedRef.current[stage] = true;
+    try {
+      audioRef.current?.pause();
+      const a = new Audio(pickVoice(stage));
+      a.volume = 0.85;
+      audioRef.current = a;
+      // 播不了就算了，不能因为配音把启动卡住
+      a.play().catch(() => { /* 浏览器策略 / 设备静音时忽略 */ });
+    } catch { /* ignore */ }
+  };
 
   const showPage = elapsed >= T.pageStart && elapsed < T.markStart;
   const showMark = elapsed >= T.markStart && elapsed < T.palabStart;
   const showPalab = elapsed >= T.palabStart && elapsed < T.unmount;
   const fadeBlack = elapsed >= T.blackFade;
+
+  if (showPage) playVoice('page');
+  if (showMark) playVoice('mark');
+  if (showPalab) playVoice('palab');
 
   return (
     <div className="splash-root">
