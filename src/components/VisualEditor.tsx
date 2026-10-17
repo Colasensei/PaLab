@@ -583,7 +583,7 @@ export const VisualEditor: React.FC<Props> = ({ config: initialConfig, onBack, o
                   onPointerEnter={() => setHoveredNote(n.id)} onPointerLeave={() => setHoveredNote(null)}
                   onContextMenu={e => onNoteCtx(e, n.id)}
                   onTouchStart={() => onNoteTS(n.id)} onTouchEnd={onNoteTE}
-                  style={{ position: 'absolute', left: n.track * trackWidth + trackWidth / 2, top, width: trackWidth - notePadX, height: h, backgroundColor: isHold ? '#EFC96B' : '#35BFFF', borderRadius: isHold ? '4px 4px 12px 12px' : 6, opacity: n.id === hoveredNote || sel ? 1 : 0.85, cursor: 'grab', zIndex: 2, boxShadow: sel ? '0 0 0 2px #fff, 0 0 14px rgba(53,191,255,0.7)' : n.id === hoveredNote ? '0 0 12px rgba(53,191,255,0.6)' : 'none', transform: 'translateX(-50%)', transition: 'box-shadow 0.1s, opacity 0.1s', touchAction: 'none' }} />
+                  style={{ position: 'absolute', left: n.track * trackWidth + trackWidth / 2, top, width: trackWidth - notePadX, height: h, backgroundColor: isHold ? '#FFD700' : '#35BFFF', borderRadius: isHold ? '4px 4px 12px 12px' : 6, opacity: n.id === hoveredNote || sel ? 1 : 0.85, cursor: 'grab', zIndex: 2, boxShadow: sel ? '0 0 0 2px #fff, 0 0 14px rgba(53,191,255,0.7)' : n.id === hoveredNote ? '0 0 12px rgba(53,191,255,0.6)' : 'none', transform: 'translateX(-50%)', transition: 'box-shadow 0.1s, opacity 0.1s', touchAction: 'none' }} />
               );
             })}
             {/* 脑裂段标记（部分轨道反转） */}

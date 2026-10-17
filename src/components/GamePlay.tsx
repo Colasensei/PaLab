@@ -56,7 +56,7 @@ interface GamePlayProps {
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
 
 // 设计主色（整体淡色系）：完美=青，良好=蓝，失误用暗红/灰，尽量不出现浓红
-const C_PERFECT = '#EFC96B';
+const C_PERFECT = '#FFD700';
 const C_GOOD = '#5B9DFF';
 const C_BAD = '#C9484A';
 const C_MISS = '#9AA0A6';
@@ -800,7 +800,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       ? '0 0 10px rgba(255,255,255,0.3)'
       : state.hasGood
         ? '0 0 20px rgba(68,136,255,0.5)'
-        : '0 0 20px rgba(239,201,107,0.5)',
+        : '0 0 20px rgba(255,215,0,0.5)',
   };
 
   const onPressWithFX = useCallback((track: number) => {
@@ -823,7 +823,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
           // 球状皮肤：判定成功 → 音符球本身变色（Perfect 黄 / Good 蓝），画在判定线
           if (isBall) {
             const c = performance.now();
-            ballFxRef.current = [...ballFxRef.current.filter(f => c - f.time < 450), { track, color: jt === 'perfect' ? '#EFC96B' : '#4488FF', time: c }];
+            ballFxRef.current = [...ballFxRef.current.filter(f => c - f.time < 450), { track, color: jt === 'perfect' ? '#FFD700' : '#4488FF', time: c }];
           }
         }
       } else if (result.judgmentType === 'bad' && isBall) {
@@ -1270,7 +1270,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             if (reachedLineInAuto) {
               if (!autoFxRef.current.has(note.id)) {
                 autoFxRef.current.add(note.id);
-                ballFxRef.current.push({ track: note.track, color: '#EFC96B', time: performance.now() });
+                ballFxRef.current.push({ track: note.track, color: '#FFD700', time: performance.now() });
               }
               continue;
             }

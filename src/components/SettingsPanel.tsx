@@ -491,7 +491,7 @@ const LatencyPanel: React.FC<{ lang: Lang; offset: number; onSave: (o: number) =
             />
             <span style={{
               fontSize: 22, fontWeight: 800, minWidth: 64, fontVariantNumeric: 'tabular-nums',
-              color: value === 0 ? '#aaa' : value > 0 ? '#EFC96B' : '#44BBFF',
+              color: value === 0 ? '#aaa' : value > 0 ? '#FFD700' : '#44BBFF',
             }}>
               {value > 0 ? '+' : ''}{value}ms
             </span>

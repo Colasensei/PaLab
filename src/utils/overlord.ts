@@ -14,7 +14,7 @@ if (typeof window !== 'undefined') {
     _overlordRecord = record;
     console.log(
       `%c霸王模式%c ${_overlord ? 'ON' : 'OFF'}%c | 记成绩: ${_overlordRecord ? 'YES' : 'NO'}`,
-      'color:#EFC96B;font-weight:bold;', 'color:#fff;', 'color:#aaa;'
+      'color:#FFD700;font-weight:bold;', 'color:#fff;', 'color:#aaa;'
     );
     return _overlord;
   };

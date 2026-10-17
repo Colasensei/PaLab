@@ -190,7 +190,7 @@ export const SongPanel: React.FC<SongPanelProps> = ({
                   <span className="sp-adv-label">{t('timing.ms', lang)}</span>
                   <div className="sp-adv-timing">
                     <div className="sp-adv-timing-item">
-                      <span className="sp-adv-timing-letter" style={{ color: '#EFC96B' }}>P</span>
+                      <span className="sp-adv-timing-letter" style={{ color: '#FFD700' }}>P</span>
                       <input type="number" value={timeB} onChange={e => setTimeB(+e.target.value)} min={10} max={200} className="sp-adv-input" />
                     </div>
                     <div className="sp-adv-timing-item">
