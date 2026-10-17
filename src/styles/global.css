@@ -7925,6 +7925,7 @@ body::after {
 /* ═══ 进入加载界面的转场（LoadingIntro） ═══ */
 .li-root {
   position: fixed; inset: 0; z-index: 999;
+  pointer-events: auto;
   overflow: hidden;
   transition: opacity 0.3s ease;
 }
@@ -8117,7 +8118,8 @@ body::after {
    黑底和文字分两层：文字出现后不再淡出，只淡黑底，主界面 logo 与它重合即为无缝。 */
 .splash-root {
   position: fixed; inset: 0; z-index: 1200;
-  pointer-events: none;
+  /* 覆盖期间必须吃掉所有输入，否则会点穿到下面的主界面 */
+  pointer-events: auto;
   overflow: hidden;
 }
 .splash-black {
