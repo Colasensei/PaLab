@@ -30,6 +30,7 @@ import { getSavedEditorSettings } from '@/components/VisualEditor';
 import { loadAsset, ASSET_KEYS } from '@/utils/assetStore';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
 import { LoadingIntro } from '@/components/LoadingIntro';
+import { StartupSplash } from '@/components/StartupSplash';
 import { App as CapacitorApp } from '@capacitor/app';
 import '@/styles/global.css';
 
@@ -234,6 +235,7 @@ const App: React.FC = () => {
   const videoObjUrlRef = useRef<string | null>(null);
   /** 进入加载界面前的转场：在**当前界面**上飞入平行四边形，铺满后再切到加载界面 */
   const introNextRef = useRef<(() => void) | null>(null);
+  const [booting, setBooting] = useState(true);
   const [loadingIntro, setLoadingIntro] = useState<{ level: number; bg: string | null } | null>(null);
   /** 通过转场进场时跳过页面切换动画，避免和转场打架 */
   const [skipScreenAnim, setSkipScreenAnim] = useState(false);
@@ -1122,6 +1124,8 @@ const App: React.FC = () => {
       </div>
 
       {/* 进入加载界面的转场：盖在当前界面上飞入平行四边形 */}
+      {booting && <StartupSplash onDone={() => setBooting(false)} />}
+
       {loadingIntro && (
         <LoadingIntro level={loadingIntro.level} bgUrl={loadingIntro.bg} onCovered={coverLoadingIntro} onDone={finishLoadingIntro} />
       )}
