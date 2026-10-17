@@ -32,7 +32,7 @@ export const HelpScreen: React.FC<Props> = ({ lang }) => {
                 </div>
                 <p>音符从屏幕上方落下，当其到达判定线（屏幕中下部的横线）时，按下对应轨道的按键。判定分为四个等级：</p>
                 <ul>
-                  <li><b style={{ color: '#00E29F' }}>Perfect（完美）</b> — 偏差 ≤ 80ms，获得满分</li>
+                  <li><b style={{ color: '#EFC96B' }}>Perfect（完美）</b> — 偏差 ≤ 80ms，获得满分</li>
                   <li><b style={{ color: '#4488FF' }}>Good（良好）</b> — 偏差 ≤ 160ms，获得 65% 分数</li>
                   <li><b style={{ color: '#C98A8A' }}>Bad（较差）</b> — 偏差较大，不得分</li>
                   <li><b style={{ color: '#888' }}>Miss（丢失）</b> — 未按下或偏差过大</li>
@@ -63,9 +63,9 @@ export const HelpScreen: React.FC<Props> = ({ lang }) => {
                 </div>
                 <p>Hold 音符需要按住对应按键不放，直到音符尾部到达判定线。按住期间，音符的尾部会被判定线"吃掉"，并在判定线处显示金色进度环。松手时根据按住时长判定：</p>
                 <ul>
-                  <li>按住超过 78% 时长 → <b style={{ color: '#00E29F' }}>Perfect</b></li>
+                  <li>按住超过 78% 时长 → <b style={{ color: '#EFC96B' }}>Perfect</b></li>
                   <li>按住不足 78% → <b style={{ color: '#C98A8A' }}>Bad</b></li>
-                  <li>到达尾部时仍按住 → 自动 <b style={{ color: '#00E29F' }}>Perfect</b></li>
+                  <li>到达尾部时仍按住 → 自动 <b style={{ color: '#EFC96B' }}>Perfect</b></li>
                 </ul>
               </div>
 
@@ -224,7 +224,7 @@ export const HelpScreen: React.FC<Props> = ({ lang }) => {
                 <h2>Basic Gameplay</h2>
                 <p>Notes fall from the top. Press the matching key when they reach the judgment line.</p>
                 <ul>
-                  <li><b style={{ color: '#00E29F' }}>Perfect</b> — offset ≤ 80ms</li>
+                  <li><b style={{ color: '#EFC96B' }}>Perfect</b> — offset ≤ 80ms</li>
                   <li><b style={{ color: '#4488FF' }}>Good</b> — offset ≤ 160ms</li>
                   <li><b style={{ color: '#C98A8A' }}>Bad</b> — large offset</li>
                   <li><b style={{ color: '#888' }}>Miss</b> — not pressed</li>

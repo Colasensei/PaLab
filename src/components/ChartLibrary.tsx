@@ -48,7 +48,7 @@ interface Props {
 
 const getDiffStyle = (diff: string): { bg: string; fg: string } => {
   switch (diff) {
-    case 'EZ': return { bg: '#7EC8E3', fg: '#000' };
+    case 'EZ': return { bg: '#9BC8A8', fg: '#000' };
     case 'NM': return { bg: '#FFFFFF', fg: '#000' };
     case 'HD': return { bg: '#C98A8A', fg: '#000' };
     case 'IN': return { bg: '#B85C5C', fg: '#fff' };
@@ -692,7 +692,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                     <div style={{
                       fontSize: 24, fontWeight: 800, lineHeight: 1,
                       fontFamily: "'Georgia', 'Times New Roman', serif",
-                      color: chs.rating === 'AP' ? '#00E29F' : chs.rating === 'V' ? '#00E5FF' : chs.rating === 'S' ? '#FF6B6B' : '#ccc',
+                      color: chs.rating === 'AP' ? '#EFC96B' : chs.rating === 'V' ? '#00E5FF' : chs.rating === 'S' ? '#FF6B6B' : '#ccc',
                     }}>{chs.rating}</div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#aaa', marginTop: 1 }}>{chs.rks.toFixed(2)}</div>
                   </div>
@@ -875,7 +875,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                   fontSize: landscape ? 'clamp(18px,2.2vw,28px)' : 'clamp(16px,5vw,24px)',
                   fontWeight: 800,
                   fontFamily: "'Georgia', 'Times New Roman', serif",
-                  color: hs.rating === 'AP' ? '#00E29F' : hs.rating === 'V' ? '#00E5FF' : hs.rating === 'S' ? '#FF6B6B' : '#ccc',
+                  color: hs.rating === 'AP' ? '#EFC96B' : hs.rating === 'V' ? '#00E5FF' : hs.rating === 'S' ? '#FF6B6B' : '#ccc',
                   lineHeight: 1,
                 }}>{hs.rating}</span>
                 <div style={{ textAlign: 'right' }}>
@@ -929,7 +929,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                 padding: 'clamp(6px,0.8vh,10px) 10px',
               borderRadius: 6, background: i === 0 ? 'rgba(255,255,255,0.04)' : 'transparent',
             }}>
-              <span style={{ fontSize: 'clamp(18px,2.5vw,28px)', fontWeight: 800, fontFamily: "'Georgia', 'Times New Roman', serif", color: h.rating === 'AP' ? '#00E29F' : h.rating === 'V' ? '#00E5FF' : h.rating === 'S' ? '#FF6B6B' : '#888', minWidth: 'clamp(28px,4vw,40px)' }}>{h.rating}</span>
+              <span style={{ fontSize: 'clamp(18px,2.5vw,28px)', fontWeight: 800, fontFamily: "'Georgia', 'Times New Roman', serif", color: h.rating === 'AP' ? '#EFC96B' : h.rating === 'V' ? '#00E5FF' : h.rating === 'S' ? '#FF6B6B' : '#888', minWidth: 'clamp(28px,4vw,40px)' }}>{h.rating}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 'clamp(10px,1.1vw,13px)', color: '#ccc' }}>{h.score.toLocaleString()}</div>
                 <div style={{ fontSize: 'clamp(8px,0.8vw,10px)', color: '#555' }}>
@@ -998,7 +998,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
               <label className="toggle-switch"><input type="checkbox" checked={mirror} onChange={e => setMirror(e.target.checked)} /><span className="toggle-slider" /></label>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-              <span style={{ fontSize: 'clamp(9px,0.9vw,11px)', color: correctHitSound ? '#00E29F' : '#999' }}>{lang === 'zh' ? '正解音' : 'Correct SFX'}</span>
+              <span style={{ fontSize: 'clamp(9px,0.9vw,11px)', color: correctHitSound ? '#EFC96B' : '#999' }}>{lang === 'zh' ? '正解音' : 'Correct SFX'}</span>
               <label className="toggle-switch"><input type="checkbox" checked={correctHitSound} onChange={e => setCorrectHitSound(e.target.checked)} /><span className="toggle-slider" /></label>
             </div>
           </div>
