@@ -366,8 +366,8 @@ const AccuracyMarker: React.FC<{ m: { id: number; pct: number; color: string } }
   useEffect(() => { const r = requestAnimationFrame(() => setOp(0)); return () => cancelAnimationFrame(r); }, []);
   return (
     <div style={{
-      position: 'absolute', left: `${m.pct}%`, top: -3, bottom: -3, width: 2,
-      background: m.color, transform: 'translateX(-50%)', zIndex: 3,
+      position: 'absolute', left: `calc(${m.pct}% - 1.5px)`, top: -4, bottom: -4, width: 3,
+      background: m.color, zIndex: 3, borderRadius: 1,
       opacity: op, transition: 'opacity 3s linear',
     }} />
   );
@@ -430,30 +430,31 @@ const AccuracyBar: React.FC<{ lastOffset: number; lastColor?: string; scale?: nu
       bottom: 'clamp(28px, 3.5vh, 42px)',
       left: '50%',
       transform: 'translateX(-50%)',
-      width: 'clamp(140px, 20vw, 280px)',
+      width: 'clamp(190px, 48vw, 400px)',
       zIndex: 20,
       zoom: scale,
     }}>
       {/* 一条横线贯穿全宽；分区只用细竖线分隔，不再铺色块 */}
-      <div style={{ position: 'relative', width: '100%', height: 20 }}>
+      <div style={{ position: 'relative', width: '100%', height: 22 }}>
         <div style={{
           position: 'absolute', left: 0, right: 0, top: '50%',
-          height: 1.5, transform: 'translateY(-50%)',
-          background: 'rgba(255,255,255,0.30)',
+          height: 2, transform: 'translateY(-50%)', borderRadius: 1,
+          background: 'rgba(255,255,255,0.52)',
         }} />
-        {/* 分区竖线：Bad | Good | Perfect | Good | Bad */}
+        {/* 分区竖线：Bad | Good | Perfect | Good | Bad
+            用 calc 把左边缘对齐到整数像素，避免窄屏时 1px 落在半像素上忽粗忽细 */}
         {[redL_end, yellowL_end, greenR_end, yellowR_end].map(p => (
           <div key={p} style={{
-            position: 'absolute', left: `${p}%`, top: '50%',
-            width: 1, height: 9, transform: 'translate(-50%, -50%)',
-            background: 'rgba(255,255,255,0.16)',
+            position: 'absolute', left: `calc(${p}% - 1px)`, top: '50%',
+            width: 2, height: 10, transform: 'translateY(-50%)',
+            background: 'rgba(255,255,255,0.34)',
           }} />
         ))}
         {/* 中分线（正中，略高一点） */}
         <div style={{
-          position: 'absolute', left: '50%', top: '50%',
-          width: 1.5, height: 14, transform: 'translate(-50%, -50%)',
-          background: 'rgba(255,255,255,0.55)', zIndex: 2,
+          position: 'absolute', left: 'calc(50% - 1px)', top: '50%',
+          width: 2, height: 16, transform: 'translateY(-50%)',
+          background: 'rgba(255,255,255,0.82)', zIndex: 2,
         }} />
         {/* 每次打击的竖线（3 秒渐隐） */}
         {markers.map(m => <AccuracyMarker key={m.id} m={m} />)}
