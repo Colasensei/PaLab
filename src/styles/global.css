@@ -5616,15 +5616,7 @@ body::after {
 .cl2-list-title { font-size: 17px; font-weight: 700; letter-spacing: 3px; color: var(--text-primary); margin: 0; }
 
 /* ── 排序按钮 ── */
-.cl2-sort {
-  display: flex; gap: 3px; flex-wrap: wrap; align-items: center;
-  position: sticky; top: 0; z-index: 20;
-  margin: 0 -2px 8px; padding: 8px 2px;
-  background: rgba(12, 12, 16, 0.55);
-  backdrop-filter: blur(16px) saturate(130%);
-  -webkit-backdrop-filter: blur(16px) saturate(130%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
+.cl2-sort { display: flex; gap: 3px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
 .cl2-sort-btn {
   padding: 3px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);
   background: transparent; color: #555; font-size: 10px;
