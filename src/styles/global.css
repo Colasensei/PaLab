@@ -8130,11 +8130,23 @@ body::after {
 .splash-page {
   position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
+  display: flex; align-items: baseline; justify-content: center;
+  gap: 0.3em;
+  white-space: nowrap;
   font-family: var(--font-hud);
   font-size: clamp(20px, 4.6vw, 40px);
   font-weight: 600;
   color: #fff;
   animation: splashPage 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* 竖屏：PAGE / Studio 分两行 */
+@media (orientation: portrait) {
+  .splash-page {
+    flex-direction: column;
+    gap: 0.06em;
+    align-items: center;
+    text-align: center;
+  }
 }
 @keyframes splashPage {
   0%   { opacity: 0; transform: translate(-50%, -50%) translateY(6px); letter-spacing: 16px; }

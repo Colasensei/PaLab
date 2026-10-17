@@ -69,7 +69,7 @@ export const StartupSplash: React.FC<Props> = ({ onDone }) => {
       {/* 黑底单独一层：只让它淡，字不跟着淡 */}
       <div className={`splash-black${fadeBlack ? ' splash-black-out' : ''}`} />
 
-      {showPage && <div className="splash-page">PAGE Studio</div>}
+      {showPage && <div className="splash-page"><span>PAGE</span><span>Studio</span></div>}
       {showMark && <img className="splash-mark" src="xWhite.png" alt="" />}
 
       {showPalab && (
