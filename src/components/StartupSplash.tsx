@@ -89,23 +89,61 @@ export const StartupSplash: React.FC<Props> = ({ onDone }) => {
       else onDoneRef.current();
     };
     raf = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(raf); audioRef.current?.pause(); };
+    return () => { cancelAnimationFrame(raf); };
   }, []);
 
-  // 三段的配音：每段只在刚进入时播一次，不随每帧重渲染重播
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // ── 配音 ──
+  // 挂载时就把三段各自随机选好的文件预加载好（preload），
+  // 到时间点再 play()，否则临时 new Audio() 要现下载解码，容易错过时间点。
+  const voicesRef = useRef<Record<VoiceStage, HTMLAudioElement> | null>(null);
   const playedRef = useRef<Record<VoiceStage, boolean>>({ page: false, mark: false, palab: false });
+  /** 被自动播放策略挡下的段：等用户第一次点击/按键时补播 */
+  const blockedRef = useRef<VoiceStage[]>([]);
+
+  useEffect(() => {
+    const stages: VoiceStage[] = ['page', 'mark', 'palab'];
+    const made = {} as Record<VoiceStage, HTMLAudioElement>;
+    stages.forEach(s => {
+      const a = new Audio(pickVoice(s));
+      a.preload = 'auto';
+      a.volume = 0.85;
+      try { a.load(); } catch { /* ignore */ }
+      made[s] = a;
+    });
+    voicesRef.current = made;
+
+    // 浏览器不允许无交互自动播放时，第一次交互补播还没播的段
+    const unlock = () => {
+      const list = blockedRef.current.splice(0);
+      list.forEach(s => {
+        const a = made[s];
+        if (!a) return;
+        try { a.currentTime = 0; a.play().catch(() => {}); } catch { /* ignore */ }
+      });
+    };
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+      stages.forEach(s => { try { made[s]?.pause(); } catch { /* ignore */ } });
+    };
+  }, []);
+
   const playVoice = (stage: VoiceStage) => {
     if (playedRef.current[stage]) return;
     playedRef.current[stage] = true;
-    try {
-      audioRef.current?.pause();
-      const a = new Audio(pickVoice(stage));
-      a.volume = 0.85;
-      audioRef.current = a;
-      // 播不了就算了，不能因为配音把启动卡住
-      a.play().catch(() => { /* 浏览器策略 / 设备静音时忽略 */ });
-    } catch { /* ignore */ }
+    const a = voicesRef.current?.[stage];
+    if (!a) return;
+    const p = a.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch((err: unknown) => {
+        // 多半是自动播放被拦（NotAllowedError）：记下来等首次交互补播
+        console.warn('[splash] 配音播放被拦截:', stage, err);
+        blockedRef.current.push(stage);
+      });
+    }
   };
 
   const showPage = elapsed >= T.pageStart && elapsed < T.markStart;
