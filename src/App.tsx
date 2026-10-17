@@ -237,12 +237,16 @@ const App: React.FC = () => {
   const [loadingIntro, setLoadingIntro] = useState<{ level: number; bg: string | null } | null>(null);
   /** 通过转场进场时跳过页面切换动画，避免和转场打架 */
   const [skipScreenAnim, setSkipScreenAnim] = useState(false);
+  /** 本次加载界面是从转场进来的：不播 screenFadeIn */
+  const [enteredViaTransition, setEnteredViaTransition] = useState(false);
   const beginLoadingIntro = useCallback((level: number, bg: string | null, after: () => void) => {
     introNextRef.current = after;
     setLoadingIntro({ level, bg });
   }, []);
   /** 平行四边形铺满的瞬间切到加载界面（必须在这里切，不能等淡出完，否则淡出露出的是原界面） */
   const coverLoadingIntro = useCallback(() => {
+    setSkipScreenAnim(true);
+    setEnteredViaTransition(true);
     const fn = introNextRef.current;
     introNextRef.current = null;
     fn?.();
@@ -349,6 +353,7 @@ const App: React.FC = () => {
 
   /** 页面加载完成：跳转到目标页面 */
   const handlePageLoadingComplete = useCallback(() => {
+    setEnteredViaTransition(false);
     const target = pageLoading;
     setPageLoading(null);
     setPageLoadingBg(null);
@@ -712,6 +717,7 @@ const App: React.FC = () => {
   }, [config, duration, navigateTo, fromEditor, chartSource, settings.gameBgBlur, beginLoadingIntro]);
 
   const handleLoadingComplete = useCallback(() => {
+    setEnteredViaTransition(false);
     gameStartTimeRef.current = performance.now();
     navigateTo('gameplay');
   }, [navigateTo]);
@@ -1011,9 +1017,9 @@ const App: React.FC = () => {
       case 'song-panel':
         return <SongPanel config={config} highScore={highScore} highPP={highPP} highRating={highRating} history={history} onStart={handleStart} onClearConfig={handleClearConfig} onConfigChange={handleConfigChange} onBack={navigateBack} onSettings={goToSettings} lang={lang} isTrial={isTrial} keyBindings={settings.keyBindings} />;
       case 'page-loading':
-        return <LoadingScreen onComplete={handlePageLoadingComplete} lang={lang} chartInfo={null} uiBlur={effectiveUiBlur} coverOverride={pageLoadingBg?.bg ?? null} pageTitle={pageLoadingLabel} />;
+        return <LoadingScreen noEnterAnim={enteredViaTransition} onComplete={handlePageLoadingComplete} lang={lang} chartInfo={null} uiBlur={effectiveUiBlur} coverOverride={pageLoadingBg?.bg ?? null} pageTitle={pageLoadingLabel} />;
       case 'loading':
-        return <LoadingScreen onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={effectiveUiBlur} task={loadingTaskRef.current} mlLearning={!!config.machineLearning} />;
+        return <LoadingScreen noEnterAnim={enteredViaTransition} onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={effectiveUiBlur} task={loadingTaskRef.current} mlLearning={!!config.machineLearning} />;
       case 'gameplay':
         return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={effectiveUiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} showFPS={settings.showFPS ?? false} keyBindings={settings.keyBindings} gameUiScale={settings.gameUiScale} videoBg={settings.videoBg ?? true} holdGradient={settings.holdGradient ?? true} skin={settings.skin ?? 'standard'} gameBgBlur={settings.gameBgBlur ?? true} renderScale={settings.renderScale ?? 1} edgeTrackTint={settings.edgeTrackTint ?? false} />;
       case 'results':

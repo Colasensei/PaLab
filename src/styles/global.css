@@ -421,7 +421,7 @@ body::after {
   align-items: center;
   gap: 6px;
   background: none;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 4px 12px;
   color: var(--accent);
@@ -467,7 +467,7 @@ body::after {
   background: rgba(10, 10, 25, 0.9);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0 0 16px 16px;
   box-shadow: 0 12px 48px rgba(0,0,0,0.6);
   animation: recordsSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1312,7 +1312,7 @@ body::after {
   padding: 12px 16px;
   background: rgba(0,0,0,0.6);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   margin-bottom: 8px;
   font-size: 12px;
@@ -1534,7 +1534,7 @@ body::after {
   background: rgba(15,15,30,0.9);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 12px 48px rgba(0,0,0,0.6);
@@ -2083,7 +2083,7 @@ body::after {
   带着 translateX(24px) 位移淡入会和转场接不上（看起来就是"又从右往左淡了一下"）。
   这条不依赖 skipScreenAnim 的时序，任何路径进加载界面都直接生效。
 */
-.ld-screen { animation: none !important; }
+.ld-screen.no-enter { animation: none !important; }
 
 .ld-overlay {
   position: absolute; inset: 0;
@@ -2506,7 +2506,7 @@ body::after {
 
 .topbar-back {
   width: auto; height: 32px; border-radius: 8px; padding: 0 10px;
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: none; font-size: 13px; margin-right: 0; flex-shrink: 0;
 }
 .topbar-back:hover { transform: scale(1.08); background: rgba(255,255,255,0.1); }
@@ -3759,7 +3759,7 @@ body::after {
   background: rgba(10, 10, 25, 0.35);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   text-align: left;
   font-size: 13px;
@@ -3808,7 +3808,7 @@ body::after {
 
 .donate-modal {
   width: 420px; max-width: 92vw; max-height: 80vh;
-  background: #151525; border: 1px solid rgba(255,255,255,0.08);
+  background: #151525; border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;
 }
 
@@ -4187,7 +4187,7 @@ body::after {
   width: 100%;
   padding: 10px 14px;
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   color: white;
   font-size: 15px;
@@ -4307,7 +4307,7 @@ body::after {
   display: inline-block;
   padding: 10px 18px;
   background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   color: var(--text-secondary);
   font-size: 13px;
@@ -4334,7 +4334,7 @@ body::after {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255,255,255,0.03);
   color: var(--text-secondary);
   cursor: pointer;
@@ -4416,7 +4416,7 @@ body::after {
   width: 72px;
   padding: 7px 10px;
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   color: white;
   font-size: 15px;
@@ -4709,7 +4709,7 @@ body::after {
   display: inline-block;
   padding: 8px 16px;
   background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   color: var(--text-secondary);
   font-size: 12px;
@@ -4806,7 +4806,7 @@ body::after {
 /* 素材修复返回按钮 */
 .st-back-btn {
   background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   color: var(--text-secondary);
   font-size: 13px;
@@ -4848,7 +4848,7 @@ body::after {
 
 .lc-btn {
   padding: 4px 10px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   background: rgba(255,255,255,0.03);
   color: var(--text-secondary);
@@ -5077,7 +5077,7 @@ body::after {
 
 .lc-back-btn {
   padding: 8px 20px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
@@ -5192,7 +5192,7 @@ body::after {
   align-items: center;
   gap: 6px;
   background: rgba(10,10,25,0.5);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   padding: 4px 12px 4px 4px;
   color: var(--accent);
@@ -5633,14 +5633,14 @@ body::after {
 .cl2-favonly { position: relative; display: inline-flex; align-items: center; gap: 6px; margin-left: auto; cursor: pointer; user-select: none; }
 .cl2-favonly input { position: absolute; opacity: 0; width: 0; height: 0; }
 .cl2-favonly-box { width: 15px; height: 15px; border: 1.5px solid rgba(255,255,255,0.32); border-radius: 4px; background: transparent; position: relative; flex-shrink: 0; transition: all 0.15s; box-sizing: border-box; }
-.cl2-favonly input:checked + .cl2-favonly-box { background: #FFFFFF; border-color: #FFFFFF; box-shadow: none; }
+.cl2-favonly input:checked + .cl2-favonly-box { background: #FFD700; border-color: #FFD700; box-shadow: 0 0 6px rgba(255,215,0,0.35); }
 .cl2-favonly-box::after { content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #111; border-width: 0 2px 2px 0; transform: rotate(45deg); opacity: 0; transition: opacity 0.15s; box-sizing: border-box; }
 .cl2-favonly input:checked + .cl2-favonly-box::after { opacity: 1; }
 .cl2-favonly-label { color: rgba(255,255,255,0.6); font-size: 10px; letter-spacing: 1px; }
 /* 喜爱星标 */
 .cl2-fav { color: rgba(255,255,255,0.28); font-size: 15px; cursor: pointer; flex-shrink: 0; line-height: 1; user-select: none; transition: color 0.15s, transform 0.15s; }
 .cl2-fav:hover { color: rgba(255,215,0,0.8); transform: scale(1.15); }
-.cl2-fav.on { color: #FFFFFF; }
+.cl2-fav.on { color: #FFD700; }
 .cl2-fav-lg { font-size: 22px; }
 
 /* ── 列表项 ── */
@@ -6263,8 +6263,8 @@ body::after {
   display: flex; align-items: center; justify-content: center;
 }
 .cp-disclaimer {
-  width: 420px; max-width: 92vw; background: #1a1a2e;
-  border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
+  width: 420px; max-width: 92vw; background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
   padding: 24px; display: flex; flex-direction: column; gap: 16px;
 }
 .cp-disclaimer-title { font-size: 16px; font-weight: 700; letter-spacing: 2px; color: var(--warning); text-align: center; }
@@ -6490,7 +6490,7 @@ body::after {
 }
 .mr-dialog {
   width: 360px; max-width: 90vw; padding: 24px;
-  background: #1a1a2e; border: 1px solid rgba(255,255,255,0.08);
+  background: #0d0d0d; border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px; display: flex; flex-direction: column; gap: 16px;
 }
 .mr-dialog-text {
@@ -6595,7 +6595,7 @@ body::after {
 }
 .eula-modal {
   width: 560px; max-width: 94vw; max-height: 85vh;
-  background: #151525; border: 1px solid rgba(255,255,255,0.08);
+  background: #151525; border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px; display: flex; flex-direction: column; overflow: hidden;
 }
 .eula-title {
@@ -6746,7 +6746,7 @@ body::after {
 .ve-range { width: 100%; accent-color: #35BFFF; }
 .ve-val { font-size: 12px; color: var(--text-secondary); }
 .ve-align-row { display: flex; gap: 4px; }
-.ve-align-btn { flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); font-size: 11px; padding: 5px 0; border-radius: 4px; cursor: pointer; transition: all 0.15s; font-family: var(--font-main); }
+.ve-align-btn { flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255,255,255,0.5); font-size: 11px; padding: 5px 0; border-radius: 4px; cursor: pointer; transition: all 0.15s; font-family: var(--font-main); }
 .ve-align-btn.active { background: rgba(53,191,255,0.15); border-color: #35BFFF; color: #35BFFF; }
 .ve-align-btn:hover:not(.active) { border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
 .ve-check-label { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer; }
@@ -6773,7 +6773,7 @@ body::after {
 
 /* 弹窗 */
 .ve-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; }
-.ve-dialog { background: #151525; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 24px; max-width: 320px; text-align: center; font-size: 14px; color: #ccc; }
+.ve-dialog { background: #151525; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 24px; max-width: 320px; text-align: center; font-size: 14px; color: #ccc; }
 .ve-dialog-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
 .ve-dialog-actions .ve-btn { width: auto; padding: 8px 24px; }
 
@@ -6829,7 +6829,7 @@ body::after {
   color: var(--accent);
   text-decoration: none;
   padding: 8px 16px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   transition: all 0.2s;
 }
@@ -7155,7 +7155,7 @@ body::after {
   width: 360px;
   max-width: 92vw;
   background: rgba(20,20,40,0.95);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18px;
   overflow: hidden;
   animation: panelSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);
@@ -7757,13 +7757,13 @@ body::after {
 .mp-favonly { position: relative; display: inline-flex; align-items: center; gap: 6px; margin-left: auto; margin-right: 16px; cursor: pointer; user-select: none; }
 .mp-favonly input { position: absolute; opacity: 0; width: 0; height: 0; }
 .mp-favonly-box { width: 15px; height: 15px; border: 1.5px solid rgba(255,255,255,0.32); border-radius: 4px; background: transparent; position: relative; flex-shrink: 0; transition: all 0.15s; box-sizing: border-box; }
-.mp-favonly input:checked + .mp-favonly-box { background: #FFFFFF; border-color: #FFFFFF; box-shadow: 0 0 6px rgba(255,215,0,0.35); }
+.mp-favonly input:checked + .mp-favonly-box { background: #FFD700; border-color: #FFD700; box-shadow: 0 0 6px rgba(255,215,0,0.35); }
 .mp-favonly-box::after { content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #111; border-width: 0 2px 2px 0; transform: rotate(45deg); opacity: 0; transition: opacity 0.15s; box-sizing: border-box; }
 .mp-favonly input:checked + .mp-favonly-box::after { opacity: 1; }
 .mp-favonly-label { color: rgba(255,255,255,0.6); font-size: 11px; letter-spacing: 1px; }
 .mp-fav { color: rgba(255,255,255,0.28); font-size: 15px; cursor: pointer; flex-shrink: 0; line-height: 1; user-select: none; transition: color 0.15s, transform 0.15s; }
 .mp-fav:hover { color: rgba(255,215,0,0.8); transform: scale(1.15); }
-.mp-fav.on { color: #FFFFFF; }
+.mp-fav.on { color: #FFD700; }
 
 .mp-controls {
   border-top: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.28);

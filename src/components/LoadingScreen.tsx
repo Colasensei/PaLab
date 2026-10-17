@@ -20,9 +20,11 @@ interface Props {
   minDuration?: number;
   /** 机器学习学习进行中（显示学习进度） */
   mlLearning?: boolean;
+  /** 经加载转场进入时不播 screenFadeIn（转场已经铺满屏幕了） */
+  noEnterAnim?: boolean;
 }
 
-export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true, chartInfo, coverOverride, coverImgOverride, pageTitle, task, minDuration, mlLearning = false }) => {
+export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true, chartInfo, coverOverride, coverImgOverride, pageTitle, task, minDuration, mlLearning = false, noEnterAnim = false }) => {
   const [tip] = useState(() => getRandomTip(lang));
   const [staticBg, setStaticBg] = useState<string | null>(null);
   // 机器学习学习进度
@@ -58,7 +60,7 @@ export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="screen ld-screen">
+    <div className={`screen ld-screen${noEnterAnim ? ' no-enter' : ''}`}>
       {bgImg && (
         <div className={`ld-bg${!uiBlur && staticBg ? ' ld-bg-static' : ''}`}
           style={{ backgroundImage: `url(${!uiBlur && staticBg ? staticBg : bgImg})` }}
