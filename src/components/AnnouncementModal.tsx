@@ -31,6 +31,7 @@ export const AnnouncementModal: React.FC<Props> = ({ announcements, readSet, onC
 
   const modal = (
     <div className="ann-overlay">
+      <div className="ann-panel">
       <div className="ann-top">
         <button className="btn btn-primary ann-back" onClick={onClose} style={btnStyle}>{lang === 'zh' ? '返回' : 'Back'}</button>
         <h3 className="ann-title">{lang === 'zh' ? '公告' : 'Announcements'}</h3>
@@ -53,6 +54,7 @@ export const AnnouncementModal: React.FC<Props> = ({ announcements, readSet, onC
           </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

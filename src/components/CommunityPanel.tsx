@@ -209,6 +209,7 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
 
   const panel = (
     <div className={`cp-overlay${landscape ? ' cp-landscape' : ''}`}>
+      <div className="cp-panel">
       <div className="cp-top">
         <button className="btn btn-primary cp-back" onClick={onClose} style={btnStyle}>
           {lang === 'zh' ? '返回' : 'Back'}
@@ -301,6 +302,7 @@ export const CommunityPanel: React.FC<Props> = ({ onClose, onImported, localChar
           {renderDetail(sel)}
         </div>
       )}
+      </div>
     </div>
   );
 
