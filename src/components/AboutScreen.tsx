@@ -10,6 +10,46 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 8.0（正式版）', date: '2026-10-17',
+    items: [
+      '新增启动动画：黑屏 →「PAGE Studio」→ xWhite 图标 →「Palab」，最后的 Palab 直接落在主界面 logo 上，一镜到底无跳变',
+      '启动配音：三组各 4 个变体（pagestudio / atomusic / palab），每次启动每组随机挑一个播放',
+      '结算界面新增 RKS 提升动画：入场结束后压暗背景（开启 UI 模糊时同时模糊），数字从旧 RKS 滚到新值并显示增量',
+      '竖屏 HUD 让出摄像头挖孔 / 刘海区域（不再被顶置挖孔挡住连击），系统栏仍保持隐藏',
+      '加载转场的 LV 难度数字动画放宽到所有 AT（定数 ≥ 20）',
+      '修复启动动画覆盖期间可以点穿到主界面按钮；修复移动端转场动画闪烁',
+    ],
+  },
+  {
+    ver: 'Alpha 7.9（正式版）', date: '2026-10-17',
+    items: [
+      '进入加载界面新增平行四边形转场：在当前界面上飞入，定数 ≥ 20 时 LV 数字砸在平行四边形上，随后展开铺满成为加载界面背景',
+      '准度条改为线条式：横线贯穿 + 分区竖线 + 判定竖线，整像素对齐，修复竖屏下分隔线左右粗细不一',
+      '公告与社区界面改为叠加页面板（压暗 + 居中面板 + 发丝线），社区横屏两栏放宽；深蓝弹窗改为中性近黑',
+      '暂停按钮与暂停界面回归统一按钮体系；结束字幕改为砸向屏幕中心（AP 金 / FC 蓝 / 普通白）',
+      '配色回归金色 / 蓝 / 红 / 灰，移除青色；长条进度环金色、双押荧光白色',
+      '修复移动端谱面库滚动卡顿、列表显示成曲绘、部分挖孔屏顶部常驻状态栏',
+    ],
+  },
+  {
+    ver: 'Alpha 7.8（正式版）', date: '2026-10-17',
+    items: [
+      '难度体制重做：定数 0.0 ~ 30.0，AT 门槛下调至 20.0，新增软天花板（实际最高约 29.5）',
+      '可视化编辑器支持按时间点变速；新增 Malody .mcz 谱面导入（自动识别包内难度）',
+      '背景模糊改为加载期预生成；修复视频谱面提前播放不同步',
+      '修复 Android 平板打开视频谱面点 Start 卡死：视频改用 Blob 存储，移动端不再套实时高斯模糊',
+      '修复含视频的谱面没有视频背景、Zip 导出再导入丢失封面与曲绘、视频解码失败黑屏',
+      '加载提示重写：只保留 Papori 台词并新增 30 条实操教学',
+    ],
+  },
+  {
+    ver: 'Alpha 7.7（正式版）', date: '2026-08-15',
+    items: [
+      '设置新增「渲染分辨率」档位（原始 / 75% / 50%），仅 Android 与 Windows 桌面端生效，低端设备更流畅',
+      '手动锁定渲染分辨率后不再参与自动降档；浏览器版本不显示该选项',
+    ],
+  },
+  {
     ver: 'Alpha 7.6（正式版）', date: '2026-08-15',
     items: [
       '新增游戏皮肤（标准 / 球状）：球状皮肤窄轨道（横屏占 1/5、竖屏占 8/9）、上下双判定线、白色球音符、长条球 + 圆角矩形渐变、判定变色特效（Perfect 黄 / Good 蓝 / 提前按红）',
@@ -439,8 +479,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 7.9</div>
-      <div className="about-ver about-ver-sub">v0.7.9</div>
+      <div className="about-ver">Alpha 8.0</div>
+      <div className="about-ver about-ver-sub">v0.8.0</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
@@ -513,7 +553,7 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
       <div className="ann-top">
         <button className="btn btn-primary ann-back" onClick={onClose}>{lang === 'zh' ? '返回' : 'Back'}</button>
         <h3 className="ann-title">{lang === 'zh' ? '关于' : 'About'}</h3>
-        <span className="ann-count">Alpha 7.6</span>
+        <span className="ann-count">Alpha 8.0</span>
       </div>
       <div className="ann-list about-list">
         {/* 宽屏：双栏布局 */}
