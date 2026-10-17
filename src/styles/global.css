@@ -8113,15 +8113,66 @@ body::after {
 }
 
 
-/* ═══ 启动动画（每次进入软件一次，总长约 5.6s） ═══ */
+/* ═══ 启动动画（每次进入软件一次，总长约 5.6s） ═══
+   黑底和文字分两层：文字出现后不再淡出，只淡黑底，主界面 logo 与它重合即为无缝。 */
 .splash-root {
   position: fixed; inset: 0; z-index: 1200;
-  background: #000;
-  display: flex; align-items: center; justify-content: center;
-  transition: opacity 0.7s ease;
+  pointer-events: none;
   overflow: hidden;
 }
-.splash-root.splash-fading { opacity: 0; }
+.splash-black {
+  position: absolute; inset: 0;
+  background: #000;
+  transition: opacity 0.82s ease;
+}
+.splash-black.splash-black-out { opacity: 0; }
+
+.splash-page {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-hud);
+  font-size: clamp(20px, 4.6vw, 40px);
+  font-weight: 600;
+  color: #fff;
+  animation: splashPage 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes splashPage {
+  0%   { opacity: 0; transform: translate(-50%, -50%) translateY(6px); letter-spacing: 16px; }
+  36%  { opacity: 1; transform: translate(-50%, -50%); letter-spacing: 10px; }
+  76%  { opacity: 1; transform: translate(-50%, -50%); letter-spacing: 10px; }
+  100% { opacity: 0; transform: translate(-50%, -50%); letter-spacing: 12px; }
+}
+
+.splash-mark {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(34vh, 46vw);
+  max-width: 320px;
+  height: auto;
+  animation: splashMark 1.46s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes splashMark {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+  30%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  72%  { opacity: 1; transform: translate(-50%, -50%) scale(1.01); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.03); }
+}
+
+/* Palab：绝对定位到主界面 logo 上，逐字进场；进场后不再淡出 */
+.splash-logo {
+  position: fixed;
+  margin: 0;
+  z-index: 2;
+}
+.splash-logo .brand-char {
+  animation: splashChar 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.splash-logo .brand-char:nth-child(2) { animation-delay: 0.1s; }
+@keyframes splashChar {
+  0%   { opacity: 0; transform: translateY(12px); filter: blur(7px); }
+  100% { opacity: 1; transform: none; filter: blur(0); }
+}
+
 
 /* PAGE Studio */
 .splash-page {
@@ -8153,19 +8204,4 @@ body::after {
   100% { opacity: 0; transform: scale(1.03); }
 }
 
-/* Palab：绝对定位到主界面 logo 上，逐字进场 */
-.splash-logo {
-  position: fixed;
-  left: 0; top: 0;
-  margin: 0;
-  will-change: auto;
-}
-.splash-logo .brand-char {
-  animation: splashChar 0.46s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.splash-logo .brand-char:nth-child(2) { animation-delay: 0.09s; }
-@keyframes splashChar {
-  0%   { opacity: 0; transform: translateY(10px); filter: blur(6px); }
-  100% { opacity: 1; transform: none; filter: blur(0); }
-}
 
