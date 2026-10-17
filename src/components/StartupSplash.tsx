@@ -45,6 +45,31 @@ function pickVoice(stage: VoiceStage): string {
   return encodeURI(list[Math.floor(Math.random() * list.length)]);
 }
 
+/**
+ * 浏览器（Chrome/Edge）默认禁止「没有用户交互的有声播放」：
+ * play() 会抛 NotAllowedError。打包后的 Android / Electron 没有这个限制，
+ * 但网页版必须先有一次点击。所以把被拦下的配音排进队列，
+ * 等用户第一次按下屏幕/按键时补播——监听是模块级的，转场卸载后依然有效。
+ */
+const pendingVoices: HTMLAudioElement[] = [];
+let unlockInstalled = false;
+
+function installAudioUnlock() {
+  if (unlockInstalled) return;
+  unlockInstalled = true;
+  const unlock = () => {
+    pendingVoices.splice(0).forEach(a => {
+      try { a.currentTime = 0; a.play().catch(() => {}); } catch { /* ignore */ }
+    });
+    window.removeEventListener('pointerdown', unlock);
+    window.removeEventListener('keydown', unlock);
+    window.removeEventListener('touchstart', unlock);
+  };
+  window.addEventListener('pointerdown', unlock);
+  window.addEventListener('keydown', unlock);
+  window.addEventListener('touchstart', unlock);
+}
+
 interface Props {
   onDone: () => void;
 }
@@ -61,6 +86,8 @@ const T = {
 export const StartupSplash: React.FC<Props> = ({ onDone }) => {
   const [elapsed, setElapsed] = useState(0);
   const [rect, setRect] = useState<{ left: number; top: number } | null>(null);
+  /** 浏览器拦了自动播放：提示用户轻触一次即可出声 */
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const startRef = useRef(0);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
@@ -112,22 +139,13 @@ export const StartupSplash: React.FC<Props> = ({ onDone }) => {
     });
     voicesRef.current = made;
 
-    // 浏览器不允许无交互自动播放时，第一次交互补播还没播的段
-    const unlock = () => {
-      const list = blockedRef.current.splice(0);
-      list.forEach(s => {
-        const a = made[s];
-        if (!a) return;
-        try { a.currentTime = 0; a.play().catch(() => {}); } catch { /* ignore */ }
-      });
-    };
-    window.addEventListener('pointerdown', unlock, { once: true });
-    window.addEventListener('keydown', unlock, { once: true });
-
     return () => {
-      window.removeEventListener('pointerdown', unlock);
-      window.removeEventListener('keydown', unlock);
-      stages.forEach(s => { try { made[s]?.pause(); } catch { /* ignore */ } });
+      // 只暂停已经播完/在播的；被拦下的留在队列里等交互补播
+      stages.forEach(s => {
+        const a = made[s];
+        if (!a || pendingVoices.includes(a)) return;
+        try { a.pause(); } catch { /* ignore */ }
+      });
     };
   }, []);
 
@@ -139,8 +157,16 @@ export const StartupSplash: React.FC<Props> = ({ onDone }) => {
     const p = a.play();
     if (p && typeof p.catch === 'function') {
       p.catch((err: unknown) => {
-        // 多半是自动播放被拦（NotAllowedError）：记下来等首次交互补播
-        console.warn('[splash] 配音播放被拦截:', stage, err);
+        const name = (err as { name?: string })?.name ?? String(err);
+        if (name === 'NotAllowedError') {
+          console.warn('[splash] 配音被浏览器自动播放策略拦截，等待首次交互补播:', stage, a.src);
+          pendingVoices.push(a);
+          installAudioUnlock();
+          setAudioBlocked(true);
+        } else {
+          // 404 / 解码失败会走到这里，把地址打出来方便定位
+          console.warn('[splash] 配音播放失败:', stage, name, a.src, err);
+        }
         blockedRef.current.push(stage);
       });
     }
@@ -162,6 +188,10 @@ export const StartupSplash: React.FC<Props> = ({ onDone }) => {
 
       {showPage && <div className="splash-page"><span>PAGE</span><span>Studio</span></div>}
       {showMark && <img className="splash-mark" src="xWhite.png" alt="" />}
+
+      {audioBlocked && elapsed < T.blackFade && (
+        <div className="splash-hint">轻触屏幕以启用音效</div>
+      )}
 
       {showPalab && (
         <div

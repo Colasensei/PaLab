@@ -8188,3 +8188,16 @@ body::after {
 
 
 
+
+/* 浏览器拦截自动播放时的一次性提示 */
+.splash-hint {
+  position: absolute; left: 50%; bottom: 9%;
+  transform: translateX(-50%);
+  font-family: var(--font-hud);
+  font-size: 11px; letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.34);
+  z-index: 3;
+  animation: splashHintIn 0.4s ease-out both;
+}
+@keyframes splashHintIn { from { opacity: 0; } to { opacity: 1; } }
+
