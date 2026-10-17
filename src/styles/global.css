@@ -8174,34 +8174,5 @@ body::after {
 }
 
 
-/* PAGE Studio */
-.splash-page {
-  font-family: var(--font-hud);
-  font-size: clamp(20px, 4.6vw, 40px);
-  font-weight: 600;
-  letter-spacing: 10px;
-  color: #fff;
-  animation: splashPage 1.38s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-@keyframes splashPage {
-  0%   { opacity: 0; transform: translateY(6px); letter-spacing: 16px; }
-  38%  { opacity: 1; transform: none; letter-spacing: 10px; }
-  78%  { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-/* xWhite 图 */
-.splash-mark {
-  width: min(34vh, 46vw);
-  max-width: 320px;
-  height: auto;
-  animation: splashMark 1.44s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-@keyframes splashMark {
-  0%   { opacity: 0; transform: scale(0.94); }
-  32%  { opacity: 1; transform: scale(1); }
-  74%  { opacity: 1; transform: scale(1.01); }
-  100% { opacity: 0; transform: scale(1.03); }
-}
 
 
