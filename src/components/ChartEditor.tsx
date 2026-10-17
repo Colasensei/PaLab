@@ -187,18 +187,20 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
         const b64 = await illusFile.async('base64');
         illustrationUrl = `data:image/png;base64,${b64}`;
       }
-      let videoUrl: string | null = null;
+      // 视频以 Blob 存进谱面库（不要转 base64：几十 MB 的字符串会一直挂在 JS 堆里，
+      // 播放时还要再解一份，低端设备会直接卡死）
+      let videoBlob: Blob | null = null;
       if (videoFile) {
-        const b64 = await videoFile.async('base64');
         const vext = (videoFile.name.split('.').pop() || 'mp4').toLowerCase();
         const vMimeMap: Record<string, string> = { mp4: 'video/mp4', webm: 'video/webm', avi: 'video/x-msvideo', flv: 'video/x-flv', mov: 'video/quicktime' };
-        videoUrl = `data:${vMimeMap[vext] || 'video/mp4'};base64,${b64}`;
+        const raw = await videoFile.async('blob');
+        videoBlob = raw.type ? raw : raw.slice(0, raw.size, vMimeMap[vext] || 'video/mp4');
       }
 
       const pkg: ChartPackage = {
         fileName: name, title: info.title || 'Unknown', artist: info.artist || '', author: info.author || '',
         difficulty: info.difficulty || 'NM', chartConstant: info.chartConstant || 8.0,
-        description: info.description || '', coverUrl, illustrationUrl, songUrl, videoUrl, chartData: chartJson,
+        description: info.description || '', coverUrl, illustrationUrl, songUrl, videoUrl: null, videoBlob, chartData: chartJson,
         config: JSON.stringify(info.config || {}),
         speed: info.config?.speed ?? 5.0,
       };

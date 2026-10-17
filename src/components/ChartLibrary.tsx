@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Lang } from '@/utils/lang';
-import { loadCharts, saveCharts } from '@/utils';
+import { loadCharts, saveCharts, saveChart } from '@/utils';
 import { HighScoreRecord } from '@/types';
 import { generateBlurredBg, extractAccentColor } from '@/utils/blurImage';
 import { PREVIEW_VOLUME, PREVIEW_LOW_VOLUME, setPreviewVolume } from '@/utils/previewPlayer';
@@ -22,7 +22,9 @@ export interface ChartPackage {
   coverUrl: string | null;
   illustrationUrl: string | null;
   songUrl: string | null;
-  /** 谱面背景视频（持久化为 dataURL，可选：旧谱面无） */
+  /** 谱面背景视频。新包存 Blob（IndexedDB 原生支持），播放时再转 object URL */
+  videoBlob?: Blob | null;
+  /** 旧包遗留：视频以 base64 dataURL 存着，选中时会自动迁移成 videoBlob */
   videoUrl?: string | null;
   chartData: string;
   config: string;
@@ -84,6 +86,31 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     });
   }, []);
 
+  // ═══ 派生状态（提前声明：下面的视频迁移 effect 要用） ═══
+  const sel: ChartPackage | null = selected >= 0 ? charts[selected] : null;
+
+  /**
+   * 旧包视频迁移：把 base64 dataURL 换成 Blob 就地存回。
+   *
+   * 只在选中时迁当前这一张，避免一次性把所有视频都解出来（那样内存峰值更高）。
+   * 迁移完字符串就从 state 里消失了，播放时不再需要二次解码。
+   */
+  const migratingRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!sel || !sel.videoUrl || !sel.videoUrl.startsWith('data:')) return;
+    const key = sel.fileName;
+    if (migratingRef.current.has(key)) return;
+    migratingRef.current.add(key);
+    (async () => {
+      try {
+        const blob = await (await fetch(sel.videoUrl!)).blob();
+        const wantType = sel.videoUrl!.slice(5, sel.videoUrl!.indexOf(';')) || blob.type;
+        const upgraded: ChartPackage = { ...sel, videoUrl: null, videoBlob: blob.type ? blob : blob.slice(0, blob.size, wantType) };
+        setCharts(prev => prev.map(c => (c.fileName === key ? upgraded : c)));
+        await saveChart(upgraded);
+      } catch { /* 迁移失败就继续用旧的 base64 路径 */ }
+    })();
+  }, [sel?.fileName, sel?.videoUrl]);
   // 选曲预览：挂载 & 选中变化 → 上报 App 播放对应歌曲预览
   // 社区打开时跳过：避免导入谱面 charts 变化触发自动播放（音乐停不下来）
   // 滚动选取会让选中快速跳变，这里 debounce 一下，别一路划过去就狂加载十几首歌
@@ -140,7 +167,6 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   }, [ctxMenu]);
 
   // ═══ 派生状态 ═══
-  const sel: ChartPackage | null = selected >= 0 ? charts[selected] : null;
 
   // 音频时长
   const [songDuration, setSongDuration] = useState<number | null>(null);
@@ -274,7 +300,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     if (coverBlob) zip.file('cover.png', coverBlob);
     const illusBlob = await toBlob(c.illustrationUrl);
     if (illusBlob) zip.file('illustration.png', illusBlob);
-    const videoBlob = await toBlob(c.videoUrl ?? null);
+    const videoBlob = c.videoBlob ?? (await toBlob(c.videoUrl ?? null));
     if (videoBlob) {
       const vext = (videoBlob.type.split('/')[1] || 'mp4').split(';')[0];
       zip.file(`video.${/^[a-z0-9]{2,5}$/i.test(vext) ? vext : 'mp4'}`, videoBlob);

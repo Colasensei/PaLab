@@ -9,6 +9,7 @@ import { t, Lang } from '@/utils/lang';
 import { getDevOverride } from '@/utils/devOverrides';
 import { generateBlurredBg } from '@/utils/blurImage';
 import { getAssetUrl, loadAsset, ASSET_KEYS } from '@/utils/assetStore';
+import { isCapacitor } from '@/utils/platform';
 import { isOverlord } from '@/utils/overlord';
 import { isTrackSplit } from '@/utils/brainSplit';
 
@@ -1553,7 +1554,16 @@ export const GamePlay: React.FC<GamePlayProps> = ({
               src: String(config.videoUrl).slice(0, 48),
             });
           }}
-          style={!gameBgBlur ? { filter: 'none' } : (config.videoBlur === false ? { filter: 'brightness(0.45)' } : undefined)}
+          /**
+           * 视频背景不能套 CSS blur(15px)。
+           *
+           * 那个模糊是 .gameplay-cover-bg 的样式，静态图无所谓（而且静态背景现在
+           * 已经改成加载期预生成），但视频是**每帧都要重新做一次全屏高斯模糊**，
+           * 中低端 Android 平板直接卡死。所以移动端只用亮度压暗，不模糊。
+           */
+          style={!gameBgBlur
+            ? { filter: 'none' }
+            : (isCapacitor() || config.videoBlur === false ? { filter: 'brightness(0.45)' } : undefined)}
         />
       )}
       {/* 封面背景：有游戏内背景覆盖时用它；否则无视频（或视频放不出来）时才用谱面封面/曲绘 */}

@@ -14,7 +14,7 @@ export {
 export { audioManager, AudioManager } from './audioManager';
 export { analyzeAudio } from './audioAnalyzer';
 export type { RhythmData } from './audioAnalyzer';
-export { loadCharts, saveCharts, deleteChart } from './chartDB';
+export { loadCharts, saveCharts, saveChart, deleteChart } from './chartDB';
 export { runWithLoading, LOADING_MIN_MS, LOADING_VARIANCE_MS } from './loading';
 export { analyzeManualNotes, ensureDoubleGroups, detectDoubles, alignToBeat } from './manualAnalyzer';
 export type { AnalysisResult } from './manualAnalyzer';

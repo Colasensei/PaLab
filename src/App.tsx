@@ -852,6 +852,14 @@ const App: React.FC = () => {
     try {
       const parsedNotes: Note[] = JSON.parse(pkg.chartData);
       const infoConfig = JSON.parse(pkg.config || '{}');
+      // 视频：新包直接拿 Blob 建 object URL（不碰 base64）；旧包才回退到 dataURL 转换
+      if (pkg.videoBlob) {
+        if (videoObjUrlRef.current) URL.revokeObjectURL(videoObjUrlRef.current);
+        videoObjUrlRef.current = URL.createObjectURL(pkg.videoBlob);
+      }
+      const playableVideoUrl = pkg.videoBlob
+        ? (videoObjUrlRef.current ?? undefined)
+        : await toPlayableVideoUrl(pkg.videoUrl);
       const cfg: GameConfig = {
         ...DEFAULT_CONFIG,
         bpm: infoConfig.bpm || 120,
@@ -868,7 +876,7 @@ const App: React.FC = () => {
         splits: infoConfig.splits || undefined,
         bpmChanges: infoConfig.bpmChanges || undefined,
         beatOrigin: infoConfig.beatOrigin || undefined,
-        videoUrl: await toPlayableVideoUrl(pkg.videoUrl),
+        videoUrl: playableVideoUrl,
         videoBlur: infoConfig.videoBlur ?? true,
         videoSound: infoConfig.videoSound ?? false,
       };
