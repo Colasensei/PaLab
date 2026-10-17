@@ -2449,7 +2449,7 @@ body::after {
   left: 0; top: 50%;
   width: 2px; height: 14px;
   transform: translateY(-50%);
-  background: #3FE0E8;
+  background: #00E29F;
   opacity: 0.55;
   transition: opacity 0.18s ease, height 0.18s ease;
 }
@@ -8029,22 +8029,6 @@ body::after {
   background: rgba(0, 0, 0, 0.82);
   transition: opacity 0.24s ease;
 }
-/* 看板娘：数字砸下来的落点 */
-.li-mascot {
-  position: absolute; left: 50%; top: 50%;
-  height: 46vh; max-width: 60vw;
-  transform: translate(-50%, -46%) scale(0.94);
-  opacity: 0.92;
-  animation: liMascotIn 0.26s ease-out forwards;
-  pointer-events: none;
-}
-.li-mascot-hit { animation: liMascotHit 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both; }
-@keyframes liMascotIn {
-  from { opacity: 0; transform: translate(-50%, -44%) scale(0.9); }
-  to   { opacity: 0.92; transform: translate(-50%, -46%) scale(0.94); }
-}
-@keyframes liMascotHit {
-  0%   { transform: translate(-50%, -46%) scale(0.94); }
   45%  { transform: translate(-50%, -50%) scale(1.02); }
   70%  { transform: translate(-50%, -48%) scale(0.99); }
   100% { transform: translate(-50%, -47%) scale(1); }
@@ -8085,9 +8069,7 @@ body::after {
   margin: -19vh 0 0 -32vw;
   background: rgba(30, 30, 30, 0.9);
   background-size: cover; background-position: center;
-  filter: blur(26px) brightness(0.5);
-  transition:
-    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.3s ease;
+  filter: blur(20px) brightness(0.5);
+      transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }

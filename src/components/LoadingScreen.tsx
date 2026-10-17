@@ -4,7 +4,6 @@ import { getRandomTip } from '@/utils/tips';
 import { generateBlurredBg } from '@/utils/blurImage';
 import { runWithLoading } from '@/utils/loading';
 import { getMlProgress } from '@/utils/mlLearner';
-import { getAssetUrl, ASSET_KEYS } from '@/utils/assetStore';
 import { LoadingIntro } from './LoadingIntro';
 
 interface Props {
@@ -111,7 +110,6 @@ export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true
       {!introDone && (
         <LoadingIntro
           level={chartInfo?.chartConstant ?? 0}
-          mascotUrl={getAssetUrl(ASSET_KEYS.mascot, '')}
           bgUrl={!uiBlur && staticBg ? staticBg : bgImg}
           onDone={() => setIntroDone(true)}
         />

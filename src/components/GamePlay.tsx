@@ -56,7 +56,7 @@ interface GamePlayProps {
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
 
 // 设计主色（整体淡色系）：完美=青，良好=蓝，失误用暗红/灰，尽量不出现浓红
-const C_PERFECT = '#3FE0E8';
+const C_PERFECT = '#00E29F';
 const C_GOOD = '#5B9DFF';
 const C_BAD = '#A33A44';
 const C_MISS = '#9AA0A6';
