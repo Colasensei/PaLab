@@ -4,7 +4,6 @@ import { getRandomTip } from '@/utils/tips';
 import { generateBlurredBg } from '@/utils/blurImage';
 import { runWithLoading } from '@/utils/loading';
 import { getMlProgress } from '@/utils/mlLearner';
-import { LoadingIntro } from './LoadingIntro';
 
 interface Props {
   onComplete: () => void;
@@ -26,8 +25,6 @@ interface Props {
 export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true, chartInfo, coverOverride, coverImgOverride, pageTitle, task, minDuration, mlLearning = false }) => {
   const [tip] = useState(() => getRandomTip(lang));
   const [staticBg, setStaticBg] = useState<string | null>(null);
-  // 入场转场：高定数先砸 LV.xx，再让平行四边形铺满屏幕
-  const [introDone, setIntroDone] = useState(false);
   // 机器学习学习进度
   const [mlText, setMlText] = useState('');
   useEffect(() => {
@@ -105,15 +102,6 @@ export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true
         </div>
         {mlLearning && <div className="ld-ml">{mlText}</div>}
       </div>
-
-      {/* 入场转场：盖在加载界面之上，结束后自己淡出露出这套规范布局 */}
-      {!introDone && (
-        <LoadingIntro
-          level={chartInfo?.chartConstant ?? 0}
-          bgUrl={!uiBlur && staticBg ? staticBg : bgImg}
-          onDone={() => setIntroDone(true)}
-        />
-      )}
     </div>
   );
 };

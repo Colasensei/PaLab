@@ -29,6 +29,7 @@ import { prewarmBlurBg } from '@/utils/blurImage';
 import { getSavedEditorSettings } from '@/components/VisualEditor';
 import { loadAsset, ASSET_KEYS } from '@/utils/assetStore';
 import { AnnouncementModal } from '@/components/AnnouncementModal';
+import { LoadingIntro } from '@/components/LoadingIntro';
 import { App as CapacitorApp } from '@capacitor/app';
 import '@/styles/global.css';
 
@@ -231,6 +232,20 @@ const App: React.FC = () => {
   const loadingTaskRef = useRef<(() => Promise<void>) | undefined>(undefined);
   /** 谱面库里的视频以 data: URL 存着，播放前转成 blob: URL 才能稳定解码 */
   const videoObjUrlRef = useRef<string | null>(null);
+  /** 进入加载界面前的转场：在**当前界面**上飞入平行四边形，铺满后再切到加载界面 */
+  const introNextRef = useRef<(() => void) | null>(null);
+  const [loadingIntro, setLoadingIntro] = useState<{ level: number; bg: string | null } | null>(null);
+  const beginLoadingIntro = useCallback((level: number, bg: string | null, after: () => void) => {
+    introNextRef.current = after;
+    setLoadingIntro({ level, bg });
+  }, []);
+  const finishLoadingIntro = useCallback(() => {
+    setLoadingIntro(null);
+    const fn = introNextRef.current;
+    introNextRef.current = null;
+    fn?.();
+  }, []);
+
   const toPlayableVideoUrl = useCallback(async (url?: string | null): Promise<string | undefined> => {
     if (!url) return undefined;
     if (!url.startsWith('data:')) return url;
@@ -686,8 +701,8 @@ const App: React.FC = () => {
     loadingTaskRef.current = tasks.length > 0
       ? async () => { await Promise.all(tasks.map(t => t())); }
       : undefined;
-    navigateTo('loading');
-  }, [config, duration, navigateTo, fromEditor, chartSource, settings.gameBgBlur]);
+    beginLoadingIntro(config.chartConstant, chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null, () => navigateTo('loading'));
+  }, [config, duration, navigateTo, fromEditor, chartSource, settings.gameBgBlur, beginLoadingIntro]);
 
   const handleLoadingComplete = useCallback(() => {
     gameStartTimeRef.current = performance.now();
@@ -896,7 +911,7 @@ const App: React.FC = () => {
       const dur = await audioManager.load(pkg.songUrl);
       setDuration(dur);
       loadingTaskRef.current = undefined; // 直接加载完成，清除旧任务防止覆盖
-      navigateTo('loading');
+        beginLoadingIntro(pkg.chartConstant, pkg.illustrationUrl ?? pkg.coverUrl ?? null, () => navigateTo('loading'));
     } catch { alert(lang === 'zh' ? '谱面加载失败' : 'Chart load failed'); }
   }, [settings, navigateTo, lang]);
 
@@ -1092,6 +1107,11 @@ const App: React.FC = () => {
           );
         })}
       </div>
+
+      {/* 进入加载界面的转场：盖在当前界面上飞入平行四边形 */}
+      {loadingIntro && (
+        <LoadingIntro level={loadingIntro.level} bgUrl={loadingIntro.bg} onDone={finishLoadingIntro} />
+      )}
 
       {/* 返回键已移至顶栏 Logo 左侧 */}
 

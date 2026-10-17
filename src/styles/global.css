@@ -8019,7 +8019,7 @@ body::after {
 
 /* ═══ 进入加载界面的转场（LoadingIntro） ═══ */
 .li-root {
-  position: fixed; inset: 0; z-index: 90;
+  position: fixed; inset: 0; z-index: 999;
   overflow: hidden;
   transition: opacity 0.26s ease;
 }
