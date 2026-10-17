@@ -4,6 +4,8 @@ import { getRandomTip } from '@/utils/tips';
 import { generateBlurredBg } from '@/utils/blurImage';
 import { runWithLoading } from '@/utils/loading';
 import { getMlProgress } from '@/utils/mlLearner';
+import { getAssetUrl, ASSET_KEYS } from '@/utils/assetStore';
+import { LoadingIntro } from './LoadingIntro';
 
 interface Props {
   onComplete: () => void;
@@ -25,6 +27,8 @@ interface Props {
 export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true, chartInfo, coverOverride, coverImgOverride, pageTitle, task, minDuration, mlLearning = false }) => {
   const [tip] = useState(() => getRandomTip(lang));
   const [staticBg, setStaticBg] = useState<string | null>(null);
+  // 入场转场：高定数先砸 LV.xx，再让平行四边形铺满屏幕
+  const [introDone, setIntroDone] = useState(false);
   // 机器学习学习进度
   const [mlText, setMlText] = useState('');
   useEffect(() => {
@@ -72,7 +76,7 @@ export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true
         </div>
       )}
 
-      {/* 左侧：信息 */}
+      {/* 左上角：标题 + 定数，Tip 紧跟在下面 */}
       <div className="ld-info">
         {chartInfo ? (
           <>
@@ -86,12 +90,10 @@ export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true
         ) : (
           <div className="ld-title">{pageTitle || (lang === 'zh' ? '自由模式' : 'Free Play')}</div>
         )}
-      </div>
-
-      {/* 左下角：随机 Tip */}
-      <div className="ld-tip">
-        <span className="ld-tip-label">TIP</span>
-        <span className="ld-tip-text">{tip}</span>
+        <div className="ld-tip">
+          <span className="ld-tip-label">TIP</span>
+          <span className="ld-tip-text">{tip}</span>
+        </div>
       </div>
 
       {/* 右下角：LOADING 动画 */}
@@ -102,6 +104,16 @@ export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true
         </div>
         {mlLearning && <div className="ld-ml">{mlText}</div>}
       </div>
+
+      {/* 入场转场：盖在加载界面之上，结束后自己淡出露出这套规范布局 */}
+      {!introDone && (
+        <LoadingIntro
+          level={chartInfo?.chartConstant ?? 0}
+          mascotUrl={getAssetUrl(ASSET_KEYS.mascot, '')}
+          bgUrl={!uiBlur && staticBg ? staticBg : bgImg}
+          onDone={() => setIntroDone(true)}
+        />
+      )}
     </div>
   );
 };

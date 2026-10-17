@@ -777,6 +777,30 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
   // combo 颜色：全P金 / 有G蓝 / 断白
   const comboColor = state.hasBreak ? '#FFFFFF' : state.hasGood ? '#4488FF' : '#FFD700';
+
+  /**
+   * 双押黄色荧光：只在「点击音符 × 点击音符」的双押上画。
+   * 点击+长条、长条+长条的双押都不画——长条自带边框和渐变，
+   * 外面再套一圈荧光会把边缘糊掉。
+   */
+  const doubleGlowIds = useMemo(() => {
+    const groups = new Map<number, Note[]>();
+    for (const n of notes) {
+      if (!n.isDouble || n.doubleGroupId == null) continue;
+      const arr = groups.get(n.doubleGroupId);
+      if (arr) arr.push(n); else groups.set(n.doubleGroupId, [n]);
+    }
+    const out = new Set<number>();
+    for (const arr of groups.values()) {
+      if (arr.length < 2 || arr.some(n => n.type !== 'tap')) continue;
+      for (const n of arr) out.add(n.id);
+    }
+    // 没有分组信息的双押：只有两边都是点击音符才算
+    for (const n of notes) {
+      if (n.isDouble && n.doubleGroupId == null && n.type === 'tap') out.add(n.id);
+    }
+    return out;
+  }, [notes]);
   const comboStyle: React.CSSProperties = {
     color: comboColor,
     textShadow: state.hasBreak
@@ -1266,7 +1290,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             ctx.beginPath(); ctx.arc(cx, cy, ballR, 0, Math.PI * 2); ctx.fill();
             ctx.globalAlpha = 1;
             // 双押：黄色描边；普通：白色描边
-            const isDoubleNote = note.isDouble && showDoubleGlow && !isRed;
+            const isDoubleNote = showDoubleGlow && !isRed && doubleGlowIds.has(note.id);
             ctx.strokeStyle = isDoubleNote ? doubleGlowColor : 'rgba(255,255,255,0.18)';
             ctx.lineWidth = isDoubleNote ? 3 : 2;
             ctx.beginPath(); ctx.arc(cx, cy, ballR + 2, 0, Math.PI * 2); ctx.stroke();
@@ -1283,7 +1307,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
           ctx.globalAlpha = isRed ? 0.7 : 1;
           ctx.fillStyle = isFailed ? '#FF2222' : isRed ? '#FF3333' : isEdgeTrack(note.track) ? EDGE_NOTE_COLOR : config.noteColor;
-          const isDoubleNote = note.isDouble && showDoubleGlow && !isRed;
+          const isDoubleNote = showDoubleGlow && !isRed && doubleGlowIds.has(note.id);
           ctx.fillRect(nx, ny, noteW, nh);
           if (isDoubleNote) {
             // 双押：黄色描边（无阴影，性能友好）
@@ -1359,7 +1383,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
             ctx.beginPath(); ctx.arc(cx, headY, ballR, 0, Math.PI * 2); ctx.fill();
             ctx.globalAlpha = 1;
             // 球外圈描边（双押黄 / 普通白）
-            const isDoubleEdge = note.isDouble && showDoubleGlow && !isRed;
+            const isDoubleEdge = showDoubleGlow && !isRed && doubleGlowIds.has(note.id);
             ctx.strokeStyle = isDoubleEdge ? doubleGlowColor : 'rgba(255,255,255,0.25)';
             ctx.lineWidth = isDoubleEdge ? 3 : 2;
             ctx.beginPath(); ctx.arc(cx, headY, ballR + 2, 0, Math.PI * 2); ctx.stroke();
@@ -1405,7 +1429,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
 
           // 长条整体四边描边，全包住整个长条；双押时黄色描边全包住；
           // 按住后长条逐渐收拢，描边始终跟随不消失
-          const isDoubleEdge = note.isDouble && showDoubleGlow && !isRed;
+          const isDoubleEdge = showDoubleGlow && !isRed && doubleGlowIds.has(note.id);
           ctx.strokeStyle = isDoubleEdge ? doubleGlowColor : 'rgba(255,255,255,0.18)';
           ctx.lineWidth = isDoubleEdge ? 3 : 2;
           ctx.strokeRect(nx, ny, noteW, nh);
@@ -1418,8 +1442,8 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, [totalWidth, gameHeight, JUDGMENT_LINE_Y, TOP_JUDGE_Y, splits, trackWidth, notePadX, tapHeight, holdMinH, gameScale,
-      doubleGlowColor, showDoubleGlow, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop,
-      getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay, holdGradient, isBall, ballR, barR]);
+      doubleGlowColor, showDoubleGlow, doubleGlowIds, config.noteColor, config.holdNoteColor, fallDuration, config.speedMultiplier, noteClipTop,
+      getCurrentTime, engineResultsRef, engineHoldsRef, effectiveConfig.autoPlay, holdGradient, isBall, ballR, barR, doubleGlowIds]);
 
   // Hold 进度环 — 独立特效 canvas 层。与音符/判定共用 getCurrentTime() 时钟、
   // engine 实时 hold 状态（engineHoldsRef）；画在所有特效之上（zIndex 9）。
@@ -1591,13 +1615,13 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       <div className="hud-left">
         <button className="btn btn-small btn-pause" onClick={handlePause}>{lang === 'zh' ? '暂停' : 'Pause'}</button>
         {showFPS && <span className="fps-counter">{fps}<em>FPS</em></span>}
-        {effectiveConfig.autoPlay && !isOverlord() && <span className="autoplay-badge">{invincibleMode ? 'INVINCIBLE' : 'AUTO'}</span>}
+        
       </div>
       <div className="hud-center">
         {leadInActive ? (
           <span className="combo-count" style={{ ...comboStyle, fontSize: comboFontSize }}>READY?</span>
         ) : state.combo > 0 && <div className="hud-combo-wrap"><span className="combo-count" style={{ ...comboStyle, fontSize: comboFontSize }}>
-          {state.combo >= comboKThreshold ? (state.combo / 1000).toFixed(1) + 'k' : state.combo}</span><span className="combo-label">COMBO</span></div>}
+          {state.combo >= comboKThreshold ? (state.combo / 1000).toFixed(1) + 'k' : state.combo}</span><span className="combo-label">{effectiveConfig.autoPlay ? (invincibleMode ? 'INVINCIBLE' : 'AUTOPLAY') : 'COMBO'}</span></div>}
       </div>
       <div className="hud-right">
         <div className="hud-score" style={{ fontSize: scoreFontSize }}>
@@ -1635,7 +1659,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       <div className="progress-bar-container">
         <div ref={progressBarRef} className="progress-bar" style={{
           width: '0%',
-          background: config.noteColor,
+          background: '#FFFFFF',
         }} />
       </div>
 

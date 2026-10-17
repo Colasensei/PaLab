@@ -1,5 +1,6 @@
 /** 解析 Palab 谱面包 zip → ChartPackage（本地导入 / 社区下载共用） */
 import JSZip from 'jszip';
+import { buildChartAssets } from './blurImage';
 import type { ChartPackage } from '@/components/ChartLibrary';
 
 export async function parseChartZip(blob: Blob | ArrayBuffer, fileName: string): Promise<ChartPackage> {
@@ -41,10 +42,16 @@ export async function parseChartZip(blob: Blob | ArrayBuffer, fileName: string):
     videoBlob = raw.type ? raw : raw.slice(0, raw.size, vMimeMap[vext] || 'video/mp4');
   }
 
+  // 列表用的缩略图 + 主色：导入时算一次存进包里，滚动时不用再解码大图
+  const thumbSrc = coverUrl || illustrationUrl;
+  const tintSrc = illustrationUrl || coverUrl;
+  const assets = thumbSrc ? await buildChartAssets(thumbSrc, tintSrc) : { thumb: null, tint: null };
+
   return {
     fileName, title: info.title || 'Unknown', artist: info.artist || '', author: info.author || '',
     difficulty: info.difficulty || 'NM', chartConstant: info.chartConstant || 8.0,
     description: info.description || '', coverUrl, illustrationUrl, songUrl, videoUrl: null, videoBlob, chartData: chartJson,
+    coverThumb: assets.thumb, tint: assets.tint,
     config: JSON.stringify(info.config || {}),
     speed: info.config?.speed ?? 5.0,
   };

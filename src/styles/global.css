@@ -242,6 +242,8 @@
   --font-main: 'SF Pro Display', -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-rating: 'Georgia', 'Times New Roman', serif;
   --font-numeric: 'Helvetica Neue', 'Segoe UI Black', 'SF Pro Display', -apple-system, sans-serif;
+  /* HUD 用（连击数 / 分数 / LV 数字）：选窄体几何无衬线，数字辨识度更高 */
+  --font-hud: 'Bahnschrift SemiBold', 'DIN Alternate', 'Segoe UI Semibold', 'Roboto Condensed', 'Helvetica Neue', -apple-system, sans-serif;
   --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
 }
 
@@ -2116,10 +2118,11 @@ body::after {
 }
 .ld-const { font-size: 17px; color: rgba(255,255,255,0.45); }
 
-/* 左下角 Tip */
+/* 左上角 Tip：跟在标题下面，不再占左下角 */
 .ld-tip {
-  position: absolute; left: 6%; bottom: 6%; z-index: 3;
-  max-width: 65vw;
+  margin-top: 20px;
+  max-width: 46vw;
+  display: flex; align-items: baseline; gap: 8px;
 }
 .ld-tip-label {
   font-size: 12px; font-weight: 700; letter-spacing: 4px;
@@ -2580,6 +2583,7 @@ body::after {
 }
 
 .hud-score {
+  font-family: var(--font-hud);
   font-size: 20px;
   font-weight: 600;
   color: rgba(255,255,255,0.7);
@@ -2603,6 +2607,7 @@ body::after {
 }
 
 .combo-count {
+  font-family: var(--font-hud);
   font-size: 28px;
   font-weight: 800;
   color: var(--phi);
@@ -2613,6 +2618,7 @@ body::after {
 
 /* Combo 动画已关闭（性能）：整百脉冲与数字 pop 均移除 */
 .combo-label {
+  font-family: var(--font-hud);
   font-size: 12px;
   color: var(--text-secondary);
   letter-spacing: 4px;
@@ -8014,3 +8020,78 @@ body::after {
 .ann-item-content { font-size: 13px; color: rgba(255, 255, 255, 0.7); line-height: 1.8; white-space: pre-wrap; }
 .ann-item-time { margin-top: 8px; font-size: 11px; color: rgba(255, 255, 255, 0.3); }
 .ann-empty { padding: 60px 0; text-align: center; color: rgba(255, 255, 255, 0.4); font-size: 13px; letter-spacing: 2px; }
+
+/* ═══ 进入加载界面的转场（LoadingIntro） ═══ */
+.li-root {
+  position: fixed; inset: 0; z-index: 90;
+  overflow: hidden;
+  transition: opacity 0.26s ease;
+}
+.li-root.li-fading { opacity: 0; }
+.li-dim {
+  position: absolute; inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  transition: opacity 0.24s ease;
+}
+/* 看板娘：数字砸下来的落点 */
+.li-mascot {
+  position: absolute; left: 50%; top: 50%;
+  height: 46vh; max-width: 60vw;
+  transform: translate(-50%, -46%) scale(0.94);
+  opacity: 0.92;
+  animation: liMascotIn 0.26s ease-out forwards;
+  pointer-events: none;
+}
+.li-mascot-hit { animation: liMascotHit 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both; }
+@keyframes liMascotIn {
+  from { opacity: 0; transform: translate(-50%, -44%) scale(0.9); }
+  to   { opacity: 0.92; transform: translate(-50%, -46%) scale(0.94); }
+}
+@keyframes liMascotHit {
+  0%   { transform: translate(-50%, -46%) scale(0.94); }
+  45%  { transform: translate(-50%, -50%) scale(1.02); }
+  70%  { transform: translate(-50%, -48%) scale(0.99); }
+  100% { transform: translate(-50%, -47%) scale(1); }
+}
+
+/* LV.xx：重重砸下来 */
+.li-lv {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: baseline; gap: 10px;
+  white-space: nowrap;
+  animation: liLvSlam 0.42s cubic-bezier(0.7, 0, 0.9, 0.2) both;
+  pointer-events: none;
+}
+.li-lv.li-lv-out { opacity: 0; transition: opacity 0.2s ease; }
+.li-lv-tag {
+  font-size: clamp(20px, 4vw, 34px); font-weight: 800; letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.55);
+}
+.li-lv-num {
+  font-family: var(--font-hud);
+  font-size: clamp(68px, 16vw, 150px); font-weight: 800; line-height: 0.9;
+  color: #fff; letter-spacing: -2px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 40px rgba(255, 255, 255, 0.35);
+}
+@keyframes liLvSlam {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(2.6); }
+  55%  { opacity: 1; transform: translate(-50%, -50%) scale(0.94); }
+  75%  { transform: translate(-50%, -50%) scale(1.03); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* 平行四边形：右 → 中 → 铺满整屏 */
+.li-shape {
+  position: absolute; left: 50%; top: 50%;
+  width: 64vw; height: 38vh;
+  margin: -19vh 0 0 -32vw;
+  background: rgba(30, 30, 30, 0.9);
+  background-size: cover; background-position: center;
+  filter: blur(26px) brightness(0.5);
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.3s ease;
+  will-change: transform;
+}

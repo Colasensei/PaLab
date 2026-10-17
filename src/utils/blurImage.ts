@@ -402,3 +402,88 @@ export async function extractAccentColor(src: string): Promise<AccentColor | nul
     img.src = src;
   });
 }
+
+// ── 谱面库列表用的预生成资源 ────────────────────────────────────
+// 列表滚动时逐行解码整张封面（dataURL 里的 PNG 可能是几 MB）在移动端要接近一秒，
+// 还会把滚动主线程拖住导致滑过头。所以导入时就把小缩略图和主色算好一起存进谱面包，
+// 列表只读这两个小字段，滚动时不做任何解码。
+
+const thumbCache = new Map<string, string>();
+const MAX_THUMB_CACHE = 300;
+
+/** 解码图源：优先 createImageBitmap（解码在 worker 线程，不阻塞滚动/主线程） */
+async function decodeSource(src: string): Promise<ImageBitmap | HTMLImageElement | null> {
+  try {
+    if (typeof createImageBitmap === 'function') {
+      const blob = await (await fetch(src)).blob();
+      return await createImageBitmap(blob);
+    }
+  } catch { /* 走到下面的 <img> 兜底 */ }
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.decoding = 'async';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+function drawThumb(dec: ImageBitmap | HTMLImageElement, maxSide: number): string | null {
+  try {
+    const w = dec.width, h = dec.height;
+    if (!w || !h) return null;
+    const maxDim = Math.max(w, h);
+    const scale = maxDim > maxSide ? maxSide / maxDim : 1;
+    const cw = Math.max(1, Math.floor(w * scale));
+    const ch = Math.max(1, Math.floor(h * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = cw;
+    canvas.height = ch;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(dec, 0, 0, cw, ch);
+    return canvas.toDataURL('image/jpeg', 0.8);
+  } catch {
+    return null;
+  }
+}
+
+/** 把整张封面压成小 JPEG 缩略图（最长边 maxSide），带内存缓存 */
+export async function makeThumb(src: string, maxSide = 160): Promise<string | null> {
+  const key = `${maxSide}::${src}`;
+  const cached = thumbCache.get(key);
+  if (cached) return cached;
+  const dec = await decodeSource(src);
+  if (!dec) return null;
+  const out = drawThumb(dec, maxSide);
+  if (dec instanceof ImageBitmap) dec.close();
+  if (!out) return null;
+  if (thumbCache.size >= MAX_THUMB_CACHE) {
+    const first = thumbCache.keys().next().value;
+    if (first !== undefined) thumbCache.delete(first);
+  }
+  thumbCache.set(key, out);
+  return out;
+}
+
+/**
+ * 一次性算好列表要用的两样东西：缩略图 + 主色。
+ * 主色以 `"r,g,b"` 字符串返回，方便直接塞进谱面包持久化。
+ *
+ * 主色是从**缩略图**上取的：反正只做 32×32 采样求平均，和用原图结果一样，
+ * 但省掉一次几 MB 的大图解码。
+ */
+export async function buildChartAssets(
+  thumbSrc: string,
+  tintSrc?: string | null,
+  maxSide = 160,
+): Promise<{ thumb: string | null; tint: string | null }> {
+  const thumb = await makeThumb(thumbSrc, maxSide);
+  if (!thumb) return { thumb: null, tint: null };
+  // 主色取卡背景用的那张（曲绘优先）；没有就退回缩略图
+  const carSrc = tintSrc || thumbSrc;
+  const accent = await extractAccentColor(carSrc === thumbSrc ? thumb : carSrc);
+  return { thumb, tint: accent ? `${accent.r},${accent.g},${accent.b}` : null };
+}

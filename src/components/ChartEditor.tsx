@@ -4,6 +4,7 @@ import { GameConfig, Note, constantToDifficulty } from '@/types';
 import JSZip from 'jszip';
 import { saveZipBlob } from '@/utils/zipSave';
 import { loadCharts, saveCharts } from '@/utils/chartDB';
+import { buildChartAssets } from '@/utils/blurImage';
 import type { ChartPackage } from '@/components/ChartLibrary';
 
 /** 难度选项（导出时可自由选择，对应定数区间） */
@@ -197,10 +198,17 @@ export const ChartEditor: React.FC<Props> = ({ config, notes, onBack, lang }) =>
         videoBlob = raw.type ? raw : raw.slice(0, raw.size, vMimeMap[vext] || 'video/mp4');
       }
 
+      // 列表用的缩略图 + 主色，导入时算好存进包里，谱面库滚动就不用再解码大图
+      // 缩略图取封面（列表那个方框显示的就是封面），主色取曲绘（卡片底色）
+      const thumbSrc = coverUrl || illustrationUrl;
+      const tintSrc = illustrationUrl || coverUrl;
+      const assets = thumbSrc ? await buildChartAssets(thumbSrc, tintSrc) : { thumb: null, tint: null };
+
       const pkg: ChartPackage = {
         fileName: name, title: info.title || 'Unknown', artist: info.artist || '', author: info.author || '',
         difficulty: info.difficulty || 'NM', chartConstant: info.chartConstant || 8.0,
         description: info.description || '', coverUrl, illustrationUrl, songUrl, videoUrl: null, videoBlob, chartData: chartJson,
+        coverThumb: assets.thumb, tint: assets.tint,
         config: JSON.stringify(info.config || {}),
         speed: info.config?.speed ?? 5.0,
       };

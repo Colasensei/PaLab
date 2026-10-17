@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from
 import { Lang } from '@/utils/lang';
 import { loadCharts, saveCharts, saveChart } from '@/utils';
 import { HighScoreRecord } from '@/types';
-import { generateBlurredBg, extractAccentColor } from '@/utils/blurImage';
+import { generateBlurredBg, extractAccentColor, buildChartAssets } from '@/utils/blurImage';
 import { PREVIEW_VOLUME, PREVIEW_LOW_VOLUME, setPreviewVolume } from '@/utils/previewPlayer';
 import { isFav, toggleFav, subscribeFavs } from '@/utils/favStore';
 import { parseChartZip } from '@/utils/chartParser';
@@ -26,6 +26,10 @@ export interface ChartPackage {
   videoBlob?: Blob | null;
   /** 旧包遗留：视频以 base64 dataURL 存着，选中时会自动迁移成 videoBlob */
   videoUrl?: string | null;
+  /** 导入时预生成的小缩略图（列表滚动不解码大图） */
+  coverThumb?: string | null;
+  /** 导入时预生成的主色，格式 "r,g,b"（卡背景纯色块） */
+  tint?: string | null;
   chartData: string;
   config: string;
   speed?: number;
@@ -57,16 +61,20 @@ let lastSelectedIdx = -1;
 /** 卡片背景：从曲绘（没有则封面）提取的主色，纯色块。
  *  主色在 extractAccentColor 里已经收进深色窄区间（并把相对亮度压到 0.045 以下），
  *  所以白字压上去对比度够。纯色块没有图片解码、也没有 filter，渲染开销可以忽略。 */
-const RowTint: React.FC<{ src: string }> = ({ src }) => {
-  const [tint, setTint] = useState<string | null>(null);
+const RowTint: React.FC<{ src: string; tint?: string | null }> = ({ src, tint }) => {
+  // 有预生成主色就直接用，绝不再解码大图（老包才会走到下面那条路）
+  const preset = tint ? `rgb(${tint})` : null;
+  const [live, setLive] = useState<string | null>(null);
   useEffect(() => {
+    if (preset) return;
     let alive = true;
-    setTint(null);
-    extractAccentColor(src).then(c => { if (alive && c) setTint(`rgb(${c.r}, ${c.g}, ${c.b})`); });
+    setLive(null);
+    extractAccentColor(src).then(c => { if (alive && c) setLive(`rgb(${c.r}, ${c.g}, ${c.b})`); });
     return () => { alive = false; };
-  }, [src]);
-  if (!tint) return null;
-  return <div className="cl2-item-tint" style={{ background: tint }} />;
+  }, [src, preset]);
+  const bg = preset ?? live;
+  if (!bg) return null;
+  return <div className="cl2-item-tint" style={{ background: bg }} />;
 };
 
 export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, lang, highScores, uiBlur }) => {
@@ -111,6 +119,41 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
       } catch { /* 迁移失败就继续用旧的 base64 路径 */ }
     })();
   }, [sel?.fileName, sel?.videoUrl]);
+
+  /**
+   * 老包补缩略图 / 主色。
+   *
+   * 之前谱面包里只存整张封面，列表每滚到一行就得解码一次几 MB 的图片，
+   * 移动端光这一下就接近一秒。这里在空闲时一张一张补算并写回，
+   * 补完之后滚动就完全不碰大图了。
+   */
+  const thumbMigrationStartedRef = useRef(false);
+  useEffect(() => {
+    if (!dbLoaded || thumbMigrationStartedRef.current) return;
+    thumbMigrationStartedRef.current = true;
+    const pending = chartsRef.current.filter(c => !c.coverThumb && (c.illustrationUrl || c.coverUrl));
+    if (pending.length === 0) return;
+    (async () => {
+      for (const c of pending) {
+        const thumbSrc = c.coverUrl || c.illustrationUrl;
+        const tintSrc = c.illustrationUrl || c.coverUrl;
+        if (!thumbSrc) continue;
+        try {
+          const assets = await buildChartAssets(thumbSrc, tintSrc);
+          if (!assets.thumb && !assets.tint) continue;
+          const upgraded = { ...c, coverThumb: assets.thumb ?? c.coverThumb, tint: assets.tint ?? c.tint };
+          setCharts(prev => prev.map(x => (x.fileName === c.fileName ? upgraded : x)));
+          await saveChart(upgraded);
+        } catch { /* 单张失败就跳过 */ }
+        // 空闲时才做下一张，别和用户滚动抢主线程
+        await new Promise<void>(r => {
+          const ric = (window as any).requestIdleCallback as undefined | ((cb: () => void, o?: { timeout: number }) => void);
+          if (ric) ric(() => r(), { timeout: 400 });
+          else setTimeout(r, 120);
+        });
+      }
+    })();
+  }, [dbLoaded]);
   // 选曲预览：挂载 & 选中变化 → 上报 App 播放对应歌曲预览
   // 社区打开时跳过：避免导入谱面 charts 变化触发自动播放（音乐停不下来）
   // 滚动选取会让选中快速跳变，这里 debounce 一下，别一路划过去就狂加载十几首歌
@@ -208,13 +251,20 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     dragMoved.current = false;
   };
 
-  // 模糊背景
+  // 模糊背景（UI 模糊关闭时用一张预烤图，避开 CSS backdrop-filter）
   const bgImgSrc = sel?.illustrationUrl || sel?.coverUrl || null;
+  // 烤背景用预生成的小缩略图当源：解码成本几乎为零，反正最后也是全屏糊掉
+  const bgBlurSrc = sel?.coverThumb || bgImgSrc;
   const [staticBg, setStaticBg] = useState<string | null>(null);
   useEffect(() => {
-    if (uiBlur || !bgImgSrc) { setStaticBg(null); return; }
-    generateBlurredBg(bgImgSrc, 40, 0.25).then(setStaticBg);
-  }, [uiBlur, bgImgSrc]);
+    if (uiBlur || !bgBlurSrc) { setStaticBg(null); return; }
+    // 滚动时选中会连续跳变，防抖到停下来再算，否则每次跳变都跑一遍真高斯模糊
+    let alive = true;
+    const timer = setTimeout(() => {
+      generateBlurredBg(bgBlurSrc, 40, 0.25).then(u => { if (alive) setStaticBg(u); });
+    }, 200);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [uiBlur, bgBlurSrc]);
   useEffect(() => {
     const onResize = () => setLandscape(window.innerWidth > window.innerHeight);
     window.addEventListener('resize', onResize);
@@ -576,7 +626,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
             <div key={c.fileName} ref={el => { rowRefs.current[i] = el; }} className="cl2-row" style={{ position: 'relative', overflow: 'hidden', borderRadius: 10, marginBottom: 2 }}>
               {/* 卡片背景：曲绘（没有则封面）的主色块，只在开启 UI 模糊时给。
                   按文件名记住"已经给过背景"的行，滚回去时不会再变回黑的 */}
-              {uiBlur && bgSrc && bgKeysRef.current.has(c.fileName) && <RowTint src={bgSrc} />}
+              {uiBlur && bgSrc && bgKeysRef.current.has(c.fileName) && <RowTint src={bgSrc} tint={c.tint} />}
               {/* iOS 滑动操作背景：导出（蓝）+ 删除（红） */}
               {isSwiped && (
               <div style={{
@@ -621,7 +671,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                 }}
               >
                 {/* 封面：列表用缩略图（完整大图卡顿元凶），详情才用完整图 */}
-                <div className="cl2-item-cover"><CoverThumb src={c.coverUrl} placeholder={<span>::</span>} imgProps={{ loading: 'lazy', decoding: 'async' }} /></div>
+                <div className="cl2-item-cover"><CoverThumb src={c.coverThumb ?? c.coverUrl} placeholder={<span>::</span>} imgProps={{ loading: 'lazy', decoding: 'async' }} /></div>
                 {/* 标题 + 作者 */}
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
