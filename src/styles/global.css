@@ -8047,3 +8047,15 @@ body::after {
 /* 手机上的全屏详情层不受影响 */
 .cp-overlay .cp-detail-fs { position: fixed; inset: 0; z-index: 5; }
 
+
+/* ── 社区面板：压暗加重 + 放宽面板，横屏两栏才放得下详情 ──
+   横屏是「列表 380px + 详情 flex:1」的两栏布局，
+   面板如果只有 560px 宽，右侧详情只剩 180px，内容会被挤没。 */
+.cp-overlay { background: rgba(0, 0, 0, 0.72); }
+.cp-panel { width: 94%; max-width: 1120px; }
+.cp-landscape.cp-overlay .cp-panel { max-width: 1240px; }
+/* 竖屏没有两栏，不需要那么宽 */
+@media (orientation: portrait) {
+  .cp-panel { max-width: 620px; }
+}
+
