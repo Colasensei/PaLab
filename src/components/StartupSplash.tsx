@@ -86,8 +86,6 @@ const T = {
 export const StartupSplash: React.FC<Props> = ({ onDone }) => {
   const [elapsed, setElapsed] = useState(0);
   const [rect, setRect] = useState<{ left: number; top: number } | null>(null);
-  /** 浏览器拦了自动播放：提示用户轻触一次即可出声 */
-  const [audioBlocked, setAudioBlocked] = useState(false);
   const startRef = useRef(0);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
@@ -162,7 +160,6 @@ export const StartupSplash: React.FC<Props> = ({ onDone }) => {
           console.warn('[splash] 配音被浏览器自动播放策略拦截，等待首次交互补播:', stage, a.src);
           pendingVoices.push(a);
           installAudioUnlock();
-          setAudioBlocked(true);
         } else {
           // 404 / 解码失败会走到这里，把地址打出来方便定位
           console.warn('[splash] 配音播放失败:', stage, name, a.src, err);
@@ -188,10 +185,6 @@ export const StartupSplash: React.FC<Props> = ({ onDone }) => {
 
       {showPage && <div className="splash-page"><span>PAGE</span><span>Studio</span></div>}
       {showMark && <img className="splash-mark" src="xWhite.png" alt="" />}
-
-      {audioBlocked && elapsed < T.blackFade && (
-        <div className="splash-hint">轻触屏幕以启用音效</div>
-      )}
 
       {showPalab && (
         <div
