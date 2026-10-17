@@ -51,7 +51,7 @@ export async function parseChartZip(blob: Blob | ArrayBuffer, fileName: string):
     fileName, title: info.title || 'Unknown', artist: info.artist || '', author: info.author || '',
     difficulty: info.difficulty || 'NM', chartConstant: info.chartConstant || 8.0,
     description: info.description || '', coverUrl, illustrationUrl, songUrl, videoUrl: null, videoBlob, chartData: chartJson,
-    coverThumb: assets.thumb, tint: assets.tint,
+    coverThumb: assets.thumb, tint: assets.tint, thumbV: 2,
     config: JSON.stringify(info.config || {}),
     speed: info.config?.speed ?? 5.0,
   };

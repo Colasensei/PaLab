@@ -2120,8 +2120,8 @@ body::after {
 
 /* 左上角 Tip：跟在标题下面，不再占左下角 */
 .ld-tip {
-  margin-top: 20px;
-  max-width: 46vw;
+  position: absolute; left: 6%; bottom: 6%; z-index: 3;
+  max-width: 60vw;
   display: flex; align-items: baseline; gap: 8px;
 }
 .ld-tip-label {
@@ -2428,40 +2428,34 @@ body::after {
 }
 
 .btn-pause {
-  background: rgba(10, 10, 25, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.15);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 8px 16px;
-  letter-spacing: 1px;
-  border-radius: 8px;
-  color: rgba(255,255,255,0.6);
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 7px 2px 7px 14px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  font-family: var(--font-hud);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 6px;
+  color: rgba(255, 255, 255, 0.62);
   cursor: pointer;
   user-select: none;
-  -webkit-user-select: none;
-  touch-action: manipulation;
-  min-width: 44px;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: color 0.18s ease, letter-spacing 0.18s ease;
 }
-
-.btn-pause:hover {
-  background: rgba(20, 20, 40, 0.6);
-  color: white;
-  border-color: rgba(255,255,255,0.25);
-}
-
-.btn-pause:active {
-  background: rgba(107,197,255,0.25);
-  border-color: var(--accent);
-  color: white;
+.btn-pause::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  width: 2px; height: 14px;
+  transform: translateY(-50%);
+  background: #3FE0E8;
+  opacity: 0.55;
+  transition: opacity 0.18s ease, height 0.18s ease;
 }
 
 .fps-counter {
+  font-family: var(--font-hud);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4110,6 +4104,7 @@ body::after {
 }
 
 .hud-acc {
+  font-family: var(--font-hud);
   font-size: 13px;
   color: rgba(255,255,255,0.5);
   text-align: right;
@@ -4130,6 +4125,7 @@ body::after {
 .game-bg-solid .hud-acc,
 .game-bg-solid .hud-song-name,
 .game-bg-solid .hud-song-diff {
+  font-family: var(--font-hud);
   color: #fff;
 }
 

@@ -55,11 +55,17 @@ interface GamePlayProps {
 
 const FALL_DURATION = 3000; // 实际从 devOverrides 读的后备值，别用这个（
 
+// 设计主色（整体淡色系）：完美=青，良好=蓝，失误用暗红/灰，尽量不出现浓红
+const C_PERFECT = '#3FE0E8';
+const C_GOOD = '#5B9DFF';
+const C_BAD = '#A33A44';
+const C_MISS = '#9AA0A6';
+
 const JUDGMENT_COLORS: Record<JudgmentType, string> = {
-  perfect: '#FFD700',
-  good: '#4488FF',
-  bad: '#FF4444',
-  miss: '#FF4444',
+  perfect: C_PERFECT,
+  good: C_GOOD,
+  bad: C_BAD,
+  miss: C_MISS,
 };
 
 // 边缘轨道异色：首尾轨道（第 1 / 最后 1 轨）与中间轨道不同色，防读谱眼花
@@ -417,18 +423,6 @@ const AccuracyBar: React.FC<{ lastOffset: number; lastColor?: string; scale?: nu
     }
   }, [lastOffset, pct]);
 
-  const gradient = [
-    `#FF4444 0%`,
-    `#FF4444 ${redL_end}%`,
-    `#FFD700 ${redL_end}%`,
-    `#FFD700 ${yellowL_end.toFixed(1)}%`,
-    `#44BB44 ${yellowL_end.toFixed(1)}%`,
-    `#44BB44 ${greenR_end.toFixed(1)}%`,
-    `#FFD700 ${greenR_end.toFixed(1)}%`,
-    `#FFD700 ${yellowR_end.toFixed(1)}%`,
-    `#FF4444 ${yellowR_end.toFixed(1)}%`,
-    `#FF4444 100%`,
-  ].join(', ');
 
   return (
     <div style={{
@@ -440,29 +434,28 @@ const AccuracyBar: React.FC<{ lastOffset: number; lastColor?: string; scale?: nu
       zIndex: 20,
       zoom: scale,
     }}>
-      {/* 条 */}
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        height: 'clamp(5px, 0.7vh, 8px)',
-        borderRadius: 'clamp(3px, 0.4vh, 5px)',
-        outline: '2px solid rgba(255,255,255,0.6)',
-        outlineOffset: 2,
-        background: `linear-gradient(to right, ${gradient})`,
-        opacity: 0.85,
-      }}>
-        {/* 中分线 */}
+      {/* 一条横线贯穿全宽；分区只用细竖线分隔，不再铺色块 */}
+      <div style={{ position: 'relative', width: '100%', height: 20 }}>
         <div style={{
-          position: 'absolute',
-          left: '50%',
-          top: -3,
-          bottom: -3,
-          width: 2,
-          background: '#fff',
-          transform: 'translateX(-50%)',
-          zIndex: 2,
+          position: 'absolute', left: 0, right: 0, top: '50%',
+          height: 1.5, transform: 'translateY(-50%)',
+          background: 'rgba(255,255,255,0.30)',
         }} />
-        {/* 判定位置竖线（3 秒渐隐） */}
+        {/* 分区竖线：Bad | Good | Perfect | Good | Bad */}
+        {[redL_end, yellowL_end, greenR_end, yellowR_end].map(p => (
+          <div key={p} style={{
+            position: 'absolute', left: `${p}%`, top: '50%',
+            width: 1, height: 9, transform: 'translate(-50%, -50%)',
+            background: 'rgba(255,255,255,0.16)',
+          }} />
+        ))}
+        {/* 中分线（正中，略高一点） */}
+        <div style={{
+          position: 'absolute', left: '50%', top: '50%',
+          width: 1.5, height: 14, transform: 'translate(-50%, -50%)',
+          background: 'rgba(255,255,255,0.55)', zIndex: 2,
+        }} />
+        {/* 每次打击的竖线（3 秒渐隐） */}
         {markers.map(m => <AccuracyMarker key={m.id} m={m} />)}
       </div>
       {/* 箭头 ▲ 向上指 */}
@@ -776,7 +769,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   });
 
   // combo 颜色：全P金 / 有G蓝 / 断白
-  const comboColor = state.hasBreak ? '#FFFFFF' : state.hasGood ? '#4488FF' : '#FFD700';
+  const comboColor = state.hasBreak ? '#FFFFFF' : state.hasGood ? C_GOOD : C_PERFECT;
 
   /**
    * 双押黄色荧光：只在「点击音符 × 点击音符」的双押上画。
@@ -1653,7 +1646,7 @@ export const GamePlay: React.FC<GamePlayProps> = ({
       </div>
 
       {/* 准度条 */}
-      {showAccuracyBar && state.isPlaying && <AccuracyBar lastOffset={state.lastOffset} lastColor={state.lastJudgment ? JUDGMENT_COLORS[state.lastJudgment as JudgmentType] : ''} scale={gameScale} />}
+      {showAccuracyBar && state.isPlaying && <AccuracyBar lastOffset={state.lastOffset} lastColor={state.lastJudgment === 'perfect' ? C_PERFECT : state.lastJudgment === 'good' ? C_GOOD : state.lastJudgment ? C_MISS : ''} scale={gameScale} />}
 
       {/* 顶部进度条，DOM 直驱不走 React */}
       <div className="progress-bar-container">

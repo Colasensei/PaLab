@@ -30,6 +30,8 @@ export interface ChartPackage {
   coverThumb?: string | null;
   /** 导入时预生成的主色，格式 "r,g,b"（卡背景纯色块） */
   tint?: string | null;
+  /** 缩略图生成规则的版本号：2 起表示缩略图取「封面」。旧包按 1 处理，会重算 */
+  thumbV?: number;
   chartData: string;
   config: string;
   speed?: number;
@@ -131,7 +133,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   useEffect(() => {
     if (!dbLoaded || thumbMigrationStartedRef.current) return;
     thumbMigrationStartedRef.current = true;
-    const pending = chartsRef.current.filter(c => !c.coverThumb && (c.illustrationUrl || c.coverUrl));
+    const pending = chartsRef.current.filter(c => (!c.coverThumb || (c.thumbV ?? 1) < 2) && (c.illustrationUrl || c.coverUrl));
     if (pending.length === 0) return;
     (async () => {
       for (const c of pending) {
@@ -141,7 +143,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
         try {
           const assets = await buildChartAssets(thumbSrc, tintSrc);
           if (!assets.thumb && !assets.tint) continue;
-          const upgraded = { ...c, coverThumb: assets.thumb ?? c.coverThumb, tint: assets.tint ?? c.tint };
+          const upgraded = { ...c, coverThumb: assets.thumb ?? c.coverThumb, tint: assets.tint ?? c.tint, thumbV: 2 };
           setCharts(prev => prev.map(x => (x.fileName === c.fileName ? upgraded : x)));
           await saveChart(upgraded);
         } catch { /* 单张失败就跳过 */ }

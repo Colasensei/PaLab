@@ -90,10 +90,12 @@ export const LoadingScreen: React.FC<Props> = ({ onComplete, lang, uiBlur = true
         ) : (
           <div className="ld-title">{pageTitle || (lang === 'zh' ? '自由模式' : 'Free Play')}</div>
         )}
-        <div className="ld-tip">
-          <span className="ld-tip-label">TIP</span>
-          <span className="ld-tip-text">{tip}</span>
-        </div>
+      </div>
+
+      {/* 左下角：随机 TIP（放回原来位置，absolute 相对屏幕） */}
+      <div className="ld-tip">
+        <span className="ld-tip-label">TIP</span>
+        <span className="ld-tip-text">{tip}</span>
       </div>
 
       {/* 右下角：LOADING 动画 */}
