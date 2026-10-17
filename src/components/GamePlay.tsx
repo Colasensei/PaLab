@@ -361,13 +361,13 @@ const AudioViz: React.FC<{ active: boolean; perfScale?: number }> = ({ active, p
 // ═══════════════════════════════════════════════
 
 // 准度条判定位置竖线：显示最近判定落点，3 秒后渐隐
-const AccuracyMarker: React.FC<{ m: { id: number; pct: number; color: string } }> = ({ m }) => {
+const AccuracyMarker: React.FC<{ m: { id: number; pct: number; px: number; color: string } }> = ({ m }) => {
   const [op, setOp] = useState(1);
   useEffect(() => { const r = requestAnimationFrame(() => setOp(0)); return () => cancelAnimationFrame(r); }, []);
   return (
     <div style={{
-      position: 'absolute', left: `calc(${m.pct}% - 1.5px)`, top: -4, bottom: -4, width: 3,
-      background: m.color, zIndex: 3, borderRadius: 1,
+      position: 'absolute', left: m.px, top: -4, bottom: -4, width: 2,
+      background: m.color, zIndex: 3,
       opacity: op, transition: 'opacity 3s linear',
     }} />
   );
@@ -376,9 +376,27 @@ const AccuracyMarker: React.FC<{ m: { id: number; pct: number; color: string } }
 const AccuracyBar: React.FC<{ lastOffset: number; lastColor?: string; scale?: number }> = ({ lastOffset, lastColor = '', scale = 1 }) => {
   const caretRef = useRef<HTMLDivElement>(null);
   // 判定位置竖线标记：每次判定落点 push，3 秒渐隐移除
-  const [markers, setMarkers] = useState<{ id: number; pct: number; color: string }[]>([]);
+  const [markers, setMarkers] = useState<{ id: number; pct: number; px: number; color: string }[]>([]);
   const markerIdRef = useRef(0);
   const lastHitRef = useRef<{ off: number; color: string } | null>(null);
+
+  // 用百分比定位的竖线在窄条上会落在半像素：10% 与 90% 的小数部分不同，
+  // 一条被抗锯齿摊成 2px 淡线、另一条是 1px 实线，看着就是左右粗细不一。
+  // 这里量出实际像素宽度，把每条线手动四舍五入到整数 px。
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [barW, setBarW] = useState(0);
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const measure = () => setBarW(el.clientWidth);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  /** 百分比 -> 整数像素左边缘（已减去线宽的一半，保证线居中且落在整像素上） */
+  const tickLeft = (pct: number, w: number) => (barW > 0 ? Math.round((barW * pct) / 100 - w / 2) : Math.round(pct));
 
   const timeB = useMemo(() => getDevOverride('j_timeB'), []); // perfect ±80ms
   const timeA = useMemo(() => getDevOverride('j_timeA'), []); // good ±160ms
@@ -412,7 +430,7 @@ const AccuracyBar: React.FC<{ lastOffset: number; lastColor?: string; scale?: nu
     lastHitRef.current = { off: lastOffset, color: lastColor };
     if (!lastColor) return;
     const id = markerIdRef.current++;
-    setMarkers(prev => [...prev, { id, pct: getPercent(lastOffset), color: lastColor }]);
+    setMarkers(prev => [...prev, { id, pct: getPercent(lastOffset), px: tickLeft(getPercent(lastOffset), 2), color: lastColor }]);
     const t = setTimeout(() => setMarkers(prev => prev.filter(m => m.id !== id)), 3000);
   }, [lastOffset, lastColor, getPercent]);
 
@@ -435,7 +453,7 @@ const AccuracyBar: React.FC<{ lastOffset: number; lastColor?: string; scale?: nu
       zoom: scale,
     }}>
       {/* 一条横线贯穿全宽；分区只用细竖线分隔，不再铺色块 */}
-      <div style={{ position: 'relative', width: '100%', height: 22 }}>
+      <div ref={trackRef} style={{ position: 'relative', width: '100%', height: 22 }}>
         <div style={{
           position: 'absolute', left: 0, right: 0, top: '50%',
           height: 2, transform: 'translateY(-50%)', borderRadius: 1,
@@ -445,14 +463,14 @@ const AccuracyBar: React.FC<{ lastOffset: number; lastColor?: string; scale?: nu
             用 calc 把左边缘对齐到整数像素，避免窄屏时 1px 落在半像素上忽粗忽细 */}
         {[redL_end, yellowL_end, greenR_end, yellowR_end].map(p => (
           <div key={p} style={{
-            position: 'absolute', left: `calc(${p}% - 1px)`, top: '50%',
+            position: 'absolute', left: tickLeft(p, 2), top: '50%',
             width: 2, height: 10, transform: 'translateY(-50%)',
             background: 'rgba(255,255,255,0.34)',
           }} />
         ))}
         {/* 中分线（正中，略高一点） */}
         <div style={{
-          position: 'absolute', left: 'calc(50% - 1px)', top: '50%',
+          position: 'absolute', left: tickLeft(50, 2), top: '50%',
           width: 2, height: 16, transform: 'translateY(-50%)',
           background: 'rgba(255,255,255,0.82)', zIndex: 2,
         }} />
