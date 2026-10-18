@@ -431,18 +431,34 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   // 背景图一旦给过就不再撤销（按文件名记）。之前是"离选中项超过 8 行就卸载"，
   // 结果滚过去再滚回来时，卡片会先变回纯黑、再淡入颜色，看着很突然。
   const bgKeysRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (!uiBlur || selSortedIdx < 0) return;
-    const from = Math.max(0, selSortedIdx - 8);
-    const to = Math.min(sortedCharts.length - 1, selSortedIdx + 8);
+  /**
+   * 给选中项附近的行「解锁」背景图。
+   *
+   * 关键：滚动过程中绝对不调用——每给一行解锁就会挂一个 RowTint，
+   * 那一行就要解码一张图，滚动时一路都在解码，这就是之前「边滚边加载」的根源。
+   * 现在只在滚动停下（settleWheel）或初次加载时调一次。
+   */
+  const primeRowTints = useCallback(() => {
+    if (!uiBlur) return;
+    const idx = selSortedIdxRef.current;
+    if (idx < 0) return;
+    const list = sortedChartsRef.current;
+    const from = Math.max(0, idx - 8);
+    const to = Math.min(list.length - 1, idx + 8);
     let changed = false;
     for (let i = from; i <= to; i++) {
-      const f = sortedCharts[i]?.fileName;
+      const f = list[i]?.fileName;
       if (f && !bgKeysRef.current.has(f)) { bgKeysRef.current.add(f); changed = true; }
     }
     if (changed) force(x => x + 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uiBlur, selSortedIdx, sortedCharts]);
+  }, [uiBlur]);
+
+  const selSortedIdxRef = useRef(-1);
+  selSortedIdxRef.current = selSortedIdx;
+  const sortedChartsRef = useRef(sortedCharts);
+  sortedChartsRef.current = sortedCharts;
+
+
 
   /**
    * 量中线、上下留白、每行中心的实测位置。
@@ -526,17 +542,16 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     // 滚动期间不要被"外部选中变化"反向纠正，否则惯性滚动会被打断
     scrollingRef.current = true;
     clearTimeout(scrollIdleRef.current);
-    scrollIdleRef.current = window.setTimeout(() => { scrollingRef.current = false; settleWheel(); }, 160);
 
-    if (rafRef.current) return;
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = 0;
-      const el = listRef.current;
-      // 位置没动就整帧跳过（吸附、程序化滚动会甩出大量重复 scroll 事件）
-      if (!el || el.scrollTop === lastScrollTopRef.current) return;
-      lastScrollTopRef.current = el.scrollTop;
-      updateWheel();
-    });
+    // 关键：滚动过程中**不提交选中**（不调 updateWheel）。
+    // 之前每帧都按中线重算选中，等于边滚边切歌，详情/封面/背景一路跟着重算，又卡又乱。
+    // 现在只在停下来之后提交一次。
+    scrollIdleRef.current = window.setTimeout(() => {
+      scrollingRef.current = false;
+      updateWheel();      // 停下时才把中线上的那一行设为选中
+      settleWheel();      // 没停正就补一下
+      primeRowTints();    // 再解锁附近行的背景图
+    }, 160);
   };
 
   /** 把某一行滚到中线上（点选时用，平滑滚动） */
@@ -563,7 +578,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [dbLoaded, measureWheel, updateWheel]);
+    primeRowTints();
+  }, [dbLoaded, measureWheel, updateWheel, primeRowTints]);
 
   // 外部改变选中（恢复上次、换排序、删除）→ 直接跳过去
   useLayoutEffect(() => {
@@ -660,7 +676,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
             <div key={c.fileName} ref={el => { rowRefs.current[i] = el; }} className="cl2-row" style={{ position: 'relative', overflow: 'hidden', borderRadius: 10, marginBottom: 2 }}>
               {/* 卡片背景：曲绘（没有则封面）的主色块，只在开启 UI 模糊时给。
                   按文件名记住"已经给过背景"的行，滚回去时不会再变回黑的 */}
-              {uiBlur && bgSrc && bgKeysRef.current.has(c.fileName) && <RowTint src={bgSrc} tint={c.tint} />}
+              {uiBlur && bgSrc && bgKeysRef.current.has(c.fileName) && <RowTint src={c.coverThumb ?? bgSrc} tint={c.tint} />}
               {/* iOS 滑动操作背景：导出（蓝）+ 删除（红） */}
               {isSwiped && (
               <div style={{
