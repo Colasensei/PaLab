@@ -8186,3 +8186,16 @@ body::after {
   0%   { opacity: 0; transform: translateY(12px); filter: blur(7px); }
   100% { opacity: 1; transform: none; filter: blur(0); }
 }
+
+/* 详情面板分段按钮（目标 / 背景 共用同一套动画） */
+.cl2-seg-btn {
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.cl2-seg-btn:hover {
+  border-color: rgba(255, 255, 255, 0.34) !important;
+  color: #ddd;
+}
+.cl2-seg-btn:active {
+  transform: scale(0.94);
+}
+

@@ -1080,7 +1080,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
               <span style={segLabelStyle}>{lang === 'zh' ? '目标' : 'Target'}</span>
               <div style={{ display: 'flex', gap: 2, flex: 1 }}>
                 {(['none','fc','ap'] as const).map(t => (
-                  <button key={t} onClick={() => setTarget(t)} style={segBtnStyle(target === t)}>{t === 'none' ? (lang === 'zh' ? '无' : 'None') : t.toUpperCase()}</button>
+                  <button key={t} className="cl2-seg-btn" onClick={() => setTarget(t)} style={segBtnStyle(target === t)}>{t === 'none' ? (lang === 'zh' ? '无' : 'None') : t.toUpperCase()}</button>
                 ))}
               </div>
             </div>
@@ -1090,7 +1090,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                 <span style={segLabelStyle}>{lang === 'zh' ? '背景' : 'BG'}</span>
                 <div style={{ display: 'flex', gap: 2, flex: 1 }}>
                   {(['motion','video'] as const).map(m => (
-                    <button key={m} onClick={() => handleBgModeChange(m)} style={segBtnStyle(bgMode === m)}>{m === 'motion' ? (lang === 'zh' ? '减弱动态' : 'Reduced') : (lang === 'zh' ? '视频' : 'Video')}</button>
+                    <button key={m} className="cl2-seg-btn" onClick={() => handleBgModeChange(m)} style={segBtnStyle(bgMode === m)}>{m === 'motion' ? (lang === 'zh' ? '减弱动态' : 'Reduced') : (lang === 'zh' ? '视频' : 'Video')}</button>
                   ))}
                 </div>
               </div>
