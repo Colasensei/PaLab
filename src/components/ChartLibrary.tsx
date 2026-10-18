@@ -256,8 +256,9 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   };
 
   // 模糊背景（UI 模糊关闭时用一张预烤图，避开 CSS backdrop-filter）
-  // 详情区背景：优先用已生成的缩略图，避免每次切换选中都解码整张大图（低端机尤其卡）
-  const bgImgSrc = sel?.coverThumb || sel?.illustrationUrl || sel?.coverUrl || null;
+  // 详情区背景用原图（40px 模糊后看不出差别，但避免缩略图放大出现色块）；
+  // 它只在滚动停稳后才挂载，所以不会拖慢滚动。
+  const bgImgSrc = sel?.illustrationUrl || sel?.coverUrl || null;
   // 烤背景用预生成的小缩略图当源：解码成本几乎为零，反正最后也是全屏糊掉
   const bgBlurSrc = sel?.coverThumb || bgImgSrc;
   const [staticBg, setStaticBg] = useState<string | null>(null);
