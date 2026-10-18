@@ -10,6 +10,17 @@ interface Props {
 
 const CHANGELOG: { ver: string; date: string; items: string[] }[] = [
   {
+    ver: 'Alpha 8.1（正式版）', date: '2026-10-17',
+    items: [
+      '谱面库滚动改为停下才提交选中：滚动过程中不再每帧按中线切歌，手感明显更顺',
+      '修复触屏滚动时误触左滑（滑出导出/删除）：手势加入竖向判定，横向需明显压过竖向才展开',
+      '谱面详情面板的封面与背景改用原图，并只在滚动停稳后加载；列表行继续用预生成缩略图',
+      '流速按谱面文件名落库，开始游戏前立即保存，修复退出后切回谱面流速回退',
+      '修复进入谱面后立刻暂停导致谱面异常、以及退出后切换谱面直接黑屏（前摇定时器未清理）',
+      '设置中移除「谱面视频背景」，改为在谱面库按谱面选择背景：减弱动态 / 视频',
+    ],
+  },
+  {
     ver: 'Alpha 8.0（正式版）', date: '2026-10-17',
     items: [
       '新增启动动画：黑屏 →「PAGE Studio」→ xWhite 图标 →「Palab」，最后的 Palab 直接落在主界面 logo 上，一镜到底无跳变',
@@ -479,8 +490,8 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
   const infoContent = (
     <>
       <div className="about-logo">PALAB</div>
-      <div className="about-ver">Alpha 8.0</div>
-      <div className="about-ver about-ver-sub">v0.8.0</div>
+      <div className="about-ver">Alpha 8.1</div>
+      <div className="about-ver about-ver-sub">v0.8.1</div>
 
       <div className="about-section">
         <div className="about-label">{lang === 'zh' ? '作者' : 'Author'}</div>
@@ -553,7 +564,7 @@ export const AboutScreen: React.FC<Props> = ({ lang, onClose, onShowEULA }) => {
       <div className="ann-top">
         <button className="btn btn-primary ann-back" onClick={onClose}>{lang === 'zh' ? '返回' : 'Back'}</button>
         <h3 className="ann-title">{lang === 'zh' ? '关于' : 'About'}</h3>
-        <span className="ann-count">Alpha 8.0</span>
+        <span className="ann-count">Alpha 8.1</span>
       </div>
       <div className="ann-list about-list">
         {/* 宽屏：双栏布局 */}
