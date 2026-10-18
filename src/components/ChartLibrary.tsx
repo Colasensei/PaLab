@@ -230,19 +230,34 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   // 滑动删除（鼠标+触屏通用）
   const [swipedIdx, setSwipedIdx] = useState<number | null>(null);
   const dragStartX = useRef(0);
+  const dragStartY = useRef(0);
   const dragMoved = useRef(false);
+  /** 这一次手势被判定成"竖向滚动"：整次手势都不再触发左滑 */
+  const dragRejected = useRef(false);
 
   const onDragStart = (e: React.MouseEvent | React.TouchEvent, idx: number) => {
-    const cx = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
-    dragStartX.current = cx;
+    const p = 'touches' in e ? (e as React.TouchEvent).touches[0] : (e as React.MouseEvent);
+    dragStartX.current = p.clientX;
+    dragStartY.current = p.clientY;
     dragMoved.current = false;
+    dragRejected.current = false;
   };
   const onDragMove = (e: React.MouseEvent | React.TouchEvent, idx: number) => {
-    const cx = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
-    const dx = dragStartX.current - cx;
-    if (Math.abs(dx) < 10) return;
+    if (dragRejected.current) return;
+    const p = 'touches' in e ? (e as React.TouchEvent).touches[0] : (e as React.MouseEvent);
+    const dx = dragStartX.current - p.clientX;
+    const dy = dragStartY.current - p.clientY;
+    // 竖向占优 = 用户在滚列表。整次手势直接放弃左滑判定，
+    // 否则竖着滚的时候手指必定带一点横向偏移，很容易误触出导出/删除。
+    if (!dragMoved.current && Math.abs(dy) > 8 && Math.abs(dy) >= Math.abs(dx)) {
+      dragRejected.current = true;
+      return;
+    }
+    if (Math.abs(dx) < 12) return;
+    // 横向必须明显压过竖向，才算"有意左滑"
+    if (Math.abs(dx) < Math.abs(dy) * 1.4) return;
     dragMoved.current = true;
-    if (dx > 30) setSwipedIdx(idx);
+    if (dx > 40) setSwipedIdx(idx);
     else if (dx < -20) setSwipedIdx(null);
   };
   const onDragEnd = (idx: number) => {
@@ -712,7 +727,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                 onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ idx: realIdx, x: e.clientX, y: e.clientY }); }}
                 style={{
                   position: 'relative', zIndex: 1,
-                  transform: isSwiped ? 'translateX(-128px)' : 'translateX(0)',
+                  touchAction: 'pan-y',
+        transform: isSwiped ? 'translateX(-128px)' : 'translateX(0)',
                   transition: 'transform 0.2s ease',
                   // 选中高亮由固定在中间的 .cl2-band 负责；item 自身不上背景，
                   // 否则滑出删除/导出时又会多出一层框
