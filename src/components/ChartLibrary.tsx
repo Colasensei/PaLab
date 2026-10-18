@@ -847,7 +847,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     fontFamily: 'var(--font-main)',
     fontWeight: active ? 700 : 400,
     letterSpacing: 1,
-    transition: 'all 0.15s',
+    // transition 交给 .cl2-seg-btn：内联会盖掉类里的过渡，
+    // 之前目标/背景两边各写一份就容易一边有、一边没有。
   });
   /** 左列标签统一宽度：SPEED / 目标 / 背景 三行左边缘才对得齐 */
   const segLabelStyle: React.CSSProperties = {
