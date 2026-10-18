@@ -319,7 +319,12 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
 
   // 选谱时用谱面自带流速
   useEffect(() => { if (sel) setSpeed(sel.speed ?? 5.0); }, [selected]);
-  useEffect(() => { if (sel) setBgMode(sel.bgMode ?? 'video'); }, [selected]);
+  /** 背景模式的本地缓存：点击后先改这里，UI 立刻渐变，不触发列表重写 */
+  const bgModeMap = useRef(new Map<string, 'motion' | 'video'>());
+  useEffect(() => {
+    if (!sel) return;
+    setBgMode(bgModeMap.current.get(sel.fileName) ?? sel.bgMode ?? 'video');
+  }, [selected]);
 
   /**
    * 改流速 → 写回这张谱面自己的 speed 并落库。
@@ -367,26 +372,24 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   }, [commitSpeed]);
 
   /**
-   * 背景模式：点的时候只改本地 state（和「目标」一样），
-   * 这样按钮的高亮过渡能立刻跑起来；落库放到后面单独的 effect 里，
-   * 避免点击同一帧就重写整个列表、把过渡打断（看起来就是"啪"地一下变白）。
+   * 背景模式：点下去**只改一个局部 state**（跟「目标」完全一样），
+   * 这样这次点击只产生一次渲染，按钮的高亮就会按 0.22s 渐变过去。
+   *
+   * 之前这里顺手 setCharts(整个列表)，同一帧里的第二次渲染会把过渡顶掉，
+   * 表现就是"啪"地一下直接变白——这正是和「目标」的差别所在。
+   * 现在落库只写 IndexedDB，不改 React 状态，UI 值走本地 map。
    */
   const handleBgModeChange = useCallback((m: 'motion' | 'video') => {
     setBgMode(m);
-  }, []);
-
-  // 落库：等状态稳定后写回这张谱面（按 fileName 定位）
-  useEffect(() => {
     const fileName = selFileRef.current;
     if (!fileName) return;
+    bgModeMap.current.set(fileName, m);
     const list = chartsRef.current;
     const idx = list.findIndex(c => c.fileName === fileName);
-    if (idx < 0 || list[idx].bgMode === bgMode) return;
-    const next = list.map((c, i) => (i === idx ? { ...c, bgMode } : c));
-    setCharts(next);
-    saveCharts(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bgMode]);
+    if (idx < 0 || list[idx].bgMode === m) return;
+    // 只落库，不 setCharts：避免二次渲染打断高亮过渡
+    saveCharts(list.map((c, i) => (i === idx ? { ...c, bgMode: m } : c)));
+  }, []);
 
   /** 开始游戏前把流速立即落库，避免"没等防抖就退出 → 下次回来还是旧值" */
   const flushSpeed = useCallback(() => {
