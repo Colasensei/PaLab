@@ -366,18 +366,27 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     speedSaveTimer.current = window.setTimeout(() => commitSpeed(v), 350);
   }, [commitSpeed]);
 
-  /** 背景模式写回这张谱面（按 fileName 定位） */
+  /**
+   * 背景模式：点的时候只改本地 state（和「目标」一样），
+   * 这样按钮的高亮过渡能立刻跑起来；落库放到后面单独的 effect 里，
+   * 避免点击同一帧就重写整个列表、把过渡打断（看起来就是"啪"地一下变白）。
+   */
   const handleBgModeChange = useCallback((m: 'motion' | 'video') => {
     setBgMode(m);
+  }, []);
+
+  // 落库：等状态稳定后写回这张谱面（按 fileName 定位）
+  useEffect(() => {
     const fileName = selFileRef.current;
     if (!fileName) return;
     const list = chartsRef.current;
     const idx = list.findIndex(c => c.fileName === fileName);
-    if (idx < 0 || list[idx].bgMode === m) return;
-    const next = list.map((c, i) => (i === idx ? { ...c, bgMode: m } : c));
+    if (idx < 0 || list[idx].bgMode === bgMode) return;
+    const next = list.map((c, i) => (i === idx ? { ...c, bgMode } : c));
     setCharts(next);
     saveCharts(next);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bgMode]);
 
   /** 开始游戏前把流速立即落库，避免"没等防抖就退出 → 下次回来还是旧值" */
   const flushSpeed = useCallback(() => {
