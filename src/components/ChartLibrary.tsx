@@ -308,6 +308,19 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
    * 包里本来就带流速的谱面看起来"能记住"，没带的就每次都回到 5.0。
    * 滑杆拖动会连续触发，所以落库做个防抖，避免每移动一格就写一次 IndexedDB。
    */
+  /**
+   * 滚动中的选中变化是高频的：这里做一次 180ms 防抖，
+   * 只有停下来之后才认为「详情页可以开始加载了」。
+   * 滚动过程中不加载任何图片（列表用已生成的缩略图，详情图完全不碰）。
+   */
+  const [settledSel, setSettledSel] = useState(-1);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettledSel(selected), 180);
+    return () => clearTimeout(timer);
+  }, [selected]);
+  /** 详情页是否已经可以加载（滚动已停） */
+  const detailReady = selected >= 0 && settledSel === selected;
+
   const speedSaveTimer = useRef(0);
   /** 当前选中包的 fileName：写回流速按文件名定位，不用列表下标（列表会排序/过滤，下标会错位） */
   const selFileRef = useRef<string | null>(null);
@@ -777,8 +790,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
           background: 'rgba(255,255,255,0.03)',
           boxShadow: '0 6px 32px rgba(0,0,0,0.5)',
         }}>
-          {sel.coverUrl
-            ? <img src={sel.coverThumb ?? sel.coverUrl} alt="" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          {sel.coverUrl && detailReady
+            ? <img src={sel.coverUrl} alt="" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'clamp(28px,3vw,48px)', opacity: 0.08, color: '#fff' }}>::</div>
           }
         </div>
@@ -1062,7 +1075,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
           staticBg ? { backgroundImage: `url(${staticBg})` } : undefined
         }>
           {/* 实时模糊背景层 — 不影响上层内容 */}
-          {uiBlur && bgImgSrc && (
+          {uiBlur && bgImgSrc && detailReady && (
             <div style={{
               position: 'absolute', inset: 0, zIndex: 0,
               backgroundImage: `url(${bgImgSrc})`,

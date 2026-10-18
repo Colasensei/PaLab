@@ -451,7 +451,13 @@ function drawThumb(dec: ImageBitmap | HTMLImageElement, maxSide: number): string
 }
 
 /** 把整张封面压成小 JPEG 缩略图（最长边 maxSide），带内存缓存 */
+/** 预生成的缩略图本身就是 data URL 且很小，直接返回，别再解码+重编码一遍 */
+function looksLikeThumb(src: string): boolean {
+  return src.startsWith('data:image/') && src.length < 120000;
+}
+
 export async function makeThumb(src: string, maxSide = 160): Promise<string | null> {
+  if (looksLikeThumb(src)) return src;
   const key = `${maxSide}::${src}`;
   const cached = thumbCache.get(key);
   if (cached) return cached;
