@@ -40,7 +40,11 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "shortcutName": "Palab",
-      "uninstallDisplayName": "Palab 下落式节奏游戏"
+      "uninstallDisplayName": "Palab 下落式节奏游戏",
+      "include": "build/installer.nsh",
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "allowElevation": false
     }
   },
   "dependencies": {
