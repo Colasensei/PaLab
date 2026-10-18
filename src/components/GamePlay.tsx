@@ -925,9 +925,17 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     return () => clearTimeout(timer);
   }, [start, hasSong, beginSong]);
 
-  // 离开页面 / 结算 → 停 keep-alive + 停音乐
+  // 离开页面 / 结算 → 停 keep-alive + 停音乐 + 清掉待播的前摇定时器
   useEffect(() => {
-    return () => { stopHitKeepAlive(); audioManager.stop(); };
+    return () => {
+      // 关键：前摇定时器如果在卸载后触发，会在下一个谱面上 audioManager.play()，
+      // 造成"退出后切谱面立刻黑屏 / 谱面立刻乱掉"
+      if (leadInTimerRef.current) { clearTimeout(leadInTimerRef.current); leadInTimerRef.current = null; }
+      if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
+      try { videoBgRef.current?.pause(); } catch { /* ignore */ }
+      stopHitKeepAlive();
+      audioManager.stop();
+    };
   }, []);
 
   // FC/AP 炸了：停歌 → 动画 → 重开
@@ -1137,6 +1145,12 @@ export const GamePlay: React.FC<GamePlayProps> = ({
     pausedFrozenMsRef.current = hasSong && songStartPerfRef.current
       ? Math.max(0, performance.now() - songStartPerfRef.current - totalPauseRef.current)
       : Math.max(0, performance.now() - gameStartRef.current - leadInMsRef.current - totalPauseRef.current);
+    // 还没真正开唱（前摇 / READY）时暂停：收起前摇态，恢复时 beginSong 会重新跑一遍前摇，
+    // 否则 leadInActive 一直是 true，会和恢复倒计时叠在一起，谱面时间轴直接崩掉
+    if (!songStartedRef.current) {
+      leadInActiveRef.current = false;
+      setLeadInActive(false);
+    }
     engineSetPaused(true);
     setPaused(true);
     pauseTimeRef.current = performance.now();
@@ -1165,12 +1179,14 @@ export const GamePlay: React.FC<GamePlayProps> = ({
   }, [doResume]);
 
   const handleRetry = useCallback(() => {
+    if (leadInTimerRef.current) { clearTimeout(leadInTimerRef.current); leadInTimerRef.current = null; }
     audioManager.stop();
     if (onRestart) onRestart();
     else onBack();
   }, [onRestart, onBack]);
 
   const handleQuit = useCallback(() => {
+    if (leadInTimerRef.current) { clearTimeout(leadInTimerRef.current); leadInTimerRef.current = null; }
     audioManager.stop();
     onBack();
   }, [onBack]);

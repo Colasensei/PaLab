@@ -166,6 +166,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     return () => clearTimeout(timer);
   }, [selected, charts, onPreview]);
   const [speed, setSpeed] = useState(5.0);
+  const speedRef = useRef(5.0);
+  speedRef.current = speed;
   const [autoPlay, setAutoPlay] = useState(false);
   const [target, setTarget] = useState<'none' | 'fc' | 'ap'>('none');
   const [mirror, setMirror] = useState(false);
@@ -254,7 +256,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   };
 
   // 模糊背景（UI 模糊关闭时用一张预烤图，避开 CSS backdrop-filter）
-  const bgImgSrc = sel?.illustrationUrl || sel?.coverUrl || null;
+  // 详情区背景：优先用已生成的缩略图，避免每次切换选中都解码整张大图（低端机尤其卡）
+  const bgImgSrc = sel?.coverThumb || sel?.illustrationUrl || sel?.coverUrl || null;
   // 烤背景用预生成的小缩略图当源：解码成本几乎为零，反正最后也是全屏糊掉
   const bgBlurSrc = sel?.coverThumb || bgImgSrc;
   const [staticBg, setStaticBg] = useState<string | null>(null);
@@ -306,19 +309,34 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
    * 滑杆拖动会连续触发，所以落库做个防抖，避免每移动一格就写一次 IndexedDB。
    */
   const speedSaveTimer = useRef(0);
+  /** 当前选中包的 fileName：写回流速按文件名定位，不用列表下标（列表会排序/过滤，下标会错位） */
+  const selFileRef = useRef<string | null>(null);
+  selFileRef.current = sel?.fileName ?? null;
+
+  /** 立刻把流速写回该谱面并落库 */
+  const commitSpeed = useCallback((v: number) => {
+    const fileName = selFileRef.current;
+    if (!fileName) return;
+    const list = chartsRef.current;
+    const idx = list.findIndex(c => c.fileName === fileName);
+    if (idx < 0 || list[idx].speed === v) return;
+    const next = list.map((c, i) => (i === idx ? { ...c, speed: v } : c));
+    setCharts(next);
+    saveCharts(next);
+  }, []);
+
   const handleSpeedChange = useCallback((v: number) => {
     setSpeed(v);
     clearTimeout(speedSaveTimer.current);
-    speedSaveTimer.current = window.setTimeout(() => {
-      const list = chartsRef.current;
-      const idx = selectedRef.current;
-      if (idx < 0 || idx >= list.length) return;
-      if (list[idx].speed === v) return;
-      const next = list.map((c, i) => (i === idx ? { ...c, speed: v } : c));
-      setCharts(next);
-      saveCharts(next);
-    }, 350);
-  }, []);
+    // 防抖：拖动滑杆时不要每个刻度都写 IndexedDB
+    speedSaveTimer.current = window.setTimeout(() => commitSpeed(v), 350);
+  }, [commitSpeed]);
+
+  /** 开始游戏前把流速立即落库，避免"没等防抖就退出 → 下次回来还是旧值" */
+  const flushSpeed = useCallback(() => {
+    clearTimeout(speedSaveTimer.current);
+    commitSpeed(speedRef.current);
+  }, [commitSpeed]);
 
   const handleDelete = (i: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -623,7 +641,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
             const ds = getDiffStyle(c.difficulty);
             const isSwiped = swipedIdx === realIdx;
             // 背景优先曲绘，没有曲绘就退化成封面
-            const bgSrc = c.illustrationUrl || c.coverUrl;
+            const bgSrc = c.coverThumb || c.illustrationUrl || c.coverUrl;
             return (
             <div key={c.fileName} ref={el => { rowRefs.current[i] = el; }} className="cl2-row" style={{ position: 'relative', overflow: 'hidden', borderRadius: 10, marginBottom: 2 }}>
               {/* 卡片背景：曲绘（没有则封面）的主色块，只在开启 UI 模糊时给。
@@ -653,7 +671,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
               <div
                 className={`cl2-item ${realIdx === selected ? 'active' : ''}`}
                 onClick={(e) => { e.stopPropagation(); }}
-                onDoubleClick={() => { if (c.songUrl) { lastSelectedIdx = realIdx; setSelected(realIdx); onPlay(c, c.speed ?? speed, autoPlay, target, mirror, correctHitSound); } }}
+                onDoubleClick={() => { if (c.songUrl) { lastSelectedIdx = realIdx; setSelected(realIdx); flushSpeed(); onPlay(c, c.speed ?? speed, autoPlay, target, mirror, correctHitSound); } }}
                 onMouseDown={(e) => onDragStart(e, realIdx)}
                 onMouseMove={(e) => { if (dragStartX.current) onDragMove(e, realIdx); }}
                 onMouseUp={() => { if (dragStartX.current) onDragEnd(realIdx); }}
@@ -760,7 +778,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
           boxShadow: '0 6px 32px rgba(0,0,0,0.5)',
         }}>
           {sel.coverUrl
-            ? <img src={sel.coverUrl} alt="" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            ? <img src={sel.coverThumb ?? sel.coverUrl} alt="" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'clamp(28px,3vw,48px)', opacity: 0.08, color: '#fff' }}>::</div>
           }
         </div>
@@ -1013,7 +1031,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
             fontFamily: 'var(--font-main)', letterSpacing: 'clamp(2px,0.3vw,4px)',
             padding: 'clamp(10px,1vh,16px) 0',
           }}>{lang === 'zh' ? '设置' : 'Settings'}</button>
-          <button onClick={() => { lastSelectedIdx = selected; onPlay(sel, speed, autoPlay, target, mirror, correctHitSound); }} disabled={!sel.songUrl} style={{
+          <button onClick={() => { lastSelectedIdx = selected; flushSpeed(); onPlay(sel, speed, autoPlay, target, mirror, correctHitSound); }} disabled={!sel.songUrl} style={{
             flex: 2, border: 'none',
             borderRadius: 'clamp(10px,1vw,14px)',
             fontSize: 'clamp(14px,1.5vw,20px)', fontWeight: 800, cursor: sel.songUrl ? 'pointer' : 'default',
