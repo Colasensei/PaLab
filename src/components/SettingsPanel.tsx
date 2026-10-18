@@ -32,7 +32,6 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
   const [keyBindings, setKeyBindings] = useState<Partial<Record<TrackCount, string[]>> | undefined>(settings.keyBindings);
   const [uiScale, setUiScale] = useState(settings.uiScale ?? 1);
   const [gameUiScale, setGameUiScale] = useState(settings.gameUiScale ?? 1);
-  const [videoBg, setVideoBg] = useState(settings.videoBg ?? true);
   const [performanceMode, setPerformanceMode] = useState(settings.performanceMode ?? false);
   const [holdGradient, setHoldGradient] = useState(settings.holdGradient ?? true);
   const [skin, setSkin] = useState<'standard' | 'ball'>(settings.skin ?? 'standard');
@@ -51,7 +50,6 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
     hitVolume: hitVol,
     keyBindings,
     uiScale, gameUiScale,
-    videoBg,
     performanceMode,
     holdGradient,
     skin,
@@ -114,9 +112,6 @@ export const SettingsPanel: React.FC<Props> = ({ settings, onSave, onBack, lang,
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? 'UI 模糊效果' : 'UI Blur'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={uiBlur} onChange={e => { const v = e.target.checked; setUiBlur(v); onSave(build({ uiBlur: v })); }} /><span className="toggle-slider" /></label>
-          </div>
-          <div className="st-row"><span className="st-label">{lang === 'zh' ? '谱面视频背景' : 'Video Background'}</span>
-            <label className="toggle-switch"><input type="checkbox" checked={videoBg} onChange={e => { const v = e.target.checked; setVideoBg(v); onSave(build({ videoBg: v })); }} /><span className="toggle-slider" /></label>
           </div>
           <div className="st-row"><span className="st-label">{lang === 'zh' ? '长条渐变透明' : 'Hold Gradient'}</span>
             <label className="toggle-switch"><input type="checkbox" checked={holdGradient} onChange={e => { const v = e.target.checked; setHoldGradient(v); onSave(build({ holdGradient: v })); }} /><span className="toggle-slider" /></label>

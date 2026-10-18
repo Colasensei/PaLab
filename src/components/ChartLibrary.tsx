@@ -35,10 +35,12 @@ export interface ChartPackage {
   chartData: string;
   config: string;
   speed?: number;
+  /** 背景模式：video=播放视频，motion=减弱动态效果（不播视频，用封面） */
+  bgMode?: 'motion' | 'video';
 }
 
 interface Props {
-  onPlay: (pkg: ChartPackage, speed: number, autoPlay: boolean, target: 'none' | 'fc' | 'ap', mirror: boolean, correctHitSound: boolean) => void;
+  onPlay: (pkg: ChartPackage, speed: number, autoPlay: boolean, target: 'none' | 'fc' | 'ap', mirror: boolean, correctHitSound: boolean, bgMode?: 'motion' | 'video') => void;
   onSettings: () => void;
   onPreview: (url: string | null) => void;
   lang: Lang;
@@ -172,6 +174,8 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
   const [target, setTarget] = useState<'none' | 'fc' | 'ap'>('none');
   const [mirror, setMirror] = useState(false);
   const [correctHitSound, setCorrectHitSound] = useState(false);
+  /** 背景模式：video=播放视频，motion=减弱动态效果 */
+  const [bgMode, setBgMode] = useState<'motion' | 'video'>('video');
   const [landscape, setLandscape] = useState(window.innerWidth > window.innerHeight);
   const [sortBy, setSortBy] = useState<'name' | 'difficulty' | 'rks' | 'score'>('name');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -315,6 +319,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
 
   // 选谱时用谱面自带流速
   useEffect(() => { if (sel) setSpeed(sel.speed ?? 5.0); }, [selected]);
+  useEffect(() => { if (sel) setBgMode(sel.bgMode ?? 'video'); }, [selected]);
 
   /**
    * 改流速 → 写回这张谱面自己的 speed 并落库。
@@ -360,6 +365,19 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     // 防抖：拖动滑杆时不要每个刻度都写 IndexedDB
     speedSaveTimer.current = window.setTimeout(() => commitSpeed(v), 350);
   }, [commitSpeed]);
+
+  /** 背景模式写回这张谱面（按 fileName 定位） */
+  const handleBgModeChange = useCallback((m: 'motion' | 'video') => {
+    setBgMode(m);
+    const fileName = selFileRef.current;
+    if (!fileName) return;
+    const list = chartsRef.current;
+    const idx = list.findIndex(c => c.fileName === fileName);
+    if (idx < 0 || list[idx].bgMode === m) return;
+    const next = list.map((c, i) => (i === idx ? { ...c, bgMode: m } : c));
+    setCharts(next);
+    saveCharts(next);
+  }, []);
 
   /** 开始游戏前把流速立即落库，避免"没等防抖就退出 → 下次回来还是旧值" */
   const flushSpeed = useCallback(() => {
@@ -716,7 +734,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
               <div
                 className={`cl2-item ${realIdx === selected ? 'active' : ''}`}
                 onClick={(e) => { e.stopPropagation(); }}
-                onDoubleClick={() => { if (c.songUrl) { lastSelectedIdx = realIdx; setSelected(realIdx); flushSpeed(); onPlay(c, c.speed ?? speed, autoPlay, target, mirror, correctHitSound); } }}
+                onDoubleClick={() => { if (c.songUrl) { lastSelectedIdx = realIdx; setSelected(realIdx); flushSpeed(); onPlay(c, c.speed ?? speed, autoPlay, target, mirror, correctHitSound, bgMode); } }}
                 onMouseDown={(e) => onDragStart(e, realIdx)}
                 onMouseMove={(e) => { if (dragStartX.current) onDragMove(e, realIdx); }}
                 onMouseUp={() => { if (dragStartX.current) onDragEnd(realIdx); }}
@@ -1050,6 +1068,28 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
                 ))}
               </div>
             </div>
+            {/* 背景（仅带视频的谱面） */}
+            {(sel.videoUrl || sel.videoBlob) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 'clamp(9px,0.9vw,11px)', color: '#999', minWidth: 42 }}>{lang === 'zh' ? '背景' : 'BG'}</span>
+                <div style={{ display: 'flex', gap: 2, flex: 1 }}>
+                  {(['motion','video'] as const).map(m => (
+                    <button key={m} onClick={() => handleBgModeChange(m)} style={{
+                      flex: 1, padding: landscape ? 'clamp(3px,0.4vw,5px) 0' : 'clamp(6px,0.8vh,10px) 0',
+                      borderRadius: 'clamp(4px,0.6vw,7px)',
+                      border: bgMode === m ? '1px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+                      background: bgMode === m ? 'rgba(255,255,255,0.18)' : 'transparent',
+                      color: bgMode === m ? '#fff' : '#666',
+                      fontSize: 'clamp(10px,1vw,12px)', cursor: 'pointer',
+                      fontFamily: 'var(--font-main)',
+                      fontWeight: bgMode === m ? 700 : 400,
+                      letterSpacing: 1, transition: 'all 0.15s',
+                      whiteSpace: 'nowrap',
+                    }}>{m === 'motion' ? (lang === 'zh' ? '减弱动态' : 'Reduced') : (lang === 'zh' ? '视频' : 'Video')}</button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           {/* 右：Auto play + Mirror 竖排 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: landscape ? 'clamp(4px,0.6vh,8px)' : 10, justifyContent: 'center', minWidth: landscape ? 'clamp(80px,9vw,110px)' : 60 }}>
@@ -1077,7 +1117,7 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
             fontFamily: 'var(--font-main)', letterSpacing: 'clamp(2px,0.3vw,4px)',
             padding: 'clamp(10px,1vh,16px) 0',
           }}>{lang === 'zh' ? '设置' : 'Settings'}</button>
-          <button onClick={() => { lastSelectedIdx = selected; flushSpeed(); onPlay(sel, speed, autoPlay, target, mirror, correctHitSound); }} disabled={!sel.songUrl} style={{
+          <button onClick={() => { lastSelectedIdx = selected; flushSpeed(); onPlay(sel, speed, autoPlay, target, mirror, correctHitSound, bgMode); }} disabled={!sel.songUrl} style={{
             flex: 2, border: 'none',
             borderRadius: 'clamp(10px,1vw,14px)',
             fontSize: 'clamp(14px,1.5vw,20px)', fontWeight: 800, cursor: sel.songUrl ? 'pointer' : 'default',

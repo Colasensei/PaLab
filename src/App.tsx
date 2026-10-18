@@ -175,6 +175,8 @@ const App: React.FC = () => {
   const [account, setAccount] = useState<AccountInfo | null>(loadAccount);
   const [isTrial, setIsTrial] = useState(false);
   const [chartSource, setChartSource] = useState<{ fileName: string; title: string; artist: string; author: string; difficulty: string; chartConstant: number; trackCount: number; coverUrl: string | null; illustrationUrl: string | null } | null>(null);
+  /** 本次游玩选择的背景模式（谱面库按谱面选择） */
+  const [gameBgMode, setGameBgMode] = useState<'motion' | 'video'>('video');
   const [gameTarget, setGameTarget] = useState<'none' | 'fc' | 'ap'>('none');
   const [gameMirror, setGameMirror] = useState(false);
   const [gameCorrectHitSound, setGameCorrectHitSound] = useState(false);
@@ -877,7 +879,7 @@ const App: React.FC = () => {
   const lang = settings.language;
 
   // 谱面库开始挑战
-  const handleChartPlay = useCallback(async (pkg: ChartPackage, speed: number, autoPlay: boolean, target: 'none' | 'fc' | 'ap', mirror: boolean, correctHitSound: boolean) => {
+  const handleChartPlay = useCallback(async (pkg: ChartPackage, speed: number, autoPlay: boolean, target: 'none' | 'fc' | 'ap', mirror: boolean, correctHitSound: boolean, bgMode: 'motion' | 'video' = 'video') => {
     if (!pkg.songUrl) return;
     try {
       const parsedNotes: Note[] = JSON.parse(pkg.chartData);
@@ -916,6 +918,7 @@ const App: React.FC = () => {
       setGameTarget(target);
       setGameMirror(mirror);
       setGameCorrectHitSound(correctHitSound);
+      setGameBgMode(bgMode);
       // 镜像 flip（含脑裂段轨道）
       if (mirror) {
         const tk = infoConfig.trackCount || 4;
@@ -1023,7 +1026,7 @@ const App: React.FC = () => {
       case 'loading':
         return <LoadingScreen noEnterAnim={enteredViaTransition} onComplete={handleLoadingComplete} lang={lang} chartInfo={chartSource} uiBlur={effectiveUiBlur} task={loadingTaskRef.current} mlLearning={!!config.machineLearning} />;
       case 'gameplay':
-        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={effectiveUiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} showFPS={settings.showFPS ?? false} keyBindings={settings.keyBindings} gameUiScale={settings.gameUiScale} videoBg={settings.videoBg ?? true} holdGradient={settings.holdGradient ?? true} skin={settings.skin ?? 'standard'} gameBgBlur={settings.gameBgBlur ?? true} renderScale={settings.renderScale ?? 1} edgeTrackTint={settings.edgeTrackTint ?? false} />;
+        return <GamePlay config={config} notes={notes} duration={duration} onFinish={handleGameFinish} onBack={handleGameBack} onRestart={handleRestart} target={gameTarget} showDoubleGlow={settings.showDoubleGlow} latencyOffset={settings.latencyOffset} lang={lang} devMode={devMode} showACC={settings.showACC} showWaveform={settings.showWaveform} coverUrl={chartSource?.illustrationUrl ?? chartSource?.coverUrl ?? null} noteScale={settings.noteScale} musicVolume={settings.musicVolume} uiBlur={effectiveUiBlur} judgeLineThickness={settings.judgeLineThickness} correctHitSound={gameCorrectHitSound} showAccuracyBar={settings.showAccuracyBar ?? false} showFPS={settings.showFPS ?? false} keyBindings={settings.keyBindings} gameUiScale={settings.gameUiScale} videoBg={gameBgMode === 'video'} holdGradient={settings.holdGradient ?? true} skin={settings.skin ?? 'standard'} gameBgBlur={settings.gameBgBlur ?? true} renderScale={settings.renderScale ?? 1} edgeTrackTint={settings.edgeTrackTint ?? false} />;
       case 'results':
         return results ? <ResultsScreen results={results} onRestart={handleRestart} onBackToPanel={handleBackToPanel} rks={rks} rksChange={rksChange} lang={lang} isTrial={isTrial} onAdjustParams={handleTrialDiscard} onContinueToEditor={handleTrialContinue} chartInfo={chartSource} uiBlur={effectiveUiBlur} /> : null;
       case 'editor':

@@ -262,7 +262,8 @@ export interface AppSettings {
   /** 游戏内界面大小倍率（轨道/音符/判定线/准度条；不含 HUD） */
   gameUiScale: number;
   /** 谱面背景视频：关闭后游玩回退到封面模糊背景 */
-  videoBg: boolean;
+  /** 已废弃：背景改为谱面库按谱面选择（bgMode），保留字段只为兼容旧存档 */
+  videoBg?: boolean;
   /** 性能模式：关闭实时模糊、停用背景粒子（双端生效，低端设备更流畅） */
   performanceMode?: boolean;
   /** Hold 长条渐变透明（开启后长条从头部实色渐变到尾部，默认开启） */
