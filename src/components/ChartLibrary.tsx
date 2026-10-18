@@ -822,6 +822,32 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
     ? 'clamp(140px, 15vw, 240px)'
     : 'clamp(120px, 32vw, 200px)';
 
+  /**
+   * 详情面板里「分段按钮」的统一外观（目标 / 背景 共用）。
+   * 抽出来保证两行在尺寸、圆角、描边、字重和过渡上完全一致。
+   */
+  const segBtnStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: landscape ? 'clamp(3px,0.4vw,5px) 0' : 'clamp(6px,0.8vh,10px) 0',
+    borderRadius: 'clamp(4px,0.6vw,7px)',
+    border: active ? '1px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+    background: active ? 'rgba(255,255,255,0.18)' : 'transparent',
+    color: active ? '#fff' : '#666',
+    fontSize: 'clamp(10px,1vw,12px)',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-main)',
+    fontWeight: active ? 700 : 400,
+    letterSpacing: 1,
+    transition: 'all 0.15s',
+  });
+  /** 左列标签统一宽度：SPEED / 目标 / 背景 三行左边缘才对得齐 */
+  const segLabelStyle: React.CSSProperties = {
+    fontSize: 'clamp(9px,0.9vw,11px)',
+    color: '#999',
+    minWidth: 42,
+    flexShrink: 0,
+  };
+
   const detailPanel = sel ? (
     <div key={sel.fileName} className="cl2-detail-in" style={{
       display: 'flex', flexDirection: 'column',
@@ -1045,47 +1071,26 @@ export const ChartLibrary: React.FC<Props> = ({ onPlay, onSettings, onPreview, l
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: landscape ? 6 : 12, minWidth: 0 }}>
             {/* Speed */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 'clamp(9px,0.9vw,11px)', color: '#999', fontWeight: 600, minWidth: 42 }}>SPEED</span>
+              <span style={segLabelStyle}>SPEED</span>
               <input type="range" min={1} max={10} step={0.1} value={speed} onChange={e => handleSpeedChange(parseFloat(e.target.value))} style={{ flex: 1, accentColor: '#fff', height: 4 }} />
               <span style={{ fontSize: 'clamp(10px,1.1vw,13px)', fontWeight: 700, color: '#fff', minWidth: 36, textAlign: 'right' }}>{speed.toFixed(1)}x</span>
             </div>
             {/* Target */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 'clamp(9px,0.9vw,11px)', color: '#999' }}>{lang === 'zh' ? '目标' : 'Target'}</span>
+              <span style={segLabelStyle}>{lang === 'zh' ? '目标' : 'Target'}</span>
               <div style={{ display: 'flex', gap: 2, flex: 1 }}>
                 {(['none','fc','ap'] as const).map(t => (
-                  <button key={t} onClick={() => setTarget(t)} style={{
-                    flex: 1, padding: landscape ? 'clamp(3px,0.4vw,5px) 0' : 'clamp(6px,0.8vh,10px) 0',
-                    borderRadius: 'clamp(4px,0.6vw,7px)',
-                    border: target === t ? '1px solid #fff' : '1px solid rgba(255,255,255,0.1)',
-                    background: target === t ? 'rgba(255,255,255,0.18)' : 'transparent',
-                    color: target === t ? '#fff' : '#666',
-                    fontSize: 'clamp(10px,1vw,12px)', cursor: 'pointer',
-                    fontFamily: 'var(--font-main)',
-                    fontWeight: target === t ? 700 : 400,
-                    letterSpacing: 1, transition: 'all 0.15s',
-                  }}>{t === 'none' ? (lang === 'zh' ? '无' : 'None') : t.toUpperCase()}</button>
+                  <button key={t} onClick={() => setTarget(t)} style={segBtnStyle(target === t)}>{t === 'none' ? (lang === 'zh' ? '无' : 'None') : t.toUpperCase()}</button>
                 ))}
               </div>
             </div>
-            {/* 背景（仅带视频的谱面） */}
+            {/* 背景（仅带视频的谱面）—— 与上面「目标」完全同一套样式与过渡 */}
             {(sel.videoUrl || sel.videoBlob) && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 'clamp(9px,0.9vw,11px)', color: '#999', minWidth: 42 }}>{lang === 'zh' ? '背景' : 'BG'}</span>
+                <span style={segLabelStyle}>{lang === 'zh' ? '背景' : 'BG'}</span>
                 <div style={{ display: 'flex', gap: 2, flex: 1 }}>
                   {(['motion','video'] as const).map(m => (
-                    <button key={m} onClick={() => handleBgModeChange(m)} style={{
-                      flex: 1, padding: landscape ? 'clamp(3px,0.4vw,5px) 0' : 'clamp(6px,0.8vh,10px) 0',
-                      borderRadius: 'clamp(4px,0.6vw,7px)',
-                      border: bgMode === m ? '1px solid #fff' : '1px solid rgba(255,255,255,0.1)',
-                      background: bgMode === m ? 'rgba(255,255,255,0.18)' : 'transparent',
-                      color: bgMode === m ? '#fff' : '#666',
-                      fontSize: 'clamp(10px,1vw,12px)', cursor: 'pointer',
-                      fontFamily: 'var(--font-main)',
-                      fontWeight: bgMode === m ? 700 : 400,
-                      letterSpacing: 1, transition: 'all 0.15s',
-                      whiteSpace: 'nowrap',
-                    }}>{m === 'motion' ? (lang === 'zh' ? '减弱动态' : 'Reduced') : (lang === 'zh' ? '视频' : 'Video')}</button>
+                    <button key={m} onClick={() => handleBgModeChange(m)} style={segBtnStyle(bgMode === m)}>{m === 'motion' ? (lang === 'zh' ? '减弱动态' : 'Reduced') : (lang === 'zh' ? '视频' : 'Video')}</button>
                   ))}
                 </div>
               </div>
